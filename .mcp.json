@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agentvibes": {
+      "command": "wsl",
+      "args": [
+        "bash",
+        "-c",
+        "cd /mnt/d/Will/side_project/gps/erpgps-fe && npx -y --package=agentvibes agentvibes-mcp-server"
+      ]
+    }
+  }
+}

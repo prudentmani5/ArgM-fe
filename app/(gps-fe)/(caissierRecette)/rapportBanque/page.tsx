@@ -1,0 +1,251 @@
+'use client';
+
+import { TabPanel, TabView, TabViewTabChangeEvent } from 'primereact/tabview';
+import { useEffect, useRef, useState } from 'react';
+import { DataTableExpandedRows } from 'primereact/datatable';
+import { RapportBanque, RapportBanqueGrouped, Banque } from './RapportBanque';
+import RapportBanqueForm from './RapportBanqueForm';
+import { Button } from 'primereact/button';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { InputText } from 'primereact/inputtext';
+import { Toast } from 'primereact/toast';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import RapportBanquePdf from './RapportBanquePdf';
+import { Card } from 'primereact/card';
+import { endOfDay, format, startOfDay } from 'date-fns';
+import { Dialog } from 'primereact/dialog';
+import { API_BASE_URL } from '@/utils/apiConfig';
+
+const RapportBanquePage: React.FC = () => {
+  const baseUrl = `${API_BASE_URL}`;
+  const [groupedData, setGroupedData] = useState<RapportBanqueGrouped[]>([]);
+  const [searchParams, setSearchParams] = useState<{
+    dateDebut: Date;
+    dateFin: Date;
+    banqueId: number;
+    libelleBanque: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [expandedRows, setExpandedRows] = useState<DataTableExpandedRows | null>(null);
+  const toast = useRef<Toast>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const [dateDebut, setDateDebut] = useState<Date>(new Date());
+  const [dateFin, setDateFin] = useState<Date>(new Date());
+  const [selectedBanque, setSelectedBanque] = useState<number | null>(null);
+  const [pdfReady, setPdfReady] = useState(false);
+
+  const accept = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
+    toast.current?.show({ severity, summary, detail, life: 3000 });
+  };
+
+  const [visibleDialog, setVisibleDialog] = useState(false);
+
+  const fetchRapport = async (values: { dateDebut: Date; dateFin: Date; banqueId: number }) => {
+    setLoading(true);
+    const debut = format(startOfDay(values.dateDebut), 'yyyy-MM-dd');
+    const fin = format(endOfDay(values.dateFin), 'yyyy-MM-dd');
+
+    try {
+      const response = await fetch(
+        `${baseUrl}/entryPayements/rapportBanque?debut=${debut}&fin=${fin}&banque=${values.banqueId}`
+      );
+
+      if (!response.ok) throw new Error('Erreur réseau');
+
+      const data = await response.json();
+      const libelleBanque = data[0]?.libelleBanque || 'Inconnu';
+
+      setSearchParams({ ...values, libelleBanque });
+
+      const grouped = data.reduce((acc: RapportBanqueGrouped[], item: RapportBanque) => {
+        const existingGroup = acc.find(group => group.libelleBanque === item.libelleBanque);
+        if (existingGroup) {
+          existingGroup.items.push(item);
+          existingGroup.total += item.montantPaye;
+        } else {
+          acc.push({
+            libelleBanque: item.libelleBanque,
+            total: item.montantPaye,
+            items: [item]
+          });
+        }
+        return acc;
+      }, []);
+
+      setGroupedData(grouped);
+      setVisibleDialog(true);
+    } catch (error) {
+      console.error("Erreur lors de la recherche:", error);
+      accept('error', 'Erreur', 'Échec de la récupération des données');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('fr-FR', { 
+      style: 'currency', 
+      currency: 'BIF',
+      currencyDisplay: 'code',
+      minimumFractionDigits: 0
+    }).format(value).replace(/BIF$/, ' BIF');
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('fr-FR');
+  };
+
+  const expandedRowTemplate = (rowData: RapportBanqueGrouped) => {
+    return (
+      <div className="p-3">
+        <DataTable value={rowData.items} responsiveLayout="scroll">
+          <Column field="datePaiement" header="Date" body={(data) => formatDate(new Date(data.datePaiement))} />
+          <Column field="factureId" header="No Facture" />
+          <Column field="reference" header="Borderau" />
+          <Column field="nomClient" header="Client" />
+          <Column field="modePaiement" header="Mode Paiement" />
+          <Column field="montantPaye" header="Montant" body={(data) => formatCurrency(data.montantPaye)} />
+        </DataTable>
+      </div>
+    );
+  };
+
+  const totalGeneral = groupedData.reduce((sum, group) => sum + group.total, 0);
+
+  const renderSearch = () => (
+    <div className="flex justify-content-between align-items-center mb-3">
+      <Button
+        icon="pi pi-filter-slash"
+        label="Effacer filtres"
+        outlined
+        onClick={() => setGlobalFilter('')}
+      />
+      <span className="p-input-icon-left" style={{ width: '40%' }}>
+        <i className="pi pi-search" />
+        <InputText
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+          placeholder="Rechercher par banque ou montant..."
+          className="w-full"
+        />
+      </span>
+      <Button
+        icon={expandedRows ? "pi pi-minus" : "pi pi-plus"}
+        label={expandedRows ? "Replier Tout" : "Développer Tout"}
+        onClick={() => {
+          if (expandedRows) {
+            setExpandedRows(null);
+          } else {
+            const expanded: DataTableExpandedRows = {};
+            groupedData.forEach(data => {
+              expanded[data.libelleBanque] = true;
+            });
+            setExpandedRows(expanded);
+          }
+        }}
+        className="p-button-text"
+      />
+    </div>
+  );
+
+  const tableChangeHandle = (e: TabViewTabChangeEvent) => {
+    setActiveIndex(e.index);
+  };
+
+  const dialogFooter = (
+    <div className="flex justify-content-end gap-2">
+      <Button
+        label="Fermer"
+        icon="pi pi-times"
+        onClick={() => setVisibleDialog(false)}
+        className="p-button-text"
+      />
+      {groupedData.length > 0 && searchParams && (
+        <PDFDownloadLink
+          document={
+            <RapportBanquePdf
+              data={groupedData}
+              dateDebut={searchParams.dateDebut}
+              dateFin={searchParams.dateFin}
+              banqueNom={searchParams.libelleBanque}
+            />
+          }
+          fileName={`rapport-banque-${searchParams.libelleBanque}-${format(searchParams.dateDebut, 'yyyyMMdd')}-${format(searchParams.dateFin, 'yyyyMMdd')}.pdf`}
+        >
+          {({ loading: pdfLoading, blob, url, error }) => {
+            if (error) {
+              console.error("Erreur génération PDF:", error);
+              accept('error', 'Erreur', 'Échec de génération du PDF');
+            }
+            return (
+              <Button
+                label={pdfLoading ? "Génération..." : "Télécharger PDF"}
+                icon="pi pi-download"
+                loading={pdfLoading}
+                className="p-button-success"
+              />
+            );
+          }}
+        </PDFDownloadLink>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <Toast ref={toast} />
+      <TabView activeIndex={activeIndex} onTabChange={tableChangeHandle}>
+        <TabPanel header="Générer Rapport">
+          <Card title="Paramètres du rapport">
+            <RapportBanqueForm
+              onSearch={fetchRapport}
+              loading={loading}
+            />
+          </Card>
+        </TabPanel>
+      </TabView>
+
+      <Dialog
+        header={`Rapport Banque`}
+        visible={visibleDialog}
+        style={{ width: '90vw' }}
+        footer={dialogFooter}
+        onHide={() => setVisibleDialog(false)}
+        maximizable
+      >
+        <div className="card">
+          {renderSearch()}
+
+          <DataTable
+            value={groupedData}
+            loading={loading}
+            responsiveLayout="scroll"
+            expandedRows={expandedRows || undefined}
+            onRowToggle={(e) => setExpandedRows(e.data ? (e.data as DataTableExpandedRows) : null)}
+            rowExpansionTemplate={expandedRowTemplate}
+            globalFilter={globalFilter}
+            emptyMessage="Aucune donnée trouvée"
+          >
+            <Column expander style={{ width: '3em' }} />
+            <Column field="nomBanque" header="Banque" sortable />
+            <Column
+              field="total"
+              header="Total"
+              body={(data) => formatCurrency(data.total)}
+              sortable
+            />
+          </DataTable>
+
+          <div className="mt-3 font-bold">
+            Total Général: {formatCurrency(totalGeneral)}
+          </div>
+        </div>
+      </Dialog>
+    </>
+  );
+};
+
+export default RapportBanquePage;

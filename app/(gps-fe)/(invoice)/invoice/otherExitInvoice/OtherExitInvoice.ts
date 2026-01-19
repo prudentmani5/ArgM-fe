@@ -1,0 +1,67 @@
+export class OtherExitInvoice {
+    sortieId: string | null;
+    lettreTransport: string;
+    rsp: string;
+    noEntree: number | null;
+    dateEntree: Date | null;
+    entreposId: number | null;
+    marchandiseId: number | null;
+    colissage: number | null;
+    nbreColis: number | null;
+    tonage: number | null;
+    dateSortie: Date | null;
+    expImp: string;
+    montant: number | null;
+    taxeMag: number | null;
+    dossier: string;
+    userCreation: string;
+    dateCreation: Date | null;
+    userUpdate: string;
+    dateUpdate: Date | null;
+    manutention: boolean;
+    supplement: boolean;
+    dateSupplement: Date | null;
+    soldeTonage: number | 0;
+    dateDerniereSortie: Date | null;
+    numeroOrdre: number | null;
+    montantReduction: number | null;
+    tauxReduction: number | null;
+    tauxChange: number | null;
+    duree : number | null;
+    duree37 : number | null;
+    valideFacture: boolean;
+
+    constructor() {
+        this.sortieId = null;
+        this.lettreTransport = '';
+        this.rsp = '';
+        this.noEntree = null;
+        this.dateEntree = null;
+        this.entreposId = null;
+        this.marchandiseId = null;
+        this.colissage = null;
+        this.nbreColis = null;
+        this.tonage = null;
+        this.dateSortie = null;
+        this.expImp = '';
+        this.montant = null;
+        this.taxeMag = null;
+        this.dossier = '';
+        this.userCreation = '';
+        this.dateCreation = null;
+        this.userUpdate = '';
+        this.dateUpdate = null;
+        this.manutention = false ;
+        this.supplement = false;
+        this.dateSupplement = null;
+        this.soldeTonage = 0;
+        this.dateDerniereSortie = null;
+        this.numeroOrdre = null;
+        this.montantReduction = 0;
+        this.tauxReduction = 0;
+        this.tauxChange = null;
+        this.duree = null;
+        this.duree37 = null;
+        this.valideFacture = false;
+    }
+}

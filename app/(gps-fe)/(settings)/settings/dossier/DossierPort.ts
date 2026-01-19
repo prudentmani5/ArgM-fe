@@ -1,0 +1,63 @@
+export class DossierPort {
+    dossierId: string;
+    nomDossier: string;
+    adresse: string;
+    bp: string;
+    tel: string;
+    fax: string;
+    email: string;
+    longueurCpte: number;
+    dernierDateAmmo: Date | null;
+    axe1: string;
+    axe2: string;
+    axe3: string;
+    tauxTVA: number;
+    compteTVA: string;
+    typeEntite: string;
+    nif: string;
+    registreCommerce: string;
+    commune: string;
+    colline: string;
+    avenue: string;
+    numeroAdresse: string;
+    assujetiTVA: number;
+    assujetiTC: number;
+    assujetiPF: number;
+    centreFiscale: string;
+    secteurActivite: string;
+    formeJuridique: string;
+    province: string;
+    userName: string;
+
+    constructor() {
+        this.dossierId = '';
+        this.nomDossier = '';
+        this.adresse = '';
+        this.bp = '';
+        this.tel = '';
+        this.fax = '';
+        this.email = '';
+        this.longueurCpte = 0;
+        this.dernierDateAmmo = null;
+        this.axe1 = '';
+        this.axe2 = '';
+        this.axe3 = '';
+        this.tauxTVA = 0;
+        this.compteTVA = '';
+        this.typeEntite = '';
+        this.nif = '';
+        this.registreCommerce = '';
+        this.commune = '';
+        this.colline = '';
+        this.avenue = '';
+        this.numeroAdresse = '';
+        this.assujetiTVA = 0;
+        this.assujetiTC = 0;
+        this.assujetiPF = 0;
+        this.centreFiscale = '';
+        this.secteurActivite = '';
+        this.formeJuridique = '';
+        this.province = '';
+        this.userName = '';
+    }
+}

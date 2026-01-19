@@ -1,0 +1,63 @@
+export class ExitStock {
+    sortieMagasinId: number | null;
+    lettreTransport: string;
+    rsp: string;
+    noEntree: number | null;
+    dateEntree: Date | null;
+    entreposId: number | null;
+    marchandiseId: number | null;
+    importateurId: number | null;
+    agenceDouaneId: number | null;
+    declarant: string;
+    dmc: string;
+    noConteneur: string;
+    nbreColis: number | null;
+    dateSortie: Date | null;
+    montant: number | null;
+    sortie: boolean;
+    bargeIdEntree: number | null;
+    typeTransportEntre: string;
+    typeTransportSortie: string;
+    poidsSortie: number | null;
+    poidsEntre: number | null;
+    noFacture: string;
+    plaqueSortie: string;
+    plaqueEntree: string;
+    solde: number | null;
+    userCreation: string;
+    dateCreation: Date | null;
+    userUpdate: string;
+    dateUpdate: Date | null;
+
+    constructor() {
+        this.sortieMagasinId = null;
+        this.lettreTransport = '';
+        this.rsp = '';
+        this.noEntree = null;
+        this.dateEntree = null;
+        this.entreposId = null;
+        this.marchandiseId = null;
+        this.importateurId = null;
+        this.agenceDouaneId = null;
+        this.declarant = '';
+        this.dmc = '';
+        this.noConteneur = '';
+        this.nbreColis = null;
+        this.dateSortie = null;
+        this.montant = null;
+        this.sortie = false;
+        this.bargeIdEntree = null;
+        this.typeTransportEntre = '';
+        this.typeTransportSortie = '';
+        this.poidsSortie = null;
+        this.poidsEntre = null;
+        this.noFacture = '';
+        this.plaqueSortie = '';
+        this.plaqueEntree = '';
+        this.solde = null;
+        this.userCreation = '';
+        this.dateCreation = null;
+        this.userUpdate = '';
+        this.dateUpdate = null;
+    }
+}

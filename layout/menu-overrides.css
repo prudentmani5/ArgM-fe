@@ -1,0 +1,421 @@
+
+/* Style spécifique pour le menu "Paramètres généraux" */
+/* Style spécifique pour le menu "Paramètres généraux" */
+/*.layout-root-menuitem:has(.layout-menuitem-text:contains("Paramètres généraux")) {
+/* menu-overrides.css */
+
+/* Fix for deeply nested submenus - fixed height with scroll */
+.layout-menu ul ul ul ul {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+/* Scrollbar styling for nested submenus */
+.layout-menu ul ul ul ul::-webkit-scrollbar {
+    width: 6px;
+}
+
+.layout-menu ul ul ul ul::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.layout-menu ul ul ul ul::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.layout-menu ul ul ul ul::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* menu-overrides.css */
+/* Styles spécifiques pour les sous-menus imbriqués avec beaucoup d'items */
+.nested-submenu .p-submenu-list {
+    max-height: 400px !important; /* Hauteur augmentée */
+    overflow-y: auto !important;
+    width: 300px !important; /* Largeur fixe pour plus d'espace */
+    column-count: 1 !important; /* Empêche le fractionnement en colonnes */
+}
+
+/* Style pour les items de menu */
+.p-menuitem {
+    white-space: nowrap;
+    width: 100% !important;
+}
+
+/* Style pour les sous-menus de second niveau */
+.p-submenu-list .p-submenu-list {
+    margin-left: 0 !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 100% !important;
+}
+
+/* Amélioration de la visibilité */
+.p-menuitem-active > .p-submenu > .p-submenu-list {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Barre de défilement stylisée */
+.nested-submenu .p-submenu-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.nested-submenu .p-submenu-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.nested-submenu .p-submenu-list::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 4px;
+}
+
+.nested-submenu .p-submenu-list::-webkit-scrollbar-thumb:hover {
+    background: #5a6268;
+}
+/* Style spécifique pour les sous-menus larges */
+.large-submenu .p-submenu-list {
+    width: 350px !important;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Deux colonnes */
+    gap: 0.5rem;
+    padding: 0.5rem !important;
+}
+
+.menu-item {
+    padding: 0.5rem !important;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+    background-color: #f8f9fa !important;
+}
+
+/* Responsive pour petits écrans */
+@media (max-width: 992px) {
+    .large-submenu .p-submenu-list {
+        grid-template-columns: 1fr; /* Une seule colonne */
+        width: 250px !important;
+    }
+
+    /* Style de base pour le conteneur du menu */
+.layout-menu-container {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    overflow-x: hidden;
+    scrollbar-color: var(--primary-color) var(--surface-b);
+}
+
+/* Option avec hauteur fixe */
+.layout-sidebar .layout-menu-container {
+    max-height: calc(100vh - 100px); /* Ajustez selon vos besoins */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Style pour WebKit (Chrome, Safari) */
+.layout-menu-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.layout-menu-container::-webkit-scrollbar-track {
+    background: var(--surface-b);
+}
+
+.layout-menu-container::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 4px;
+}
+
+/* Style quand le défilement est désactivé */
+.layout-menu-container.no-scroll {
+    overflow-y: hidden;
+}
+
+
+.menu-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.next-button-container {
+    padding: 1rem;
+    margin-top: auto; /* Cela pousse le bouton vers le bas */
+}
+
+.next-button {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #3B82F6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    text-align: center;
+}
+
+.next-button:hover {
+    background-color: #2563EB;
+}
+
+
+.next-button-container {
+    padding: 1rem;
+    margin-top: auto;
+    background-color: #f8f9fa; /* Couleur de fond pour le conteneur */
+    border-top: 1px solid #dee2e6; /* Bordure supérieure */
+}
+
+.next-button {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: #3B82F6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    text-align: center;
+}
+
+.next-button:hover {
+    background-color: #2563EB;
+}
+
+/* Pour le menu horizontal */
+.layout-menu-horizontal .next-button-container {
+    display: inline-block;
+    margin-left: 1rem;
+    padding: 0;
+    border-top: none;
+}
+
+.layout-menu-horizontal .next-button {
+    width: auto;
+    padding: 0.5rem 1rem;
+}
+
+
+/* menu-overrides.css */
+
+.app-menu-container {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+    color: white;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.menu-header {
+    padding: 1.5rem 1rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 0.5rem;
+}
+
+.menu-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: white;
+}
+
+.menu-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0.5rem;
+}
+
+/* Styles pour les catégories principales */
+.main-menu-category {
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.main-menu-category .p-menuitem-link {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: none !important;
+    border-left: 4px solid transparent !important;
+    transition: all 0.3s ease;
+}
+
+.main-menu-category .p-menuitem-link:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-left-color: #60a5fa !important;
+}
+
+.main-menu-category .p-menuitem-text {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* Sous-menus */
+.submenu-header {
+    background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.submenu-header .p-menuitem-text {
+    font-weight: 500;
+    color: #93c5fd !important;
+}
+
+/* Items de menu réguliers */
+.menu-item .p-menuitem-link {
+    background: transparent !important;
+    border: none !important;
+    padding-left: 2rem !important;
+}
+
+.menu-item .p-menuitem-link:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Sous-menus imbriqués */
+.nested-submenu {
+    background: rgba(0, 0, 0, 0.1) !important;
+}
+
+.nested-submenu .p-menuitem-link {
+    padding-left: 3rem !important;
+    font-size: 0.9rem;
+}
+
+/* Section du bouton suivant */
+.next-button-section {
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.next-button {
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.next-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+}
+
+/* Scrollbar personnalisée */
+.menu-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.menu-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.menu-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.menu-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .app-menu-container {
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    .menu-header {
+        padding: 1rem;
+    }
+    
+    .menu-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* Animation d'entrée */
+.p-menuitem {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+
+/* menu-overrides.css */
+.layout-menu-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.layout-menu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.next-button-container {
+    padding: 1rem;
+    border-top: 1px solid var(--surface-border);
+}
+
+.next-button {
+    width: 100%;
+    justify-content: center;
+}
+
+/* Assurez-vous que le menu est visible */
+.p-menu {
+    background: var(--surface-overlay);
+}
+
+.p-menuitem-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.p-menuitem-link:hover {
+    background-color: var(--surface-hover);
+}
+
+.p-menuitem-icon {
+    margin-right: 0.5rem;
+}
+
+.p-submenu-list {
+    padding-left: 1rem;
+}
+
+
+
+}
+
+
+/*}*/

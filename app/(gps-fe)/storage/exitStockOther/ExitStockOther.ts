@@ -1,0 +1,63 @@
+export class ExitStockOther {
+    sortiePortId: number | null;
+    lettreTransport: string;
+    rsp: string;
+    noEntree: number | null;
+    dateEntree: Date | null;
+    entreposId: number | null;
+    marchandiseId: number | null;
+    importateurId: number | null;
+    categorieVehiculeId: string;
+    nbreColis: number | null;
+    dateSortie: Date | null;
+    montant: number | null;
+    poidsEntre: number | null;
+    poidsSortie: number | null;
+    tare: number | null;
+    noFacture: string;
+    plaqueEntree: string;
+    plaqueSortie: string;
+    agenceDouaneId: number | null;
+    dmc: string;
+    quittance: string;
+    noBordereau: string;
+    banqueId: number | null;
+    dateSaisieEntree: Date | null;
+    numPBId: number | null;
+    userCreation: string;
+    dateCreation: Date | null;
+    userUpdate: string;
+    dateUpdate: Date | null;
+
+    constructor() {
+        this.sortiePortId = null;
+        this.lettreTransport = '';
+        this.rsp = '';
+        this.noEntree = null;
+        this.dateEntree = null;
+        this.entreposId = null;
+        this.marchandiseId = null;
+        this.importateurId = null;
+        this.categorieVehiculeId = '';
+        this.nbreColis = null;
+        this.dateSortie = null;
+        this.montant = null;
+        this.poidsEntre = null;
+        this.poidsSortie = null;
+        this.tare = null;
+        this.noFacture = '';
+        this.plaqueEntree = '';
+        this.plaqueSortie = '';
+        this.agenceDouaneId = null;
+        this.dmc = '';
+        this.quittance = '';
+        this.noBordereau = '';
+        this.banqueId = null;
+        this.dateSaisieEntree = null;
+        this.numPBId = null;
+        this.userCreation = '';
+        this.dateCreation = null;
+        this.userUpdate = '';
+        this.dateUpdate = null;
+    }
+}

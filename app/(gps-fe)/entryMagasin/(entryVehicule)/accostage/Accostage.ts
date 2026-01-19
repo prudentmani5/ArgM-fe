@@ -1,0 +1,72 @@
+import { formatLocalDateTime } from '../../../../../utils/dateUtils';
+
+export class Accostage {
+    noArrive?: string;
+    lettreTransp?: string;
+    bargeId: number | null;
+    longeur: number | null;
+    dateArrive: string;
+    dateDepart: string;
+    taxeAccostage: number | null;
+    taxeManut: number | null;
+    declarant: string;
+    importateurId: number | null;
+    userCreation: string;
+    dateCreation: Date | null;
+    valide1: boolean;
+    valide2: boolean;
+    userValide1: string;
+    userValide2: string;
+    userUpdate: string;
+    dateUpdate: Date | null;
+    dossierId: string;
+    modePayement: string;
+    isValid: boolean;
+    dateValidation: Date | null;
+    montantRedev: number | null;
+    montRedevTaxe: number | null;
+    montTVA: number | null;
+    nbreBateau: number | null;
+    refAnnule: string;
+    numeroOrdre: number | null;
+    factureSignature: string;
+    motifAnnulation: string;
+    tonageArrive: number | null;
+    tonageDepart: number | null;
+    taxe: boolean;
+
+    constructor() {
+        this.lettreTransp = '';
+        this.bargeId = null;
+        this.longeur = null;
+        this.dateArrive = formatLocalDateTime(new Date());
+        this.dateDepart = formatLocalDateTime(new Date());
+        this.taxeAccostage = 0;
+        this.taxeManut = 0;
+        this.declarant = '';
+        this.importateurId = null;
+        this.userCreation = '';
+        this.dateCreation = new Date();
+        this.valide1 = false;
+        this.valide2 = false;
+        this.userValide1 = '';
+        this.userValide2 = '';
+        this.userUpdate = '';
+        this.dateUpdate = null;
+        this.dossierId = 'GPS';
+        this.modePayement = '';
+        this.isValid = false;
+        this.dateValidation = null;
+        this.montantRedev = 0;
+        this.montRedevTaxe = 0;
+        this.montTVA = 0;
+        this.nbreBateau = 1;
+        this.refAnnule = '';
+        this.numeroOrdre = null;
+        this.factureSignature = '';
+        this.motifAnnulation = '';
+        this.tonageArrive = 0;
+        this.tonageDepart = 0;
+        this.taxe = true;
+    }
+}
