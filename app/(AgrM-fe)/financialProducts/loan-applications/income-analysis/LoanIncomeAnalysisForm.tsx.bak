@@ -1,0 +1,157 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
+import { InputNumber } from 'primereact/inputnumber';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Checkbox } from 'primereact/checkbox';
+import { Button } from 'primereact/button';
+import { LoanIncomeAnalysis } from './LoanIncomeAnalysis';
+
+interface LoanIncomeAnalysisFormProps {
+    visible: boolean;
+    income?: LoanIncomeAnalysis;
+    applicationId: number;
+    onHide: () => void;
+    onSave: (income: LoanIncomeAnalysis) => void;
+}
+
+export const LoanIncomeAnalysisForm: React.FC<LoanIncomeAnalysisFormProps> = ({
+    visible,
+    income,
+    applicationId,
+    onHide,
+    onSave
+}) => {
+    const [formData, setFormData] = useState<LoanIncomeAnalysis>(new LoanIncomeAnalysis());
+    const [incomeTypes, setIncomeTypes] = useState<any[]>([]);
+    const [documents, setDocuments] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (visible) {
+            if (income) {
+                setFormData(income);
+            } else {
+                const newIncome = new LoanIncomeAnalysis();
+                newIncome.applicationId = applicationId;
+                setFormData(newIncome);
+            }
+            loadDropdownData();
+        }
+    }, [visible, income, applicationId]);
+
+    const loadDropdownData = async () => {
+        try {
+            const [incomeTypesRes, documentsRes] = await Promise.all([
+                fetch('/api/financial-products/reference/income-types/'),
+                fetch(`/api/financial-products/loan-applications/${applicationId}/documents/`)
+            ]);
+
+            setIncomeTypes(await incomeTypesRes.json());
+            setDocuments(await documentsRes.json());
+        } catch (error) {
+            console.error('Error loading dropdown data:', error);
+        }
+    };
+
+    const handleSubmit = () => {
+        onSave(formData);
+    };
+
+    const footer = (
+        <div>
+            <Button label="Cancel" icon="pi pi-times" onClick={onHide} className="p-button-text" />
+            <Button label="Save" icon="pi pi-check" onClick={handleSubmit} autoFocus />
+        </div>
+    );
+
+    return (
+        <Dialog
+            visible={visible}
+            style={{ width: '50vw' }}
+            header={income?.id ? 'Edit Income Analysis' : 'New Income Analysis'}
+            modal
+            footer={footer}
+            onHide={onHide}
+        >
+            <div className="p-fluid">
+                <div className="field">
+                    <label htmlFor="incomeTypeId">Income Type *</label>
+                    <Dropdown
+                        id="incomeTypeId"
+                        value={formData.incomeTypeId}
+                        options={incomeTypes}
+                        onChange={(e) => setFormData({ ...formData, incomeTypeId: e.value })}
+                        optionLabel="name"
+                        optionValue="id"
+                        placeholder="Select Income Type"
+                        filter
+                        required
+                    />
+                </div>
+
+                <div className="field">
+                    <label htmlFor="monthlyAmount">Monthly Amount *</label>
+                    <InputNumber
+                        id="monthlyAmount"
+                        value={formData.monthlyAmount}
+                        onValueChange={(e) => setFormData({ ...formData, monthlyAmount: e.value || 0 })}
+                        mode="currency"
+                        currency="USD"
+                        locale="en-US"
+                        required
+                    />
+                </div>
+
+                <div className="field">
+                    <label htmlFor="sourceDescription">Source Description</label>
+                    <InputTextarea
+                        id="sourceDescription"
+                        value={formData.sourceDescription || ''}
+                        onChange={(e) => setFormData({ ...formData, sourceDescription: e.target.value })}
+                        rows={3}
+                        placeholder="Describe the income source..."
+                    />
+                </div>
+
+                <div className="field">
+                    <label htmlFor="documentId">Supporting Document</label>
+                    <Dropdown
+                        id="documentId"
+                        value={formData.documentId}
+                        options={documents}
+                        onChange={(e) => setFormData({ ...formData, documentId: e.value })}
+                        optionLabel="fileName"
+                        optionValue="id"
+                        placeholder="Select Document"
+                        filter
+                        showClear
+                    />
+                </div>
+
+                <div className="field">
+                    <div className="flex align-items-center">
+                        <Checkbox
+                            inputId="isVerified"
+                            checked={formData.isVerified}
+                            onChange={(e) => setFormData({ ...formData, isVerified: e.checked || false })}
+                        />
+                        <label htmlFor="isVerified" className="ml-2">Income Verified</label>
+                    </div>
+                </div>
+
+                <div className="field">
+                    <label htmlFor="notes">Notes</label>
+                    <InputTextarea
+                        id="notes"
+                        value={formData.notes || ''}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        rows={3}
+                        placeholder="Additional notes..."
+                    />
+                </div>
+            </div>
+        </Dialog>
+    );
+};

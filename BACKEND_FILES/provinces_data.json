@@ -1,0 +1,27 @@
+[
+  {
+    "code": "1",
+    "name": "BUHUMUZA",
+    "isActive": true
+  },
+  {
+    "code": "2",
+    "name": "BUJUMBURA",
+    "isActive": true
+  },
+  {
+    "code": "3",
+    "name": "BURUNGA",
+    "isActive": true
+  },
+  {
+    "code": "4",
+    "name": "BUTANYERERA",
+    "isActive": true
+  },
+  {
+    "code": "5",
+    "name": "GITEGA",
+    "isActive": true
+  }
+]

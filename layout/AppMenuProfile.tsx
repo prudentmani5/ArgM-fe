@@ -4,7 +4,7 @@ import { Tooltip } from 'primereact/tooltip';
 import { LayoutContext } from './context/layoutcontext';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { AppUser } from '../app/(gps-fe)/usermanagement/AppUser';
+import { AppUser } from '../app/(AgrM-fe)/usermanagement/AppUser';
 import { json } from 'stream/consumers';
 
 const AppMenuProfile = () => {

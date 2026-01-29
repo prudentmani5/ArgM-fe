@@ -5,7 +5,7 @@ import Cookies from 'js-cookie';
 import { LayoutContext } from './context/layoutcontext';
 import { MenuProvider } from './context/menucontext';
 import AppMenuProfile from './AppMenuProfile';
-import { AppUser } from '../app/(gps-fe)/usermanagement/AppUser';
+import { AppUser } from '../app/(AgrM-fe)/usermanagement/AppUser';
 
 const AppSidebar = () => {
     const { layoutConfig, setLayoutState } = useContext(LayoutContext);

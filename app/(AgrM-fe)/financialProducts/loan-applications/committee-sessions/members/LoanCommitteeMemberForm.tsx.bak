@@ -1,0 +1,208 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
+import { Toast } from 'primereact/toast';
+import { LoanCommitteeMember, MemberRole, MemberRoleLabels } from './LoanCommitteeMember';
+
+interface LoanCommitteeMemberFormProps {
+    visible: boolean;
+    member: LoanCommitteeMember | null;
+    sessionId?: number;
+    onHide: () => void;
+    onSave: (member: LoanCommitteeMember) => void;
+}
+
+interface User {
+    id: number;
+    name: string;
+}
+
+const LoanCommitteeMemberForm: React.FC<LoanCommitteeMemberFormProps> = ({
+    visible,
+    member,
+    sessionId,
+    onHide,
+    onSave
+}) => {
+    const toast = useRef<Toast>(null);
+    const [formData, setFormData] = useState<LoanCommitteeMember>({
+        id: 0,
+        sessionId: sessionId || 0,
+        userId: 0,
+        role: MemberRole.MEMBER,
+        notes: ''
+    });
+
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (member) {
+            setFormData(member);
+        } else {
+            setFormData({
+                id: 0,
+                sessionId: sessionId || 0,
+                userId: 0,
+                role: MemberRole.MEMBER,
+                notes: ''
+            });
+        }
+    }, [member, sessionId]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/users');
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!formData.sessionId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Session ID is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.userId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'User is required',
+                life: 3000
+            });
+            return;
+        }
+
+        // Validate role uniqueness for CHAIRPERSON and SECRETARY
+        if (formData.role === MemberRole.CHAIRPERSON || formData.role === MemberRole.SECRETARY) {
+            try {
+                const response = await fetch(
+                    `/api/financial-products/loan-applications/committee-sessions/${formData.sessionId}/members/`
+                );
+                if (response.ok) {
+                    const existingMembers: LoanCommitteeMember[] = await response.json();
+                    const roleExists = existingMembers.some(
+                        m => m.role === formData.role && m.id !== formData.id
+                    );
+                    if (roleExists) {
+                        toast.current?.show({
+                            severity: 'error',
+                            summary: 'Validation Error',
+                            detail: `Only one ${MemberRoleLabels[formData.role]} is allowed per session`,
+                            life: 3000
+                        });
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error validating role uniqueness:', error);
+            }
+        }
+
+        setLoading(true);
+        onSave(formData);
+    };
+
+    const roleOptions = Object.values(MemberRole).map(role => ({
+        label: MemberRoleLabels[role],
+        value: role
+    }));
+
+    const dialogFooter = (
+        <div>
+            <Button
+                label="Cancel"
+                icon="pi pi-times"
+                onClick={onHide}
+                className="p-button-text"
+                disabled={loading}
+            />
+            <Button
+                label="Save"
+                icon="pi pi-check"
+                onClick={handleSubmit}
+                disabled={loading}
+                loading={loading}
+            />
+        </div>
+    );
+
+    return (
+        <>
+            <Toast ref={toast} />
+            <Dialog
+                visible={visible}
+                style={{ width: '600px' }}
+                header={member?.id ? 'Edit Committee Member' : 'New Committee Member'}
+                modal
+                className="p-fluid"
+                footer={dialogFooter}
+                onHide={onHide}
+            >
+                <div className="formgrid grid">
+                    {/* User */}
+                    <div className="field col-12">
+                        <label htmlFor="userId">User *</label>
+                        <Dropdown
+                            id="userId"
+                            value={formData.userId}
+                            options={users}
+                            onChange={(e) => setFormData({ ...formData, userId: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select user"
+                            filter
+                        />
+                    </div>
+
+                    {/* Role */}
+                    <div className="field col-12">
+                        <label htmlFor="role">Role *</label>
+                        <Dropdown
+                            id="role"
+                            value={formData.role}
+                            options={roleOptions}
+                            onChange={(e) => setFormData({ ...formData, role: e.value })}
+                            placeholder="Select role"
+                        />
+                        <small className="text-500">
+                            Note: Only one Chairperson and one Secretary per session
+                        </small>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="field col-12">
+                        <label htmlFor="notes">Notes</label>
+                        <InputTextarea
+                            id="notes"
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            rows={4}
+                            placeholder="Enter any notes about this member"
+                        />
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    );
+};
+
+export default LoanCommitteeMemberForm;

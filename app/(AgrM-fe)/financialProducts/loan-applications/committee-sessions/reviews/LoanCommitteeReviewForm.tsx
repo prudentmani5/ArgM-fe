@@ -1,0 +1,471 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { InputNumber } from 'primereact/inputnumber';
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
+import { Toast } from 'primereact/toast';
+import { Divider } from 'primereact/divider';
+import { LoanCommitteeReview, DecisionType } from './LoanCommitteeReview';
+
+interface LoanCommitteeReviewFormProps {
+    visible: boolean;
+    review: LoanCommitteeReview | null;
+    applicationId?: number;
+    sessionId?: number;
+    onHide: () => void;
+    onSave: (review: LoanCommitteeReview) => void;
+}
+
+interface LoanApplication {
+    id: number;
+    applicationNumber: string;
+}
+
+interface CommitteeSession {
+    id: number;
+    sessionDate: string;
+    venue: string;
+}
+
+interface User {
+    id: number;
+    name: string;
+}
+
+const LoanCommitteeReviewForm: React.FC<LoanCommitteeReviewFormProps> = ({
+    visible,
+    review,
+    applicationId,
+    sessionId,
+    onHide,
+    onSave
+}) => {
+    const toast = useRef<Toast>(null);
+    const [formData, setFormData] = useState<LoanCommitteeReview>({
+        id: 0,
+        applicationId: applicationId || 0,
+        sessionId: sessionId || 0,
+        reviewedById: 0,
+        decisionTypeId: 0,
+        approvedAmount: null,
+        approvedTermMonths: null,
+        approvedInterestRate: null,
+        decisionRationale: '',
+        conditions: '',
+        votesFor: 0,
+        votesAgainst: 0,
+        votesAbstained: 0,
+        reviewDate: new Date()
+    });
+
+    const [applications, setApplications] = useState<LoanApplication[]>([]);
+    const [sessions, setSessions] = useState<CommitteeSession[]>([]);
+    const [decisionTypes, setDecisionTypes] = useState<DecisionType[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [showApprovedFields, setShowApprovedFields] = useState(false);
+
+    useEffect(() => {
+        if (review) {
+            setFormData({
+                ...review,
+                reviewDate: review.reviewDate ? new Date(review.reviewDate) : new Date()
+            });
+            checkDecisionType(review.decisionTypeId);
+        } else {
+            setFormData({
+                id: 0,
+                applicationId: applicationId || 0,
+                sessionId: sessionId || 0,
+                reviewedById: 0,
+                decisionTypeId: 0,
+                approvedAmount: null,
+                approvedTermMonths: null,
+                approvedInterestRate: null,
+                decisionRationale: '',
+                conditions: '',
+                votesFor: 0,
+                votesAgainst: 0,
+                votesAbstained: 0,
+                reviewDate: new Date()
+            });
+        }
+    }, [review, applicationId, sessionId]);
+
+    useEffect(() => {
+        fetchApplications();
+        fetchSessions();
+        fetchDecisionTypes();
+        fetchUsers();
+    }, []);
+
+    const fetchApplications = async () => {
+        try {
+            const response = await fetch('/api/financial-products/loan-applications/?status=PENDING');
+            if (response.ok) {
+                const data = await response.json();
+                setApplications(data);
+            }
+        } catch (error) {
+            console.error('Error fetching applications:', error);
+        }
+    };
+
+    const fetchSessions = async () => {
+        try {
+            const response = await fetch('/api/financial-products/reference/committee-sessions/');
+            if (response.ok) {
+                const data = await response.json();
+                setSessions(data);
+            }
+        } catch (error) {
+            console.error('Error fetching sessions:', error);
+        }
+    };
+
+    const fetchDecisionTypes = async () => {
+        try {
+            const response = await fetch('/api/financial-products/reference/decision-types/');
+            if (response.ok) {
+                const data = await response.json();
+                setDecisionTypes(data);
+            }
+        } catch (error) {
+            console.error('Error fetching decision types:', error);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/users');
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const checkDecisionType = async (decisionTypeId: number) => {
+        const decisionType = decisionTypes.find(dt => dt.id === decisionTypeId);
+        if (decisionType) {
+            const showFields = decisionType.code === 'APPROVED' || decisionType.code === 'CONDITIONAL';
+            setShowApprovedFields(showFields);
+        }
+    };
+
+    const handleDecisionTypeChange = (decisionTypeId: number) => {
+        setFormData({ ...formData, decisionTypeId });
+        checkDecisionType(decisionTypeId);
+    };
+
+    const handleSubmit = () => {
+        if (!formData.applicationId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Application is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.sessionId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Session is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.decisionTypeId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Decision type is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (showApprovedFields) {
+            if (!formData.approvedAmount) {
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Validation Error',
+                    detail: 'Approved amount is required for this decision',
+                    life: 3000
+                });
+                return;
+            }
+        }
+
+        if (!formData.reviewedById) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Reviewed by is required',
+                life: 3000
+            });
+            return;
+        }
+
+        setLoading(true);
+        onSave(formData);
+    };
+
+    const applicationOptions = applications.map(app => ({
+        label: app.applicationNumber,
+        value: app.id
+    }));
+
+    const sessionOptions = sessions.map(session => ({
+        label: `${new Date(session.sessionDate).toLocaleDateString()} - ${session.venue}`,
+        value: session.id
+    }));
+
+    const dialogFooter = (
+        <div>
+            <Button
+                label="Annuler"
+                icon="pi pi-times"
+                onClick={onHide}
+                className="p-button-text"
+                disabled={loading}
+            />
+            <Button
+                label="Enregistrer"
+                icon="pi pi-check"
+                onClick={handleSubmit}
+                disabled={loading}
+                loading={loading}
+            />
+        </div>
+    );
+
+    return (
+        <>
+            <Toast ref={toast} />
+            <Dialog
+                visible={visible}
+                style={{ width: '900px' }}
+                header={review?.id ? 'Edit Committee Review' : 'New Committee Review'}
+                modal
+                className="p-fluid"
+                footer={dialogFooter}
+                onHide={onHide}
+            >
+                <div className="formgrid grid">
+                    <Divider align="left">
+                        <span className="p-tag">Application & Session</span>
+                    </Divider>
+
+                    {/* Application */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="applicationId">Application *</label>
+                        <Dropdown
+                            id="applicationId"
+                            value={formData.applicationId}
+                            options={applicationOptions}
+                            onChange={(e) => setFormData({ ...formData, applicationId: e.value })}
+                            placeholder="Select application"
+                            filter
+                            disabled={!!applicationId}
+                        />
+                    </div>
+
+                    {/* Session */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="sessionId">Session *</label>
+                        <Dropdown
+                            id="sessionId"
+                            value={formData.sessionId}
+                            options={sessionOptions}
+                            onChange={(e) => setFormData({ ...formData, sessionId: e.value })}
+                            placeholder="Select session"
+                            filter
+                            disabled={!!sessionId}
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Decision</span>
+                    </Divider>
+
+                    {/* Decision Type */}
+                    <div className="field col-12">
+                        <label htmlFor="decisionTypeId">Decision Type *</label>
+                        <Dropdown
+                            id="decisionTypeId"
+                            value={formData.decisionTypeId}
+                            options={decisionTypes}
+                            onChange={(e) => handleDecisionTypeChange(e.value)}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select decision type"
+                        />
+                    </div>
+
+                    {showApprovedFields && (
+                        <>
+                            <Divider align="left">
+                                <span className="p-tag">Approved Terms</span>
+                            </Divider>
+
+                            {/* Approved Amount */}
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="approvedAmount">Approved Amount *</label>
+                                <InputNumber
+                                    id="approvedAmount"
+                                    value={formData.approvedAmount}
+                                    onValueChange={(e) => setFormData({ ...formData, approvedAmount: e.value })}
+                                    mode="currency"
+                                    currency="USD"
+                                    locale="en-US"
+                                />
+                            </div>
+
+                            {/* Approved Term Months */}
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="approvedTermMonths">Approved Term (Months)</label>
+                                <InputNumber
+                                    id="approvedTermMonths"
+                                    value={formData.approvedTermMonths}
+                                    onValueChange={(e) => setFormData({ ...formData, approvedTermMonths: e.value })}
+                                    suffix=" months"
+                                />
+                            </div>
+
+                            {/* Approved Interest Rate */}
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="approvedInterestRate">Approved Interest Rate</label>
+                                <InputNumber
+                                    id="approvedInterestRate"
+                                    value={formData.approvedInterestRate}
+                                    onValueChange={(e) => setFormData({ ...formData, approvedInterestRate: e.value })}
+                                    suffix="%"
+                                    minFractionDigits={2}
+                                    maxFractionDigits={2}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <Divider align="left">
+                        <span className="p-tag">Rationale & Conditions</span>
+                    </Divider>
+
+                    {/* Decision Rationale */}
+                    <div className="field col-12">
+                        <label htmlFor="decisionRationale">Decision Rationale</label>
+                        <InputTextarea
+                            id="decisionRationale"
+                            value={formData.decisionRationale}
+                            onChange={(e) => setFormData({ ...formData, decisionRationale: e.target.value })}
+                            rows={4}
+                            placeholder="Enter the rationale for this decision"
+                        />
+                    </div>
+
+                    {/* Conditions */}
+                    <div className="field col-12">
+                        <label htmlFor="conditions">Conditions</label>
+                        <InputTextarea
+                            id="conditions"
+                            value={formData.conditions}
+                            onChange={(e) => setFormData({ ...formData, conditions: e.target.value })}
+                            rows={3}
+                            placeholder="Enter any conditions attached to this decision"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Voting</span>
+                    </Divider>
+
+                    {/* Votes For */}
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="votesFor">Votes For</label>
+                        <InputNumber
+                            id="votesFor"
+                            value={formData.votesFor}
+                            onValueChange={(e) => setFormData({ ...formData, votesFor: e.value || 0 })}
+                            min={0}
+                        />
+                    </div>
+
+                    {/* Votes Against */}
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="votesAgainst">Votes Against</label>
+                        <InputNumber
+                            id="votesAgainst"
+                            value={formData.votesAgainst}
+                            onValueChange={(e) => setFormData({ ...formData, votesAgainst: e.value || 0 })}
+                            min={0}
+                        />
+                    </div>
+
+                    {/* Votes Abstained */}
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="votesAbstained">Votes Abstained</label>
+                        <InputNumber
+                            id="votesAbstained"
+                            value={formData.votesAbstained}
+                            onValueChange={(e) => setFormData({ ...formData, votesAbstained: e.value || 0 })}
+                            min={0}
+                        />
+                    </div>
+
+                    {/* Voting Summary */}
+                    <div className="field col-12">
+                        <div className="p-3 bg-blue-50 border-round">
+                            <div className="flex justify-content-between">
+                                <span>Total Votes: {formData.votesFor + formData.votesAgainst + formData.votesAbstained}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Reviewed By</span>
+                    </Divider>
+
+                    {/* Reviewed By */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="reviewedById">Reviewed By *</label>
+                        <Dropdown
+                            id="reviewedById"
+                            value={formData.reviewedById}
+                            options={users}
+                            onChange={(e) => setFormData({ ...formData, reviewedById: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select user"
+                            filter
+                        />
+                    </div>
+
+                    {/* Review Date */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="reviewDate">Review Date</label>
+                        <Calendar
+                            id="reviewDate"
+                            value={formData.reviewDate}
+                            onChange={(e) => setFormData({ ...formData, reviewDate: e.value as Date })}
+                            showIcon
+                            dateFormat="yy-mm-dd"
+                        />
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    );
+};
+
+export default LoanCommitteeReviewForm;

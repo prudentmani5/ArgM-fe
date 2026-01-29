@@ -1,0 +1,441 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
+import { Checkbox } from 'primereact/checkbox';
+import { Toast } from 'primereact/toast';
+import { Divider } from 'primereact/divider';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { LoanDisbursementCondition, ConditionStatus, ConditionStatusLabels, ConditionType } from './LoanDisbursementCondition';
+
+interface LoanDisbursementConditionFormProps {
+    visible: boolean;
+    condition: LoanDisbursementCondition | null;
+    applicationId?: number;
+    onHide: () => void;
+    onSave: (condition: LoanDisbursementCondition) => void;
+}
+
+interface User {
+    id: number;
+    name: string;
+}
+
+const LoanDisbursementConditionForm: React.FC<LoanDisbursementConditionFormProps> = ({
+    visible,
+    condition,
+    applicationId,
+    onHide,
+    onSave
+}) => {
+    const toast = useRef<Toast>(null);
+    const [formData, setFormData] = useState<LoanDisbursementCondition>({
+        id: 0,
+        applicationId: applicationId || 0,
+        conditionTypeId: 0,
+        description: '',
+        isMandatory: true,
+        deadlineDate: null,
+        status: ConditionStatus.PENDING,
+        fulfillmentNotes: '',
+        verifiedById: null,
+        fulfilledAt: null
+    });
+
+    const [conditionTypes, setConditionTypes] = useState<ConditionType[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (condition) {
+            setFormData({
+                ...condition,
+                deadlineDate: condition.deadlineDate ? new Date(condition.deadlineDate) : null
+            });
+        } else {
+            setFormData({
+                id: 0,
+                applicationId: applicationId || 0,
+                conditionTypeId: 0,
+                description: '',
+                isMandatory: true,
+                deadlineDate: null,
+                status: ConditionStatus.PENDING,
+                fulfillmentNotes: '',
+                verifiedById: null,
+                fulfilledAt: null
+            });
+        }
+    }, [condition, applicationId]);
+
+    useEffect(() => {
+        fetchConditionTypes();
+        fetchUsers();
+    }, []);
+
+    const fetchConditionTypes = async () => {
+        try {
+            const response = await fetch('/api/financial-products/reference/condition-types/');
+            if (response.ok) {
+                const data = await response.json();
+                setConditionTypes(data);
+            }
+        } catch (error) {
+            console.error('Error fetching condition types:', error);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/users');
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const handleMarkAsSubmitted = () => {
+        confirmDialog({
+            message: 'Are you sure you want to mark this condition as submitted?',
+            header: 'Mark as Submitted',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+                setFormData({
+                    ...formData,
+                    status: ConditionStatus.SUBMITTED
+                });
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Status Updated',
+                    detail: 'Condition marked as submitted',
+                    life: 3000
+                });
+            }
+        });
+    };
+
+    const handleVerifyCondition = () => {
+        if (!formData.verifiedById) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Verifier Required',
+                detail: 'Please select a verifier before marking as verified',
+                life: 3000
+            });
+            return;
+        }
+
+        confirmDialog({
+            message: 'Are you sure you want to verify this condition?',
+            header: 'Verify Condition',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+                setFormData({
+                    ...formData,
+                    status: ConditionStatus.VERIFIED,
+                    fulfilledAt: new Date()
+                });
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Condition Verified',
+                    detail: 'Condition has been verified',
+                    life: 3000
+                });
+            }
+        });
+    };
+
+    const handleWaiveCondition = () => {
+        confirmDialog({
+            message: 'Are you sure you want to waive this condition?',
+            header: 'Waive Condition',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+                setFormData({
+                    ...formData,
+                    status: ConditionStatus.WAIVED,
+                    fulfilledAt: new Date()
+                });
+                toast.current?.show({
+                    severity: 'info',
+                    summary: 'Condition Waived',
+                    detail: 'Condition has been waived',
+                    life: 3000
+                });
+            }
+        });
+    };
+
+    const handleSubmit = () => {
+        if (!formData.applicationId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Application ID is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.conditionTypeId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Condition type is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.description.trim()) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Description is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (formData.status === ConditionStatus.VERIFIED && !formData.verifiedById) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Verified by is required when status is Verified',
+                life: 3000
+            });
+            return;
+        }
+
+        setLoading(true);
+        onSave(formData);
+    };
+
+    const statusOptions = Object.values(ConditionStatus).map(status => ({
+        label: ConditionStatusLabels[status],
+        value: status
+    }));
+
+    const isFulfillmentNotesEnabled = formData.status === ConditionStatus.SUBMITTED;
+    const isVerifiedByEnabled = formData.status === ConditionStatus.VERIFIED;
+
+    const dialogFooter = (
+        <div>
+            <Button
+                label="Cancel"
+                icon="pi pi-times"
+                onClick={onHide}
+                className="p-button-text"
+                disabled={loading}
+            />
+            <Button
+                label="Save"
+                icon="pi pi-check"
+                onClick={handleSubmit}
+                disabled={loading}
+                loading={loading}
+            />
+        </div>
+    );
+
+    return (
+        <>
+            <Toast ref={toast} />
+            <ConfirmDialog />
+            <Dialog
+                visible={visible}
+                style={{ width: '800px' }}
+                header={condition?.id ? 'Edit Disbursement Condition' : 'New Disbursement Condition'}
+                modal
+                className="p-fluid"
+                footer={dialogFooter}
+                onHide={onHide}
+            >
+                <div className="formgrid grid">
+                    <Divider align="left">
+                        <span className="p-tag">Condition Type</span>
+                    </Divider>
+
+                    {/* Condition Type */}
+                    <div className="field col-12">
+                        <label htmlFor="conditionTypeId">Condition Type *</label>
+                        <Dropdown
+                            id="conditionTypeId"
+                            value={formData.conditionTypeId}
+                            options={conditionTypes}
+                            onChange={(e) => setFormData({ ...formData, conditionTypeId: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select condition type"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Description</span>
+                    </Divider>
+
+                    {/* Description */}
+                    <div className="field col-12">
+                        <label htmlFor="description">Description *</label>
+                        <InputTextarea
+                            id="description"
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            rows={4}
+                            placeholder="Enter detailed description of the condition"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Requirements</span>
+                    </Divider>
+
+                    {/* Is Mandatory */}
+                    <div className="field col-12 md:col-6">
+                        <div className="flex align-items-center">
+                            <Checkbox
+                                inputId="isMandatory"
+                                checked={formData.isMandatory}
+                                onChange={(e) => setFormData({ ...formData, isMandatory: e.checked || false })}
+                            />
+                            <label htmlFor="isMandatory" className="ml-2">Mandatory Condition</label>
+                        </div>
+                    </div>
+
+                    {/* Deadline Date */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="deadlineDate">Deadline Date</label>
+                        <Calendar
+                            id="deadlineDate"
+                            value={formData.deadlineDate}
+                            onChange={(e) => setFormData({ ...formData, deadlineDate: e.value })}
+                            showIcon
+                            dateFormat="yy-mm-dd"
+                            minDate={new Date()}
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Status</span>
+                    </Divider>
+
+                    {/* Status */}
+                    <div className="field col-12">
+                        <label htmlFor="status">Status *</label>
+                        <Dropdown
+                            id="status"
+                            value={formData.status}
+                            options={statusOptions}
+                            onChange={(e) => setFormData({ ...formData, status: e.value })}
+                            placeholder="Select status"
+                        />
+                    </div>
+
+                    {/* Action Buttons */}
+                    {formData.id && (
+                        <div className="field col-12">
+                            <div className="flex gap-2 flex-wrap">
+                                {formData.status === ConditionStatus.PENDING && (
+                                    <Button
+                                        label="Mark as Submitted"
+                                        icon="pi pi-check-circle"
+                                        severity="info"
+                                        onClick={handleMarkAsSubmitted}
+                                        type="button"
+                                    />
+                                )}
+                                {(formData.status === ConditionStatus.SUBMITTED || formData.status === ConditionStatus.PENDING) && (
+                                    <Button
+                                        label="Verify Condition"
+                                        icon="pi pi-verified"
+                                        severity="success"
+                                        onClick={handleVerifyCondition}
+                                        type="button"
+                                    />
+                                )}
+                                {formData.status !== ConditionStatus.VERIFIED && formData.status !== ConditionStatus.WAIVED && (
+                                    <Button
+                                        label="Waive Condition"
+                                        icon="pi pi-ban"
+                                        severity="warning"
+                                        onClick={handleWaiveCondition}
+                                        type="button"
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <Divider align="left">
+                        <span className="p-tag">Fulfillment</span>
+                    </Divider>
+
+                    {/* Fulfillment Notes */}
+                    <div className="field col-12">
+                        <label htmlFor="fulfillmentNotes">Fulfillment Notes</label>
+                        <InputTextarea
+                            id="fulfillmentNotes"
+                            value={formData.fulfillmentNotes}
+                            onChange={(e) => setFormData({ ...formData, fulfillmentNotes: e.target.value })}
+                            rows={3}
+                            placeholder="Enter fulfillment notes"
+                            disabled={!isFulfillmentNotesEnabled}
+                        />
+                        {!isFulfillmentNotesEnabled && (
+                            <small className="text-500">
+                                Fulfillment notes can be entered when status is Submitted
+                            </small>
+                        )}
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Verification</span>
+                    </Divider>
+
+                    {/* Verified By */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="verifiedById">Verified By</label>
+                        <Dropdown
+                            id="verifiedById"
+                            value={formData.verifiedById}
+                            options={users}
+                            onChange={(e) => setFormData({ ...formData, verifiedById: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select verifier"
+                            filter
+                            disabled={!isVerifiedByEnabled}
+                        />
+                        {!isVerifiedByEnabled && (
+                            <small className="text-500">
+                                Verifier can be selected when status is Verified
+                            </small>
+                        )}
+                    </div>
+
+                    {/* Fulfilled At */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="fulfilledAt">Fulfilled At</label>
+                        <Calendar
+                            id="fulfilledAt"
+                            value={formData.fulfilledAt ? new Date(formData.fulfilledAt) : null}
+                            showTime
+                            showIcon
+                            disabled
+                        />
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    );
+};
+
+export default LoanDisbursementConditionForm;

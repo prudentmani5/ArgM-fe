@@ -1,0 +1,209 @@
+'use client';
+import React, { useState, useEffect, useRef } from 'react';
+import { TabView, TabPanel } from 'primereact/tabview';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Button } from 'primereact/button';
+import { InputText } from 'primereact/inputtext';
+import { Toast } from 'primereact/toast';
+import { Dialog } from 'primereact/dialog';
+import { Tag } from 'primereact/tag';
+import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { InsurancePartner } from './InsurancePartner';
+import InsurancePartnerForm from './InsurancePartnerForm';
+
+const InsurancePartnersPage = () => {
+    const [insurancePartners, setInsurancePartners] = useState<InsurancePartner[]>([]);
+    const [insurancePartner, setInsurancePartner] = useState<InsurancePartner>(new InsurancePartner());
+    const [selectedInsurancePartner, setSelectedInsurancePartner] = useState<InsurancePartner | null>(null);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [lazyState, setLazyState] = useState({ first: 0, rows: 10, page: 0 });
+    const [displayDialog, setDisplayDialog] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+
+    const toast = useRef<Toast>(null);
+    const { data: fetchData, loading: fetchLoading, error: fetchError } = useConsumApi('/api/financial-products/reference/insurance-partners/findall');
+    const { data: createData, loading: createLoading, error: createError, postData } = useConsumApi('/api/financial-products/reference/insurance-partners/new');
+    const { data: updateData, loading: updateLoading, error: updateError, putData } = useConsumApi('');
+    const { data: deleteData, loading: deleteLoading, error: deleteError, deleteData: deleteRecord } = useConsumApi('');
+
+    useEffect(() => {
+        if (fetchData) {
+            setInsurancePartners(fetchData);
+            setTotalRecords(fetchData.length);
+        }
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (createData) {
+            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Partenaire d\'assurance créé avec succès' });
+            resetForm();
+        }
+    }, [createData]);
+
+    useEffect(() => {
+        if (updateData) {
+            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Partenaire d\'assurance modifié avec succès' });
+            resetForm();
+        }
+    }, [updateData]);
+
+    useEffect(() => {
+        if (deleteData) {
+            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Partenaire d\'assurance supprimé avec succès' });
+        }
+    }, [deleteData]);
+
+    useEffect(() => {
+        if (createError || updateError || deleteError || fetchError) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: createError || updateError || deleteError || fetchError });
+        }
+    }, [createError, updateError, deleteError, fetchError]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setInsurancePartner(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleNumberChange = (name: string, value: number | null) => {
+        setInsurancePartner(prev => ({ ...prev, [name]: value || 0 }));
+    };
+
+    const handleCheckboxChange = (name: string, checked: boolean) => {
+        setInsurancePartner(prev => ({ ...prev, [name]: checked }));
+    };
+
+    const saveInsurancePartner = async () => {
+        if (!insurancePartner.code || !insurancePartner.name || !insurancePartner.nameFr) {
+            toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Veuillez remplir les champs obligatoires' });
+            return;
+        }
+
+        if (isEditing && insurancePartner.id) {
+            await putData(`/api/financial-products/reference/insurance-partners/update/${insurancePartner.id}`, insurancePartner);
+        } else {
+            await postData(insurancePartner);
+        }
+    };
+
+    const editInsurancePartner = (rowData: InsurancePartner) => {
+        setInsurancePartner({ ...rowData });
+        setIsEditing(true);
+    };
+
+    const confirmDelete = (rowData: InsurancePartner) => {
+        setSelectedInsurancePartner(rowData);
+        setDisplayDialog(true);
+    };
+
+    const deleteInsurancePartnerConfirmed = async () => {
+        if (selectedInsurancePartner?.id) {
+            await deleteRecord(`/api/financial-products/reference/insurance-partners/delete/${selectedInsurancePartner.id}`);
+            setDisplayDialog(false);
+            setSelectedInsurancePartner(null);
+        }
+    };
+
+    const resetForm = () => {
+        setInsurancePartner(new InsurancePartner());
+        setIsEditing(false);
+    };
+
+    const onPage = (event: any) => {
+        setLazyState(event);
+    };
+
+    const actionBodyTemplate = (rowData: InsurancePartner) => {
+        return (
+            <div className="flex gap-2">
+                <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editInsurancePartner(rowData)} />
+                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} />
+            </div>
+        );
+    };
+
+    const statusBodyTemplate = (rowData: InsurancePartner) => {
+        return <Tag value={rowData.isActive ? 'Actif' : 'Inactif'} severity={rowData.isActive ? 'success' : 'danger'} />;
+    };
+
+    const header = (
+        <div className="flex justify-content-between">
+            <h4 className="m-0">Gérer les Partenaires d'Assurance</h4>
+            <span className="p-input-icon-left">
+                <i className="pi pi-search" />
+                <InputText type="search" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Rechercher..." />
+            </span>
+        </div>
+    );
+
+    return (
+        <div className="grid">
+            <Toast ref={toast} />
+            <div className="col-12">
+                <div className="card">
+                    <h5>Insurance Partners / Partenaires d'Assurance</h5>
+                    <TabView>
+                        <TabPanel header="Nouveau">
+                            <InsurancePartnerForm
+                                insurancePartner={insurancePartner}
+                                handleChange={handleChange}
+                                handleNumberChange={handleNumberChange}
+                                handleCheckboxChange={handleCheckboxChange}
+                            />
+                            <div className="flex gap-2 mt-4">
+                                <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={saveInsurancePartner} loading={createLoading || updateLoading} />
+                                <Button label="Annuler" icon="pi pi-times" severity="secondary" onClick={resetForm} />
+                            </div>
+                        </TabPanel>
+                        <TabPanel header="Tous">
+                            <DataTable
+                                value={insurancePartners}
+                                lazy
+                                paginator
+                                first={lazyState.first}
+                                rows={lazyState.rows}
+                                totalRecords={totalRecords}
+                                onPage={onPage}
+                                loading={loading || fetchLoading}
+                                globalFilter={globalFilter}
+                                header={header}
+                                emptyMessage="Aucun(e) insurance partners trouvé(e)"
+                            >
+                                <Column field="code" header="Code" sortable />
+                                <Column field="name" header="Nom" sortable />
+                                <Column field="nameFr" header="Nom (FR)" sortable />
+                                <Column field="contactPerson" header="Contact Person" sortable />
+                                <Column field="contactPhone" header="Contact Phone" sortable />
+                                <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
+                                <Column body={actionBodyTemplate} header="Actions" />
+                            </DataTable>
+                        </TabPanel>
+                    </TabView>
+                </div>
+            </div>
+
+            <Dialog
+                visible={displayDialog}
+                style={{ width: '450px' }}
+                header="Confirmer"
+                modal
+                footer={
+                    <>
+                        <Button label="Non" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
+                        <Button label="Oui" icon="pi pi-check" onClick={deleteInsurancePartnerConfirmed} autoFocus loading={deleteLoading} />
+                    </>
+                }
+                onHide={() => setDisplayDialog(false)}
+            >
+                <div className="confirmation-content">
+                    <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
+                    {selectedInsurancePartner && <span>Êtes-vous sûr de vouloir supprimer <b>{selectedInsurancePartner.name}</b>?</span>}
+                </div>
+            </Dialog>
+        </div>
+    );
+};
+
+export default InsurancePartnersPage;

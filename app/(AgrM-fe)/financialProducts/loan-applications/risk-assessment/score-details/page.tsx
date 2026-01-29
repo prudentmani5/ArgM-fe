@@ -1,0 +1,240 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Button } from 'primereact/button';
+import { Toast } from 'primereact/toast';
+import { Toolbar } from 'primereact/toolbar';
+import { Card } from 'primereact/card';
+import { useSearchParams } from 'next/navigation';
+import { LoanRiskScoreDetail } from './LoanRiskScoreDetail';
+import { LoanRiskScoreDetailForm } from './LoanRiskScoreDetailForm';
+
+export default function LoanRiskScoreDetailPage() {
+    const [scoreDetails, setScoreDetails] = useState<LoanRiskScoreDetail[]>([]);
+    const [selectedScoreDetails, setSelectedScoreDetails] = useState<LoanRiskScoreDetail[]>([]);
+    const [showForm, setShowForm] = useState(false);
+    const [editingScoreDetail, setEditingScoreDetail] = useState<LoanRiskScoreDetail | undefined>(undefined);
+    const [loading, setLoading] = useState(false);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [totalWeightedScore, setTotalWeightedScore] = useState(0);
+    const toast = useRef<Toast>(null);
+    const searchParams = useSearchParams();
+    const riskAssessmentId = Number(searchParams.get('riskAssessmentId')) || 0;
+
+    useEffect(() => {
+        if (riskAssessmentId) {
+            loadScoreDetails();
+        }
+    }, [riskAssessmentId]);
+
+    useEffect(() => {
+        const total = scoreDetails.reduce((sum, detail) => sum + detail.weightedScore, 0);
+        setTotalWeightedScore(total);
+    }, [scoreDetails]);
+
+    const loadScoreDetails = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/financial-products/loan-applications/risk-assessment/${riskAssessmentId}/score-details/`);
+            const data = await response.json();
+            setScoreDetails(data);
+        } catch (error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Échec du chargement de score details' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openNew = () => {
+        setEditingScoreDetail(undefined);
+        setShowForm(true);
+    };
+
+    const editScoreDetail = (scoreDetail: LoanRiskScoreDetail) => {
+        setEditingScoreDetail(scoreDetail);
+        setShowForm(true);
+    };
+
+    const saveScoreDetail = async (scoreDetail: LoanRiskScoreDetail) => {
+        try {
+            const url = scoreDetail.id
+                ? `/api/financial-products/loan-applications/risk-assessment/${riskAssessmentId}/score-details/${scoreDetail.id}/`
+                : `/api/financial-products/loan-applications/risk-assessment/${riskAssessmentId}/score-details/`;
+
+            const response = await fetch(url, {
+                method: scoreDetail.id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(scoreDetail)
+            });
+
+            if (response.ok) {
+                toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Score detail saved successfully' });
+                setShowForm(false);
+                loadScoreDetails();
+            }
+        } catch (error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Échec de la sauvegarde de score detail' });
+        }
+    };
+
+    const deleteScoreDetail = async (scoreDetail: LoanRiskScoreDetail) => {
+        if (confirm('Êtes-vous sûr de vouloir supprimer cette score detail?')) {
+            try {
+                const response = await fetch(`/api/financial-products/loan-applications/risk-assessment/${riskAssessmentId}/score-details/${scoreDetail.id}/`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Score detail supprimé avec succès' });
+                    loadScoreDetails();
+                }
+            } catch (error) {
+                toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Échec de la suppression de score detail' });
+            }
+        }
+    };
+
+    const leftToolbarTemplate = () => {
+        return (
+            <div className="flex flex-wrap gap-2">
+                <Button label="Add Score Factor" icon="pi pi-plus" severity="success" onClick={openNew} />
+            </div>
+        );
+    };
+
+    const scoreValueBodyTemplate = (rowData: LoanRiskScoreDetail) => {
+        return (
+            <div className="flex align-items-center gap-2">
+                <span>{rowData.scoreValue}</span>
+                <div className="flex-1" style={{ minWidth: '100px' }}>
+                    <div className="bg-gray-200 border-round" style={{ height: '6px' }}>
+                        <div
+                            className="bg-blue-500 border-round"
+                            style={{ height: '6px', width: `${rowData.scoreValue}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const weightBodyTemplate = (rowData: LoanRiskScoreDetail) => {
+        return `${(rowData.weight * 100).toFixed(0)}%`;
+    };
+
+    const weightedScoreBodyTemplate = (rowData: LoanRiskScoreDetail) => {
+        return (
+            <span className="font-bold text-blue-700">
+                {rowData.weightedScore.toFixed(2)}
+            </span>
+        );
+    };
+
+    const actionsBodyTemplate = (rowData: LoanRiskScoreDetail) => {
+        return (
+            <div className="flex flex-wrap gap-2">
+                <Button
+                    icon="pi pi-pencil"
+                    rounded
+                    outlined
+                    className="mr-2"
+                    onClick={() => editScoreDetail(rowData)}
+                />
+                <Button
+                    icon="pi pi-trash"
+                    rounded
+                    outlined
+                    severity="danger"
+                    onClick={() => deleteScoreDetail(rowData)}
+                />
+            </div>
+        );
+    };
+
+    const header = (
+        <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+            <h4 className="m-0">Risk Score Details (Assessment #{riskAssessmentId})</h4>
+            <span className="p-input-icon-left">
+                <i className="pi pi-search" />
+                <input
+                    type="search"
+                    placeholder="Rechercher..."
+                    className="p-inputtext p-component"
+                    onInput={(e: any) => setGlobalFilter(e.target.value)}
+                />
+            </span>
+        </div>
+    );
+
+    return (
+        <div>
+            <Toast ref={toast} />
+
+            {/* Total Weighted Score Card */}
+            <Card className="mb-3">
+                <div className="p-3 bg-blue-50 border-round">
+                    <div className="flex justify-content-between align-items-center">
+                        <span className="text-xl font-semibold">Total Weighted Score:</span>
+                        <span className="text-3xl font-bold text-blue-700">
+                            {totalWeightedScore.toFixed(2)}
+                        </span>
+                    </div>
+                    <small className="block mt-2 text-gray-600">
+                        Sum of all weighted scores from individual risk factors
+                    </small>
+                </div>
+            </Card>
+
+            {/* Score Details Table */}
+            <div className="card">
+                <Toolbar className="mb-4" left={leftToolbarTemplate} />
+
+                <DataTable
+                    value={scoreDetails}
+                    selection={selectedScoreDetails}
+                    onSelectionChange={(e) => setSelectedScoreDetails(e.value as LoanRiskScoreDetail[])}
+                    dataKey="id"
+                    paginator
+                    rows={10}
+                    loading={loading}
+                    globalFilter={globalFilter}
+                    header={header}
+                    emptyMessage="No score details found."
+                >
+                    <Column selectionMode="multiple" exportable={false} />
+                    <Column field="scoreFactor.name" header="Score Factor" sortable />
+                    <Column
+                        field="scoreValue"
+                        header="Score Value (0-100)"
+                        body={scoreValueBodyTemplate}
+                        sortable
+                    />
+                    <Column
+                        field="weight"
+                        header="Poids"
+                        body={weightBodyTemplate}
+                        sortable
+                    />
+                    <Column
+                        field="weightedScore"
+                        header="Weighted Score"
+                        body={weightedScoreBodyTemplate}
+                        sortable
+                    />
+                    <Column field="notes" header="Notes" />
+                    <Column header="Actions" body={actionsBodyTemplate} exportable={false} />
+                </DataTable>
+            </div>
+
+            <LoanRiskScoreDetailForm
+                visible={showForm}
+                scoreDetail={editingScoreDetail}
+                riskAssessmentId={riskAssessmentId}
+                onHide={() => setShowForm(false)}
+                onSave={saveScoreDetail}
+            />
+        </div>
+    );
+}

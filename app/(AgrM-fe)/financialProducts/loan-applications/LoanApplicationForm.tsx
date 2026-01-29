@@ -1,0 +1,321 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Dialog } from 'primereact/dialog';
+import { InputText } from 'primereact/inputtext';
+import { InputNumber } from 'primereact/inputnumber';
+import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Steps } from 'primereact/steps';
+import { LoanApplication } from './LoanApplication';
+
+interface LoanApplicationFormProps {
+    visible: boolean;
+    application?: LoanApplication;
+    onHide: () => void;
+    onSave: (application: LoanApplication) => void;
+}
+
+export const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
+    visible,
+    application,
+    onHide,
+    onSave
+}) => {
+    const [formData, setFormData] = useState<LoanApplication>(new LoanApplication());
+    const [clients, setClients] = useState<any[]>([]);
+    const [solidarityGroups, setSolidarityGroups] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
+    const [currencies, setCurrencies] = useState<any[]>([]);
+    const [loanPurposes, setLoanPurposes] = useState<any[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
+    const [selectedProduct, setSelectedProduct] = useState<any>(null);
+    const [activeStep, setActiveStep] = useState(0);
+
+    const workflowSteps = [
+        { label: 'Application' },
+        { label: 'Documents' },
+        { label: 'Analysis' },
+        { label: 'Assessment' },
+        { label: 'Review' },
+        { label: 'Decision' }
+    ];
+
+    useEffect(() => {
+        if (visible) {
+            if (application) {
+                setFormData(application);
+            } else {
+                setFormData(new LoanApplication());
+            }
+            loadDropdownData();
+        }
+    }, [visible, application]);
+
+    const loadDropdownData = async () => {
+        try {
+            const [clientsRes, groupsRes, productsRes, currenciesRes, purposesRes, branchesRes] = await Promise.all([
+                fetch('/api/financial-products/clients/'),
+                fetch('/api/financial-products/solidarity-groups/'),
+                fetch('/api/financial-products/products/'),
+                fetch('/api/financial-products/reference/currencies/'),
+                fetch('/api/financial-products/reference/loan-purposes/'),
+                fetch('/api/financial-products/reference/branches/')
+            ]);
+
+            setClients(await clientsRes.json());
+            setSolidarityGroups(await groupsRes.json());
+            setProducts(await productsRes.json());
+            setCurrencies(await currenciesRes.json());
+            setLoanPurposes(await purposesRes.json());
+            setBranches(await branchesRes.json());
+        } catch (error) {
+            console.error('Error loading dropdown data:', error);
+        }
+    };
+
+    const handleProductChange = (e: any) => {
+        const product = products.find(p => p.id === e.value);
+        setSelectedProduct(product);
+        setFormData({
+            ...formData,
+            productId: e.value,
+            interestRate: product?.defaultInterestRate || 0,
+            termMonths: product?.minTermMonths || 12
+        });
+    };
+
+    const handleSubmit = () => {
+        onSave(formData);
+    };
+
+    const footer = (
+        <div>
+            <Button label="Annuler" icon="pi pi-times" onClick={onHide} className="p-button-text" />
+            <Button label="Enregistrer" icon="pi pi-check" onClick={handleSubmit} autoFocus />
+        </div>
+    );
+
+    return (
+        <Dialog
+            visible={visible}
+            style={{ width: '60vw' }}
+            header={application?.id ? 'Edit Loan Application' : 'New Loan Application'}
+            modal
+            footer={footer}
+            onHide={onHide}
+        >
+            <div className="p-fluid">
+                {/* Workflow Stepper */}
+                <div className="mb-4">
+                    <Steps model={workflowSteps} activeIndex={activeStep} readOnly />
+                </div>
+
+                {/* Section 1: Client/Group Selection */}
+                <div className="mb-4">
+                    <h5>Client/Group Information</h5>
+                    <div className="formgrid grid">
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="clientId">Client</label>
+                            <Dropdown
+                                id="clientId"
+                                value={formData.clientId}
+                                options={clients}
+                                onChange={(e) => setFormData({ ...formData, clientId: e.value, solidarityGroupId: undefined })}
+                                optionLabel="name"
+                                optionValue="id"
+                                placeholder="Select Client"
+                                filter
+                                showClear
+                            />
+                        </div>
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="solidarityGroupId">Solidarity Group</label>
+                            <Dropdown
+                                id="solidarityGroupId"
+                                value={formData.solidarityGroupId}
+                                options={solidarityGroups}
+                                onChange={(e) => setFormData({ ...formData, solidarityGroupId: e.value, clientId: undefined })}
+                                optionLabel="name"
+                                optionValue="id"
+                                placeholder="Select Solidarity Group"
+                                filter
+                                showClear
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 2: Product Selection */}
+                <div className="mb-4">
+                    <h5>Product Selection</h5>
+                    <div className="formgrid grid">
+                        <div className="field col-12">
+                            <label htmlFor="productId">Product *</label>
+                            <Dropdown
+                                id="productId"
+                                value={formData.productId}
+                                options={products}
+                                onChange={handleProductChange}
+                                optionLabel="name"
+                                optionValue="id"
+                                placeholder="Select Product"
+                                filter
+                                required
+                            />
+                        </div>
+                        {selectedProduct && (
+                            <div className="field col-12">
+                                <div className="p-3 bg-blue-50 border-round">
+                                    <p className="m-0"><strong>Product Details:</strong></p>
+                                    <p className="m-0">Type: {selectedProduct.productType?.name}</p>
+                                    <p className="m-0">Default Interest Rate: {selectedProduct.defaultInterestRate}%</p>
+                                    <p className="m-0">Term Range: {selectedProduct.minTermMonths} - {selectedProduct.maxTermMonths} months</p>
+                                    <p className="m-0">Amount Range: {selectedProduct.minAmount} - {selectedProduct.maxAmount}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Section 3: Loan Details */}
+                <div className="mb-4">
+                    <h5>Loan Details</h5>
+                    <div className="formgrid grid">
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="requestedAmount">Requested Amount *</label>
+                            <InputNumber
+                                id="requestedAmount"
+                                value={formData.requestedAmount}
+                                onValueChange={(e) => setFormData({ ...formData, requestedAmount: e.value || 0 })}
+                                mode="currency"
+                                currency="USD"
+                                locale="en-US"
+                                required
+                            />
+                        </div>
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="currencyId">Currency *</label>
+                            <Dropdown
+                                id="currencyId"
+                                value={formData.currencyId}
+                                options={currencies}
+                                onChange={(e) => setFormData({ ...formData, currencyId: e.value })}
+                                optionLabel="name"
+                                optionValue="id"
+                                placeholder="Select Currency"
+                                required
+                            />
+                        </div>
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="termMonths">Term (Months) *</label>
+                            <InputNumber
+                                id="termMonths"
+                                value={formData.termMonths}
+                                onValueChange={(e) => setFormData({ ...formData, termMonths: e.value || 0 })}
+                                min={1}
+                                max={360}
+                                required
+                            />
+                        </div>
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="interestRate">Interest Rate (%) *</label>
+                            <InputNumber
+                                id="interestRate"
+                                value={formData.interestRate}
+                                onValueChange={(e) => setFormData({ ...formData, interestRate: e.value || 0 })}
+                                mode="decimal"
+                                minFractionDigits={2}
+                                maxFractionDigits={4}
+                                min={0}
+                                max={100}
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 4: Purpose */}
+                <div className="mb-4">
+                    <h5>Loan Purpose</h5>
+                    <div className="formgrid grid">
+                        <div className="field col-12">
+                            <label htmlFor="loanPurposeId">Purpose Category</label>
+                            <Dropdown
+                                id="loanPurposeId"
+                                value={formData.loanPurposeId}
+                                options={loanPurposes}
+                                onChange={(e) => setFormData({ ...formData, loanPurposeId: e.value })}
+                                optionLabel="name"
+                                optionValue="id"
+                                placeholder="Select Purpose"
+                                filter
+                                showClear
+                            />
+                        </div>
+                        <div className="field col-12">
+                            <label htmlFor="purposeDescription">Purpose Description</label>
+                            <InputTextarea
+                                id="purposeDescription"
+                                value={formData.purposeDescription || ''}
+                                onChange={(e) => setFormData({ ...formData, purposeDescription: e.target.value })}
+                                rows={3}
+                                placeholder="Describe the purpose of this loan..."
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 5: Branch & Date */}
+                <div className="mb-4">
+                    <h5>Application Details</h5>
+                    <div className="formgrid grid">
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="branchId">Branch *</label>
+                            <Dropdown
+                                id="branchId"
+                                value={formData.branchId}
+                                options={branches}
+                                onChange={(e) => setFormData({ ...formData, branchId: e.value })}
+                                optionLabel="name"
+                                optionValue="id"
+                                placeholder="Select Branch"
+                                required
+                            />
+                        </div>
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="applicationDate">Application Date *</label>
+                            <Calendar
+                                id="applicationDate"
+                                value={formData.applicationDate ? new Date(formData.applicationDate) : null}
+                                onChange={(e) => setFormData({ ...formData, applicationDate: e.value ? new Date(e.value).toISOString().split('T')[0] : '' })}
+                                dateFormat="yy-mm-dd"
+                                showIcon
+                                required
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 6: Notes */}
+                <div className="mb-4">
+                    <h5>Additional Notes</h5>
+                    <div className="formgrid grid">
+                        <div className="field col-12">
+                            <label htmlFor="notes">Notes</label>
+                            <InputTextarea
+                                id="notes"
+                                value={formData.notes || ''}
+                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                rows={4}
+                                placeholder="Additional notes or comments..."
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+    );
+};

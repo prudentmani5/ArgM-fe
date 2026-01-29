@@ -5,7 +5,7 @@ import './menu-overrides.css';
 import React from 'react';
 import { LayoutContext } from './context/layoutcontext';
 import { useCurrentUser } from '../hooks/fetchData/useCurrentUser';
-import { hasAnyAuthority, hasAuthority } from '../app/(gps-fe)/usermanagement/types';
+import { hasAnyAuthority, hasAuthority } from '../app/(AgrM-fe)/usermanagement/types';
 
 interface MyMenuItem {
     label?: string;
@@ -27,9 +27,9 @@ const AppMenu = () => {
     const model: (AppMenuItem & { separator?: boolean })[] = [
 
         {
-            label: 'Gestion des Entrées',
+            label: 'MODULE DES CLIENTS ET GROUPES',
             icon: 'pi pi-truck',
-            visible: appUser ? hasAnyAuthority(appUser, [
+            /*visible: appUser ? hasAnyAuthority(appUser, [
                 'ENTREE_SETTINGS_CREATE',
                 'ENTREE_SETTINGS_VIEW',
                 'ENTREE_SETTINGS_UPDATE',
@@ -57,114 +57,58 @@ const AppMenu = () => {
                 'REMORQUAGE_UPDATE',
                 'REMORQUAGE_VALIDATE_1',
                 'REMORQUAGE_VALIDATE_2'
-            ]) : false,
+            ]) : false, */
             items: [
                 {
                     label: ' Paramétres',
                     icon: 'pi pi-wallet',
-                    visible: appUser ? hasAnyAuthority(appUser, [
+                  /*  visible: appUser ? hasAnyAuthority(appUser, [
                         'ENTREE_SETTINGS_CREATE',
                         'ENTREE_SETTINGS_VIEW',
                         'ENTREE_SETTINGS_UPDATE'
-                    ]) : false,
+                    ]) : false,*/
                     items: [
                         {
-                            label: 'Importateur',
+                            label: 'Parametres de base',
                             icon: 'pi pi-truck',
-                            to: '/settings/importateur',
+                            to: '/moduleCostumerGroup/reference-data',
                             className: 'menu-item'
-                        },
-                        {
-                            label: 'Agence en douane',
-                            icon: 'pi pi-building',
-                            to: '/settings/agence',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Dossier',
-                            icon: 'pi pi-folder',
-                            to: '/settings/dossier',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Engin',
-                            icon: 'pi pi-sliders-h',
-                            to: '/settings/engin',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Entrepot',
-                            icon: 'pi pi-building',
-                            to: '/settings/entrepot',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Exportateur',
-                            icon: 'pi pi-send',
-                            to: '/settings/exportateur',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Provenance',
-                            icon: 'pi pi-directions',
-                            to: '/settings/provenance',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Armateur',
-                            icon: 'pi pi-megaphone',
-                            to: '/settings/armateur',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Barge',
-                            icon: 'pi pi-truck',
-                            to: '/settings/barge',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Marchandise',
-                            icon: 'pi pi-cart-plus',
-                            to: '/settings/marchandise',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Service',
-                            icon: 'pi pi-cart-plus',
-                            to: '/settings/facService',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Redevance Informatique',
-                            icon: 'pi pi-cart-plus',
-                            to: '/settings/redevanceInformatique',
-                            className: 'menu-item'
-                        },
-
+                        }
                     ]
-                },
+                }
+                ,
 
                 {
-                    label: 'Gestion des entrées',
+                    label: 'Clients',
                     icon: 'pi pi-wallet',
                     items: [{
-                        label: 'Saisie des entrées véhicules',
+                        label: 'Enregistrement du client',
                         icon: 'pi pi-chart-bar',
-                        to: '/entryMagasin/vehicule',
-                        visible: appUser ? hasAnyAuthority(appUser, [
+                        to: '/moduleCostumerGroup/clients',
+                       /* visible: appUser ? hasAnyAuthority(appUser, [
                             'ENTREE_VEHICULE_CREATE',
                             'ENTREE_VEHICULE_UPDATE',
                             'ENTREE_VEHICULE_CONSULTATION'
-                        ]) : false
+                        ]) : false*/
                     }, {
-                        label: 'Entrée magasin',
+                        label: 'Enregistrement du groupe',
                         icon: 'pi pi-wallet',
-                        to: '/storage/entreeStock',
-                        visible: appUser ? hasAnyAuthority(appUser, [
+                        to: '/moduleCostumerGroup/solidarity-groups',
+                       /* visible: appUser ? hasAnyAuthority(appUser, [
                             'ENTREE_MAGASIN_CREATE',
                             'ENTREE_MAGASIN_UPDATE',
                             'ENTREE_MAGASIN_CONSULTATION'
-                        ]) : false
+                        ]) : false*/
+                    }]
+                },
+
+                {
+                    label: 'Rapports',
+                    icon: 'pi pi-chart-bar',
+                    items: [{
+                        label: 'Rapports Clients et Groupes',
+                        icon: 'pi pi-file',
+                        to: '/moduleCostumerGroup/reports'
                     }]
                 },
 
@@ -218,228 +162,676 @@ const AppMenu = () => {
 
         },
 
-
-        /*   
-           {
-           label: 'Paramètres généraux',
-           icon: 'pi pi-cog',
-           className: 'layout-root-submenulist',
-          
-           items: [
-               {
-                   label: 'Categories et classes',
-                   icon: 'pi pi-cart-plus',
-                   className: 'nested-submenu', // Ajout d'une classe pour les sous-menus imbri, // Ajoutez une classe spécifiqu   
-                   items: [{
-                       label: 'Classe tarif',
-                       icon: 'pi pi-cart-plus',
-                       to: '/settings/facClasse'
-                   }, {
-                       label: 'Catégorie classe',
-                       icon: 'pi pi-cart-plus',
-                       to: '/settings/classeCategory'
-                   }, {
-                       label: 'Classe Compte Marchandise',
-                       icon: 'pi pi-cart-plus',
-                       to: '/settings/classeMarchandise'
-                   }, {
-                       label: 'Catégorie emballage',
-                       icon: 'pi pi-inbox',
-                       to: '/settings/emballage'
-                   },
-   
-                   ]
-               },
-   
-   
-               {
-                   label: 'Tarif des Marchandises',
-                   icon: 'pi pi-dollar',
-                   className: 'nested-submenu', // Ajout d'une classe pour les sous-menus imbriqués
-                   items: [
-   
-                       {
-                           label: 'Tarif Magasin',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixMagasin'
-                       },
-                       {
-                           label: 'Tarif Marchandise',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixMarchandiseMagasin'
-                       },
-                       {
-                           label: 'Tarif Marchandise Transit',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixMarchandiseTransit'
-                       },
-                       {
-                           label: 'Tarif Prestation',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixPrestation'
-   
-                       },
-                       {
-                           label: 'Tarif Colis',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixColis'
-                       }, {
-                           label: 'Tarif service tonnage',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixServiceTonnage'
-   
-                       }
-   
-                   ]
-               },
-   
-               {
-                   label: 'Autres Tarifs',
-                   icon: 'pi pi-dollar',
-                   className: 'nested-submenu', // Ajout d'une classe pour les sous-menus imbriqués
-                   items: [
-                       {
-                           label: 'Tarif Abonnement',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixAbonnement'
-                       },
-                       {
-                           label: 'Tarif Accostage',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixAccostage'
-                       },
-                       {
-                           label: 'Tarif Arrimage',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixArrimage'
-                       },
-                       {
-                           label: 'Tarif Conteneur',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixConteneur'
-                       }
-                       ,
-   
-                       {
-                           label: 'Tarif surtaxe',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixSurtaxe'
-                       },
-                       {
-                           label: 'Tarif Vehicule',
-                           icon: 'pi pi-tag',
-                           to: '/settings/tarif/prixVehicule'
-   
-                       }
-   
-   
-                   ]
-               }
-               ,
-   
-   
-               {
-                   label: 'Autres parametres',
-                   icon: 'pi pi-folder',
-                   className: 'nested-submenu large-submenu', // Classes supplémentaires
-                   items: [
-                       
-                       {
-                           label: 'Type de conditionnement',
-                           icon: 'pi pi-cart-plus',
-                           to: '/settings/typePackaging',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Importateur',
-                           icon: 'pi pi-truck',
-                           to: '/settings/importateur',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Agence en douane',
-                           icon: 'pi pi-building',
-                           to: '/settings/agence',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Banque',
-                           icon: 'pi pi-wallet',
-                           to: '/settings/banque',
-                           className: 'menu-item'
-                       },
-   
+       /* {
+            label: ' PRODUITS FINANCIERS',
+            icon: 'pi pi-money-bill',
+            items: [
+                {
+                    label: ' Données de Référence',
+                    icon: 'pi pi-database',
+                    items: [
                         {
-                           label: 'Compte Banquaire',
-                           icon: 'pi pi-wallet',
-                           to: '/settings/compteBanquaire',
-                           className: 'menu-item'
-                       },
+                            label: ' Devises',
+                            icon: 'pi pi-dollar',
+                            to: '/financialProducts/reference-data/currencies'
+                        },
                         {
-                           label: 'Divise Caisse',
-                           icon: 'pi pi-wallet',
-                           to: '/settings/deviseCaisse',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Dossier',
-                           icon: 'pi pi-folder',
-                           to: '/settings/dossier',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Engin',
-                           icon: 'pi pi-sliders-h',
-                           to: '/settings/engin',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Entrepot',
-                           icon: 'pi pi-building',
-                           to: '/settings/entrepot',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Exportateur',
-                           icon: 'pi pi-send',
-                           to: '/settings/exportateur',
-                           className: 'menu-item'
-                       },
-                       {
-                           label: 'Provenance',
-                           icon: 'pi pi-directions',
-                           to: '/settings/provenance',
-                           className: 'menu-item'
-                       }
-                       ,
-                       {
-                           label: 'Caissier',
-                           icon: 'pi pi-wallet',
-                           to: '/settings/caissier',
-                           className: 'menu-item'
-                       }
-                        ,
-                       {
-                           label: 'Importateur à Crédit',
-                           icon: 'pi pi-wallet',
-                           to: '/settings/importateurCredit',
-                           className: 'menu-item'
-                       }
-   
-                       
-                   ]
-   
-   
-               }
-   
-           ]
-       },
-    */
+                            label: 'Product Types',
+                            icon: 'pi pi-briefcase',
+                            to: '/financialProducts/reference-data/loan-product-types'
+                        },
+                        {
+                            label: 'Interest Calculation Methods',
+                            icon: 'pi pi-percentage',
+                            to: '/financialProducts/reference-data/interest-calculation-methods'
+                        },
+                        {
+                            label: 'Frequences de Payment ',
+                            icon: 'pi pi-calendar',
+                            to: '/financialProducts/reference-data/payment-frequencies'
+                        },
+                        {
+                            label: 'Types de Frais',
+                            icon: 'pi pi-money-bill',
+                            to: '/financialProducts/reference-data/fee-types'
+                        },
+                        {
+                            label: 'Typesde des Guarantes',
+                            icon: 'pi pi-shield',
+                            to: '/financialProducts/reference-data/loan-guarantee-types'
+                        },
+                        {
+                            label: 'Approval Levels',
+                            icon: 'pi pi-check-circle',
+                            to: '/financialProducts/reference-data/approval-levels'
+                        },
+                        {
+                            label: 'Loan Statuses',
+                            icon: 'pi pi-tags',
+                            to: '/financialProducts/reference-data/loan-statuses'
+                        },
+                        {
+                            label: 'Risk Levels',
+                            icon: 'pi pi-exclamation-triangle',
+                            to: '/financialProducts/reference-data/risk-levels'
+                        },
+                        {
+                            label: 'Credit Score Factors',
+                            icon: 'pi pi-star',
+                            to: '/financialProducts/reference-data/credit-score-factors'
+                        },
+                        {
+                            label: 'Loan Purposes',
+                            icon: 'pi pi-bookmark',
+                            to: '/financialProducts/reference-data/loan-purposes'
+                        },
+                        {
+                            label: 'Income/Expense Types',
+                            icon: 'pi pi-chart-line',
+                            to: '/financialProducts/reference-data/income-types'
+                        },
+                        {
+                            label: 'Application Stages',
+                            icon: 'pi pi-sitemap',
+                            to: '/financialProducts/reference-data/application-stages'
+                        }
+                    ]
+                },
+                {
+                    label: 'Loan Products / Produits de Crédit',
+                    icon: 'pi pi-briefcase',
+                    items: [
+                        {
+                            label: 'All Products / Tous les Produits',
+                            icon: 'pi pi-list',
+                            to: '/financialProducts/loan-products'
+                        }
+                    ]
+                },
+                {
+                    label: 'Loan Applications / Demandes de Crédit',
+                    icon: 'pi pi-file-edit',
+                    items: [
+                        {
+                            label: 'New Application / Nouvelle Demande',
+                            icon: 'pi pi-plus-circle',
+                            to: '/financialProducts/loan-applications'
+                        },
+                        {
+                            label: 'Pending Review / En Révision',
+                            icon: 'pi pi-clock',
+                            to: '/financialProducts/loan-applications?status=UNDER_REVIEW'
+                        },
+                        {
+                            label: 'Committee Sessions / Sessions du Comité',
+                            icon: 'pi pi-users',
+                            to: '/financialProducts/loan-applications/committee-sessions'
+                        }
+                    ]
+                },
+                {
+                    label: 'Active Loans / Prêts Actifs',
+                    icon: 'pi pi-wallet',
+                    items: [
+                        {
+                            label: 'All Active Loans / Tous les Prêts',
+                            icon: 'pi pi-list',
+                            to: '/financialProducts/loans'
+                        },
+                        {
+                            label: 'Disbursements / Décaissements',
+                            icon: 'pi pi-money-bill',
+                            to: '/financialProducts/loans/disbursements'
+                        },
+                        {
+                            label: 'Payment Schedules / Échéanciers',
+                            icon: 'pi pi-calendar',
+                            to: '/financialProducts/loans/schedules'
+                        },
+                        {
+                            label: 'Payments / Paiements',
+                            icon: 'pi pi-credit-card',
+                            to: '/financialProducts/loans/payments'
+                        },
+                        {
+                            label: 'Penalties / Pénalités',
+                            icon: 'pi pi-exclamation-circle',
+                            to: '/financialProducts/loans/penalties'
+                        },
+                        {
+                            label: 'Guarantees / Garanties',
+                            icon: 'pi pi-shield',
+                            to: '/financialProducts/loans/guarantees'
+                        },
+                        {
+                            label: 'Guarantors / Garants',
+                            icon: 'pi pi-users',
+                            to: '/financialProducts/loans/guarantors'
+                        },
+                        {
+                            label: 'Loan Closures / Clôtures',
+                            icon: 'pi pi-check-circle',
+                            to: '/financialProducts/loans/closures'
+                        },
+                        {
+                            label: 'Restructuring / Restructuration',
+                            icon: 'pi pi-refresh',
+                            to: '/financialProducts/loans/restructuring'
+                        },
+                        {
+                            label: 'Write-offs / Provisions',
+                            icon: 'pi pi-times-circle',
+                            to: '/financialProducts/loans/write-offs'
+                        }
+                    ]
+                }
+            ]
+        },*/
 
         {
-            label: 'Gestion des entrepôts',
+            label: 'MODULE ÉPARGNE',
+            icon: 'pi pi-wallet',
+            items: [
+                {
+                    label: 'Données de Référence',
+                    icon: 'pi pi-database',
+                    items: [
+                        {
+                            label: 'Types d\'Opérations',
+                            icon: 'pi pi-exchange',
+                            to: '/epargne/reference-data/types-operation'
+                        },
+                        {
+                            label: 'Statuts de Livret',
+                            icon: 'pi pi-tags',
+                            to: '/epargne/reference-data/statuts-livret'
+                        },
+                        {
+                            label: 'Durées de Terme',
+                            icon: 'pi pi-clock',
+                            to: '/epargne/reference-data/durees-terme'
+                        },
+                        {
+                            label: 'Niveaux d\'Autorisation',
+                            icon: 'pi pi-shield',
+                            to: '/epargne/reference-data/niveaux-autorisation'
+                        }
+                    ]
+                },
+                {
+                    label: 'Épargne Libre',
+                    icon: 'pi pi-book',
+                    items: [
+                        {
+                            label: 'Comptes d\'Épargne',
+                            icon: 'pi pi-wallet',
+                            to: '/epargne/compte-epargne'
+                        },
+                        {
+                            label: 'Livrets d\'Épargne',
+                            icon: 'pi pi-id-card',
+                            to: '/epargne/livret-epargne'
+                        },
+                        {
+                            label: 'Bordereaux de Dépôt',
+                            icon: 'pi pi-file-import',
+                            to: '/epargne/bordereaux-depot'
+                        },
+                        {
+                            label: 'Demandes de Retrait',
+                            icon: 'pi pi-file-export',
+                            to: '/epargne/demandes-retrait'
+                        }
+                    ]
+                },
+                /*{
+                    label: 'Dépôts à Terme (DAT)',
+                    icon: 'pi pi-lock',
+                    items: [
+                        {
+                            label: 'Gestion des DAT',
+                            icon: 'pi pi-list',
+                            to: '/epargne/depots-terme'
+                        }
+                    ]
+                },
+                {
+                    label: 'Tontine (Épargne Groupe)',
+                    icon: 'pi pi-users',
+                    items: [
+                        {
+                            label: 'Groupes de Tontine',
+                            icon: 'pi pi-sitemap',
+                            to: '/epargne/tontine/groupes'
+                        }
+                    ]
+                },
+                {
+                    label: 'Épargne Obligatoire',
+                    icon: 'pi pi-link',
+                    items: [
+                        {
+                            label: 'Comptes Liés aux Crédits',
+                            icon: 'pi pi-briefcase',
+                            to: '/epargne/epargne-obligatoire'
+                        }
+                    ]
+                },*/
+                {
+                    label: 'Rapports Épargne',
+                    icon: 'pi pi-chart-bar',
+                    items: [
+                        {
+                            label: 'Rapport des Livrets',
+                            icon: 'pi pi-book',
+                            to: '/epargne/rapports/livrets'
+                        },
+                        {
+                            label: 'Rapport des Dépôts',
+                            icon: 'pi pi-arrow-down',
+                            to: '/epargne/rapports/depots'
+                        },
+                        {
+                            label: 'Rapport des Retraits',
+                            icon: 'pi pi-arrow-up',
+                            to: '/epargne/rapports/retraits'
+                        },
+                       /* {
+                            label: 'Rapport des DAT',
+                            icon: 'pi pi-lock',
+                            to: '/epargne/rapports/dat'
+                        },
+                        {
+                            label: 'Rapport Tontine',
+                            icon: 'pi pi-users',
+                            to: '/epargne/rapports/tontine'
+                        },
+                        {
+                            label: 'Rapport Épargne Obligatoire',
+                            icon: 'pi pi-link',
+                            to: '/epargne/rapports/epargne-obligatoire'
+                        }, */
+                        {
+                            label: 'Synthèse Générale',
+                            icon: 'pi pi-chart-pie',
+                            to: '/epargne/rapports/synthese'
+                        }
+                    ]
+                }
+            ]
+        },
+
+        {
+            label: 'MODULE CRÉDIT',
+            icon: 'pi pi-briefcase',
+            items: [
+                {
+                    label: 'Données de Référence',
+                    icon: 'pi pi-database',
+                    items: [
+                        {
+                            label: 'Statuts de Demande',
+                            icon: 'pi pi-tags',
+                            to: '/credit/reference-data/statuts-demande'
+                        },
+                        {
+                            label: 'Objets de Crédit',
+                            icon: 'pi pi-bookmark',
+                            to: '/credit/reference-data/objets-credit'
+                        },
+                        {
+                            label: 'Types de Documents',
+                            icon: 'pi pi-file',
+                            to: '/credit/reference-data/types-documents'
+                        },
+                        {
+                            label: 'Types de Revenus',
+                            icon: 'pi pi-dollar',
+                            to: '/credit/reference-data/types-revenus'
+                        },
+                        {
+                            label: 'Types de Dépenses',
+                            icon: 'pi pi-credit-card',
+                            to: '/credit/reference-data/types-depenses'
+                        },
+                        {
+                            label: 'Types de Garanties',
+                            icon: 'pi pi-shield',
+                            to: '/credit/reference-data/types-garanties'
+                        },
+                        {
+                            label: 'Types d\'Emploi',
+                            icon: 'pi pi-id-card',
+                            to: '/credit/reference-data/types-emploi'
+                        },
+                        {
+                            label: 'Lieux de Visite',
+                            icon: 'pi pi-map-marker',
+                            to: '/credit/reference-data/lieux-visite'
+                        },
+                        {
+                            label: 'Statuts de Logement',
+                            icon: 'pi pi-home',
+                            to: '/credit/reference-data/statuts-logement'
+                        },
+                        {
+                            label: 'Recommandations de Visite',
+                            icon: 'pi pi-check-circle',
+                            to: '/credit/reference-data/recommandations-visite'
+                        },
+                        {
+                            label: 'Décisions du Comité',
+                            icon: 'pi pi-users',
+                            to: '/credit/reference-data/decisions-comite'
+                        },
+                        {
+                            label: 'Modes de Décaissement',
+                            icon: 'pi pi-money-bill',
+                            to: '/credit/reference-data/modes-decaissement'
+                        },
+                        {
+                            label: 'Règles d\'Allocation',
+                            icon: 'pi pi-sliders-h',
+                            to: '/credit/reference-data/regles-allocation'
+                        },
+                        {
+                            label: 'Étapes de Recouvrement',
+                            icon: 'pi pi-sitemap',
+                            to: '/credit/reference-data/etapes-recouvrement'
+                        },
+                        {
+                            label: 'Actions de Recouvrement',
+                            icon: 'pi pi-bolt',
+                            to: '/credit/reference-data/actions-recouvrement'
+                        },
+                        {
+                            label: 'Classifications de Prêt',
+                            icon: 'pi pi-chart-bar',
+                            to: '/credit/reference-data/classifications-pret'
+                        },
+                        {
+                            label: 'Niveaux de Risque',
+                            icon: 'pi pi-exclamation-triangle',
+                            to: '/credit/reference-data/niveaux-risque'
+                        },
+                        {
+                            label: 'Catégories de Scoring',
+                            icon: 'pi pi-star',
+                            to: '/credit/reference-data/categories-scoring'
+                        },
+                        {
+                            label: 'Règles de Scoring',
+                            icon: 'pi pi-cog',
+                            to: '/credit/reference-data/regles-scoring'
+                        }
+                    ]
+                },
+                {
+                    label: 'Gestion des Demandes',
+                    icon: 'pi pi-file-edit',
+                    items: [
+                        {
+                            label: 'Toutes les Demandes',
+                            icon: 'pi pi-list',
+                            to: '/credit/demandes'
+                        },
+                        {
+                            label: 'Nouvelle Demande',
+                            icon: 'pi pi-plus-circle',
+                            to: '/credit/demandes?mode=new'
+                        },
+                        {
+                            label: 'En Attente d\'Analyse',
+                            icon: 'pi pi-clock',
+                            to: '/credit/demandes?status=EN_ATTENTE_ANALYSE'
+                        },
+                        {
+                            label: 'En Cours de Visite',
+                            icon: 'pi pi-map',
+                            to: '/credit/demandes?status=EN_VISITE'
+                        },
+                        {
+                            label: 'En Comité',
+                            icon: 'pi pi-users',
+                            to: '/credit/demandes?status=EN_COMITE'
+                        }
+                    ]
+                },
+                {
+                    label: 'Analyses Financières',
+                    icon: 'pi pi-chart-line',
+                    items: [
+                        {
+                            label: 'Analyses en Cours',
+                            icon: 'pi pi-spinner',
+                            to: '/credit/analyses'
+                        }
+                    ]
+                },
+                {
+                    label: 'Visites Terrain',
+                    icon: 'pi pi-map-marker',
+                    items: [
+                        {
+                            label: 'Visites Planifiées',
+                            icon: 'pi pi-calendar',
+                            to: '/credit/visites'
+                        },
+                        {
+                            label: 'Visites Effectuées',
+                            icon: 'pi pi-check-circle',
+                            to: '/credit/visites?status=EFFECTUEE'
+                        }
+                    ]
+                },
+                {
+                    label: 'Comité de Crédit',
+                    icon: 'pi pi-users',
+                    items: [
+                        {
+                            label: 'Sessions du Comité',
+                            icon: 'pi pi-calendar-plus',
+                            to: '/credit/comite/sessions'
+                        },
+                        {
+                            label: 'Demandes à Examiner',
+                            icon: 'pi pi-inbox',
+                            to: '/credit/comite/demandes'
+                        }
+                    ]
+                },
+                {
+                    label: 'Décaissements',
+                    icon: 'pi pi-money-bill',
+                    items: [
+                        {
+                            label: 'Demandes Approuvées',
+                            icon: 'pi pi-check',
+                            to: '/credit/decaissements/approuves'
+                        },
+                        {
+                            label: 'Décaissements Effectués',
+                            icon: 'pi pi-check-circle',
+                            to: '/credit/decaissements/effectues'
+                        }
+                    ]
+                },
+                {
+                    label: 'Rapports Crédit',
+                    icon: 'pi pi-chart-bar',
+                    items: [
+                        {
+                            label: 'Rapport des Demandes',
+                            icon: 'pi pi-file',
+                            to: '/credit/rapports/demandes'
+                        },
+                        {
+                            label: 'Rapport des Analyses',
+                            icon: 'pi pi-chart-line',
+                            to: '/credit/rapports/analyses'
+                        },
+                        {
+                            label: 'Rapport des Visites',
+                            icon: 'pi pi-map',
+                            to: '/credit/rapports/visites'
+                        },
+                        {
+                            label: 'Rapport des Décisions',
+                            icon: 'pi pi-users',
+                            to: '/credit/rapports/decisions'
+                        },
+                        {
+                            label: 'Rapport des Décaissements',
+                            icon: 'pi pi-money-bill',
+                            to: '/credit/rapports/decaissements'
+                        },
+                        {
+                            label: 'Synthèse du Portefeuille',
+                            icon: 'pi pi-chart-pie',
+                            to: '/credit/rapports/synthese'
+                        }
+                    ]
+                }
+            ]
+        },
+
+        {
+            label: 'MODULE REMBOURSEMENT',
+            icon: 'pi pi-replay',
+            items: [
+                {
+                    label: 'Données de Référence',
+                    icon: 'pi pi-database',
+                    items: [
+                        {
+                            label: 'Modes de Remboursement',
+                            icon: 'pi pi-credit-card',
+                            to: '/remboursement/reference-data/modes-remboursement'
+                        },
+                        {
+                            label: 'Étapes de Recouvrement',
+                            icon: 'pi pi-sitemap',
+                            to: '/remboursement/reference-data/etapes-recouvrement'
+                        },
+                        {
+                            label: 'Classifications de Retard',
+                            icon: 'pi pi-exclamation-triangle',
+                            to: '/remboursement/reference-data/classifications-retard'
+                        },
+                        {
+                            label: 'Configurations Pénalités',
+                            icon: 'pi pi-percentage',
+                            to: '/remboursement/reference-data/configurations-penalites'
+                        },
+                        {
+                            label: 'Règles de Rappel',
+                            icon: 'pi pi-bell',
+                            to: '/remboursement/reference-data/regles-rappel'
+                        },
+                        {
+                            label: 'Configurations Restructuration',
+                            icon: 'pi pi-refresh',
+                            to: '/remboursement/reference-data/configurations-restructuration'
+                        },
+                        {
+                            label: 'Seuils de Contentieux',
+                            icon: 'pi pi-exclamation-circle',
+                            to: '/remboursement/reference-data/seuils-contentieux'
+                        }
+                    ]
+                },
+                {
+                    label: 'Échéanciers',
+                    icon: 'pi pi-calendar',
+                    items: [
+                        {
+                            label: 'Gestion des Échéanciers',
+                            icon: 'pi pi-list',
+                            to: '/remboursement/echeancier'
+                        }
+                    ]
+                },
+                {
+                    label: 'Paiements',
+                    icon: 'pi pi-money-bill',
+                    items: [
+                        {
+                            label: 'Saisie des Paiements',
+                            icon: 'pi pi-plus-circle',
+                            to: '/remboursement/paiements'
+                        },
+                        {
+                            label: 'Remboursement Anticipé',
+                            icon: 'pi pi-forward',
+                            to: '/remboursement/remboursement-anticipe'
+                        }
+                    ]
+                },
+                {
+                    label: 'Recouvrement',
+                    icon: 'pi pi-users',
+                    items: [
+                        {
+                            label: 'Dossiers de Recouvrement',
+                            icon: 'pi pi-folder',
+                            to: '/remboursement/recouvrement'
+                        },
+                        {
+                            label: 'Restructuration',
+                            icon: 'pi pi-refresh',
+                            to: '/remboursement/restructuration'
+                        }
+                    ]
+                },
+                {
+                    label: 'Contentieux',
+                    icon: 'pi pi-briefcase',
+                    items: [
+                        {
+                            label: 'Dossiers Contentieux',
+                            icon: 'pi pi-file',
+                            to: '/remboursement/contentieux'
+                        }
+                    ]
+                },
+                {
+                    label: 'Rapports Remboursement',
+                    icon: 'pi pi-chart-bar',
+                    items: [
+                        {
+                            label: 'Rapport des Paiements',
+                            icon: 'pi pi-money-bill',
+                            to: '/remboursement/rapports/paiements'
+                        },
+                        {
+                            label: 'Rapport des Retards',
+                            icon: 'pi pi-exclamation-triangle',
+                            to: '/remboursement/rapports/retards'
+                        },
+                        {
+                            label: 'Rapport Recouvrement',
+                            icon: 'pi pi-users',
+                            to: '/remboursement/rapports/recouvrement'
+                        },
+                        {
+                            label: 'Rapport Contentieux',
+                            icon: 'pi pi-briefcase',
+                            to: '/remboursement/rapports/contentieux'
+                        },
+                        {
+                            label: 'Synthèse Remboursement',
+                            icon: 'pi pi-chart-pie',
+                            to: '/remboursement/rapports/synthese'
+                        }
+                    ]
+                }
+            ]
+        },
+
+        {
+            label: 'MANUEL UTILISATEUR',
             icon: 'pi pi-home',
-            visible: appUser ? hasAnyAuthority(appUser, [
+           /* visible: appUser ? hasAnyAuthority(appUser, [
                 'PONT_BASCULE_CREATE',
                 'PONT_BASCULE_UPDATE',
                 'PONT_BASCULE_CONSULTATION',
@@ -447,22 +839,16 @@ const AppMenu = () => {
                 'STORAGE_EXIT_WITH_GPS',
                 'PORT_EXIT_WITH_RSP',
                 'PORT_EXIT_WITH_GPS'
-            ]) : false,
+            ]) : false, */
+
             items: [
 
                 {
-                    label: 'Saisie RSP',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Création RSP',
+                    label: 'Manuel',
+
                         icon: 'pi pi-chart-bar',
-                        to: '/storage/rsp'
-                    }]
-                },
-                {
-                    label: 'Entrée caffé stock',
-                    icon: 'pi pi-chart-bar',
-                    to: '/storage/entryCoffes'
+                        to: '/moduleCostumerGroup/user-manual'
+
                 },
                 // {
                 //         label: 'Service presté',
@@ -520,752 +906,14 @@ const AppMenu = () => {
 
 
 
-        {
-            label: 'Facturation',
-            icon: 'pi pi-cog',
-            visible: appUser ? hasAnyAuthority(appUser, [
-                'INVOICE_VIEW',
-                'INVOICE_CREATE',
-                'INVOICE_UPDATE',
-                'INVOICE_DELETE',
-                'INVOICE_VALIDATE',
-                'INVOICE_PRINT',
-                'INVOICE_SETTINGS'
-            ]) : false,
-            items: [
-
-                {
-                    label: 'Paramètres',
-                    icon: 'pi pi-cog',
-                    visible: appUser ? hasAuthority(appUser, 'INVOICE_SETTINGS') : false,
-
-                    items: [
+       
 
 
 
-                        {
-                            label: 'Type de conditionnement',
-                            icon: 'pi pi-cart-plus',
-                            to: '/settings/typePackaging',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Importateur',
-                            icon: 'pi pi-truck',
-                            to: '/settings/importateur',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Agence en douane',
-                            icon: 'pi pi-building',
-                            to: '/settings/agence',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Banque',
-                            icon: 'pi pi-wallet',
-                            to: '/settings/banque',
-                            className: 'menu-item'
-                        },
-
-                        {
-                            label: 'Engin',
-                            icon: 'pi pi-sliders-h',
-                            to: '/settings/engin',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Entrepot',
-                            icon: 'pi pi-building',
-                            to: '/settings/entrepot',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Exportateur',
-                            icon: 'pi pi-send',
-                            to: '/settings/exportateur',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Provenance',
-                            icon: 'pi pi-directions',
-                            to: '/settings/provenance',
-                            className: 'menu-item'
-                        },
-
-                        {
-                            label: 'Categories et classes',
-                            icon: 'pi pi-cart-plus',
-                            className: 'nested-submenu', // Ajout d'une classe pour les sous-menus imbri, // Ajoutez une classe spécifiqu   
-                            items: [{
-                                label: 'Classe tarif',
-                                icon: 'pi pi-cart-plus',
-                                to: '/settings/facClasse'
-                            }, {
-                                label: 'Catégorie classe',
-                                icon: 'pi pi-cart-plus',
-                                to: '/settings/classeCategory'
-                            }, {
-                                label: 'Classe Compte Marchandise',
-                                icon: 'pi pi-cart-plus',
-                                to: '/settings/classeMarchandise'
-                            }, {
-                                label: 'Catégorie emballage',
-                                icon: 'pi pi-inbox',
-                                to: '/settings/emballage'
-                            },
-
-                            ]
-                        },
+        
 
 
-                        {
-                            label: 'Tarif des Marchandises',
-                            icon: 'pi pi-dollar',
-                            className: 'nested-submenu', // Ajout d'une classe pour les sous-menus imbriqués
-                            items: [
-
-                                {
-                                    label: 'Tarif Magasin',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixMagasin'
-                                },
-                                {
-                                    label: 'Tarif Marchandise',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixMarchandiseMagasin'
-                                },
-                                {
-                                    label: 'Tarif Marchandise Transit',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixMarchandiseTransit'
-                                },
-                                {
-                                    label: 'Tarif Prestation',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixPrestation'
-
-                                },
-                                {
-                                    label: 'Tarif Colis',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixColis'
-                                }, {
-                                    label: 'Tarif service tonnage',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixServiceTonnage'
-
-                                }
-
-                            ]
-                        },
-
-                        {
-                            label: 'Autres Tarifs',
-                            icon: 'pi pi-dollar',
-                            className: 'nested-submenu', // Ajout d'une classe pour les sous-menus imbriqués
-                            items: [
-                                {
-                                    label: 'Tarif Abonnement',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixAbonnement'
-                                },
-                                {
-                                    label: 'Tarif Accostage',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixAccostage'
-                                },
-                                {
-                                    label: 'Tarif Arrimage',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixArrimage'
-                                },
-                                {
-                                    label: 'Tarif Conteneur',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixConteneur'
-                                }
-                                ,
-
-                                {
-                                    label: 'Tarif surtaxe',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixSurtaxe'
-                                },
-                                {
-                                    label: 'Tarif Vehicule',
-                                    icon: 'pi pi-tag',
-                                    to: '/settings/tarif/prixVehicule'
-
-                                }
-
-
-                            ]
-                        }
-                        ,
-
-
-
-                    ]
-                },
-
-
-
-
-
-                {
-                    label: 'Facture avec RSP',
-                    icon: 'pi pi-chart-bar',
-                    items: [{
-                        label: 'Préfacturation RSP',
-                        icon: 'pi pi-chart-bar',
-                        to: '/invoice/otherExitInvoice'
-                    }, /*{
-                        label: 'Créer facture RSP',
-                        icon: 'pi pi-plus-circle',
-                        to: '/invoice/invoiceRSP'
-                    },*/
-                    {
-
-                        label: 'Créer facture RSP',
-                        icon: 'pi pi-plus-circle',
-                        to: '/invoice/calculFacture'
-                    },
-                    {
-                        label: 'Valider facture RSP',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/validationFacturationRSP'
-                    },]
-                },
-
-                {
-                    label: 'Facture avec GPS',
-                    icon: 'pi pi-chart-bar',
-                    items: [{
-                        label: 'Valider Accostage',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/validationFactureAccostage'
-                    }, {
-                        label: 'Valider Remorquage',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/validationFactureRemorquage'
-                    },
-                    {
-                        label: 'Valider autres services',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/validationServicePreste'
-                    },]
-                }
-
-                ,
-                {
-
-                    label: 'Autre Type de facture',
-                    icon: 'pi pi-home',
-                    to: '/invoice/otherInvoice'
-                },
-                {
-                    label: 'Editions',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Raport des factures validées',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/rapportFacture'
-                    }
-                     ,
-                     {
-                        label: 'Rapport des factures envoyés',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/rapportFactureEnvoye'
-                    }
-                    ,
-                    
-                     {
-                        label: 'Rapport des factures non envoyées',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/rapportFactureNonEnvoye'
-                    }
-                     ,
-                   
-                   
-                     {
-                        label: 'Rapport des factures encaissées',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/rapportFactureEncaisse'
-                    }
-
-                     ,
-                       
-                   
-                     {
-                        label: 'Rapport des factures non encaisses',
-                        icon: 'pi pi-check-square',
-                        to: '/invoice/rapportFactureNonEncaisse'
-                    }
-
-                    
-
-
-                    ]
-                },]
-        },
-
-
-
-        {
-            label: 'Caisse et Controle des recettes',
-            icon: 'pi pi-home',
-            visible: appUser ? hasAnyAuthority(appUser, [
-                'CASH_VIEW',
-                'CASH_RECEIPT_CREATE',
-                'CASH_PAYMENT_CREATE',
-                'CASH_VALIDATE'
-            ]) : false,
-            items: [
-
-
-                {
-                    label: 'Paramètres',
-                    icon: 'pi pi-cog',
-
-
-                    items: [
-
-                        {
-                            label: 'Banque',
-                            icon: 'pi pi-chart-bar',
-                            to: '/settings/banque',
-                            className: 'menu-item'
-                        },
-
-                        {
-                            label: 'Compte Banquaire',
-                            icon: 'pi pi-chart-bar',
-                            to: '/settings/compteBanquaire',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Divise Caisse',
-                            icon: 'pi pi-chart-bar',
-                            to: '/settings/deviseCaisse',
-                            className: 'menu-item'
-                        },
-                        {
-                            label: 'Caissier',
-                            icon: 'pi pi-chart-bar',
-                            to: '/settings/caissier',
-                            className: 'menu-item'
-                        }
-                        ,
-                        {
-                            label: 'Importateur à Crédit',
-                            icon: 'pi pi-chart-bar',
-                            to: '/settings/importateurCredit',
-                            className: 'menu-item'
-                        }
-
-
-
-
-                    ]
-                },
-
-
-
-
-                {
-                    label: 'Gestion des mouvements',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Saisir des paiements',
-                        icon: 'pi pi-check-square',
-                        to: '/saisirPaiement'
-                    }, {
-                        label: 'Paiements à Credits',
-                        icon: 'pi pi-check-square',
-                        to: '/saisirPaiementCredit'
-                    },
-                    {
-                        label: 'Excedents',
-                        icon: 'pi pi-check-square',
-                        to: '/excedent'
-                    },
-                    {
-                        label: 'Fiche Apurement',
-                        icon: 'pi pi-check-square',
-                        to: '/ficheApurement'
-                    },]
-                },
-
-
-                {
-                    label: 'Editions',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Rapport details par caissier',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportCaissierV'
-                    },
-                    {
-                        label: 'Rapport resumé des encaissements',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportCaissierResumeV'
-                    },
-                    
-                     {
-                        label: 'Rapport tous les caissiers',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportCaissierTotal'
-                    },
-                    {
-                        label: 'Rapport par Banque',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportBanque'
-                    },
-                    
-                    {
-                        label: 'Rapport Resumé tous les banques',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportBanqueResumeTotal'
-                    },
-                    {
-                        label: 'Rapport details tous les banques',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportBanqueTotal'
-                    },
-                    {
-                        label: 'Rapport des paiements cash et TVA',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportCashTVA'
-                    },
-                    {
-                        label: 'Rapport par client',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportClient'
-                    },
-                    {
-                        label: 'Rapport de tous les clients',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportClientTous'
-                    }
-                        ,
-                    {
-                        label: 'Rapport de factures impayés',
-                        icon: 'pi pi-check-square',
-                        to: '/ rapportListeFactureImpaye'
-                    },
-                {
-                        label: 'Rapport des anciens encaissements par caissier',
-                        icon: 'pi pi-check-square',
-                        to: '/rapportCaissier'
-                    }]
-                },
-                {
-                    label: 'Comptabilisation des recettes',
-                    icon: 'pi pi-wallet',
-                    items: [/*{
-                    label: 'Credits',
-                    icon: 'pi pi-check-square',
-                    to: '/recetteCREDIT'
-                }, */{
-                            label: 'Cashs',
-                            icon: 'pi pi-check-square',
-                            to: '/recetteCASH'
-                        },
-                    ]
-                },]
-        },
-
-
-
-        {
-            label: 'Approvisionnement',
-            icon: 'pi pi-home',
-            visible: appUser ? hasAnyAuthority(appUser, [
-                'PROCUREMENT_VIEW',
-                'PROCUREMENT_CREATE',
-                'PROCUREMENT_UPDATE'
-            ]) : false,
-            items: [
-                {
-                    label: 'Parametrage',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Exercice',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/exercice'
-                    }, {
-                        label: 'Catégories',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/categories'
-                    }, {
-                        label: 'Sous-Catégories',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/sousCategories'
-                    }, {
-                        label: 'Unités',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/unite'
-                    },
-                    {
-                        label: 'Articles',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/mouvement/article'
-                    }, {
-                        label: 'Type de Mouvement',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/Typemvt'
-                    }, {
-                        label: 'Fournisseurs',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/fournisseur'
-                    }, {
-                        label: 'Banque',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/banque'
-                    }, {
-                        label: 'Responsable',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/responsable'
-                    }, {
-                        label: 'Magasin/Dépot',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/magasin'
-                    }, {
-                        label: 'Magasin Responsables',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/magasinresponsable'
-                    }, {
-                        label: 'Services',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/service'
-                    }, {
-                        label: 'Service Responsable',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/serviceresponsable'
-                    }, {
-                        label: 'Destination',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/destination'
-                    }, {
-                        label: 'Devise',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/devise'
-                    }, {
-                        label: 'Frais',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/parametrage/frais'
-                    },]
-                }
-
-                , {
-                    label: 'Mouvement Stock',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Articles',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/mouvement/article'
-                    }, {
-                        label: 'Entrees',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/mouvement/entreeArticle'
-                    },
-                    {
-                        label: 'Sorties',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/mouvement/sortiearticle'
-                    },{
-                        label: 'Inventaires',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/mouvement/inventaire'
-                    },{
-                        label: 'Inventaires Stock',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/mouvement/inventairestock'
-                    },]
-                }, {
-                    label: 'Rapports ',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Fiche de stock',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/rapports/ficheStock'
-                    }, {
-                        label: 'Fiche de sortie',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/rapports/ficheSortie'
-                    }, {
-                        label: 'Fiche entrées',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/rapports/ficheEntre'
-                    },
-                    {
-                        label: 'Sortie par service',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/rapports/sortieparservice'
-                    }, {
-                        label: 'Entrée par fournisseur',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/mouvement/sortiearticle'
-                    }, {
-                        label: 'Sortie par destination',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/rapports/sortiepardestination'
-                    }
-                    ,
-
-                     {
-                        label: 'Mouvement stock',
-                        icon: 'pi pi-check-square',
-                        to: '/approvisionnement/rapports/movementStock'
-                    }
-                ]
-                }, {
-                    label: 'Comptabilisation',
-                    icon: 'pi pi-wallet',
-                    to: '/approvisionnement/transfert'
-                }]
-        },
-        {
-            label: 'Dispensaire',
-            icon: 'pi pi-home',
-            visible: appUser ? hasAnyAuthority(appUser, [
-                'GESTION_DISPENSAIRE',
-                'RH_MANAGER'
-            ]) : false,
-            items: [
-                {
-                    label: 'Parametrage',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Exercice',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/exercice'
-                    }, {
-                        label: 'Catégories',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/categories'
-                    }, {
-                        label: 'Sous-Catégories',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/sousCategories'
-                    }, {
-                        label: 'Unités',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/unite'
-                    },
-                    {
-                        label: 'Articles',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/mouvement/article'
-                    }, {
-                        label: 'Type de Mouvement',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/Typemvt'
-                    }, {
-                        label: 'Fournisseurs',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/fournisseur'
-                    }, {
-                        label: 'Banque',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/banque'
-                    }, {
-                        label: 'Responsable',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/responsable'
-                    }, {
-                        label: 'Magasin/Dépot',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/magasin'
-                    }, {
-                        label: 'Magasin Responsables',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/magasinresponsable'
-                    }, {
-                        label: 'Services',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/service'
-                    }, {
-                        label: 'Service Responsable',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/serviceresponsable'
-                    }, {
-                        label: 'Destination',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/destination'
-                    }, {
-                        label: 'Devise',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/devise'
-                    }, {
-                        label: 'Frais',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/parametrage/frais'
-                    },]
-                }
-
-                , {
-                    label: 'Gestion du Mouvement',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Articles',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/mouvement/article'
-                    },
-                    {
-                        label: 'Inventaire',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/mouvement/inventaire'
-                    }, {
-                        label: 'Entrees',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/mouvement/entreeArticle'
-                    },
-                    {
-                        label: 'Sorties',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/mouvement/sortiearticle'
-                    },
-                    {
-                        label: 'Fiche de consommation',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/mouvement/consommation'
-                    }]
-                },
-
-
-                {
-                    label: 'Edition',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Consultation journaliere',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/rapport/ConsultationJournaliere'
-                    },
-                    {
-                        label: 'Cout par partenaire',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/rapport/CoutPartenaire'
-                    }, {
-                        label: 'Consommation externe/employé',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/rapport/ConsommationExterne'
-                    },
-                    {
-                        label: 'Consommation par prestation',
-                        icon: 'pi pi-check-square',
-                        to: '/dispensaire/rapport/ConsommationPrestation'
-                    }]
-                }
-                ,
-
-                {
-                    label: 'Comptabilisation',
-                    icon: 'pi pi-wallet',
-                    to: '/dispensaire/comptabilisationDispensaire'
-                }]
-        },
+          
 
 
         {
@@ -1385,84 +1033,7 @@ const AppMenu = () => {
             ]
         },
 
-        {
-            label: 'Gestion des Pannes',
-            icon: 'pi pi-home',
-            visible: false,
-            items: [
-                {
-                    label: 'Paramétres',
-                    icon: 'pi pi-wallet',
-                    items: [{
-                        label: 'Unite',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/panUnite'
-                    }, {
-                        label: 'Catégories des engins',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/panCategorie'
-                    }, {
-                        label: 'Types Entretiens',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/entretiensType'
-                    }, {
-                        label: 'Engin Entretien Type',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/enginsEntretiensType'
-                    }, {
-                        label: 'Parties Engin ',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/enginsPartieType'
-                    },
-                    {
-                        label: 'Pieces Rechanges Engin',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/enginsPieceRechange'
-                    }, {
-                        label: 'Engin',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/panEngin'
-                    }, {
-                        label: 'Personnel Technique',
-                        icon: 'pi pi-check-square',
-                        to: '/pannes/personnelTechnique'
-                    },]
-                }
-
-                , {
-                    label: 'Mouvement Pannes',
-                    icon: 'pi pi-wallet',
-                    items: [
-                        {
-                            label: 'Devis',
-                            icon: 'pi pi-check-square',
-                            to: '/pannes/devis'
-                        },
-                        {
-                            label: 'Requisitions',
-                            icon: 'pi pi-check-square',
-                            to: '/pannes/requisition'
-                        },
-                        {
-                            label: 'Travaux',
-                            icon: 'pi pi-check-square',
-                            to: '/pannes/panTravaux'
-                        },
-                        {
-                            label: 'Pannes',
-                            icon: 'pi pi-check-square',
-                            to: '/pannes/panPannes'
-                        },
-                        {
-                            label: 'Entretiens',
-                            icon: 'pi pi-check-square',
-                            to: '/pannes/panEntretiens'
-                        }
-                    ]
-                }
-
-            ]
-        },
+        
 
 
 
@@ -1865,491 +1436,25 @@ const AppMenu = () => {
         },
 
         {
-            label: 'Administration',
+            label: 'ADMINISTRATION',
             icon: 'pi pi-home',
-            visible: appUser ? hasAuthority(appUser, 'ADMIN') : false,
+            //visible: appUser ? hasAuthority(appUser, 'ADMIN') : false,
             items: [{
                 label: 'Gestion des utilisateurs',
                 icon: 'pi pi-users',
                 to: '/usermanagement'
+            },
+            {
+                label: 'Journal d\'Audit',
+                icon: 'pi pi-history',
+                to: '/tracking'
             }]
         },
 
 
 
 
-        // {
-        //     label: 'Dashboards',
-        //     icon: 'pi pi-home',
-        //     items: [
-        //         {
-        //             label: 'Sales Dashboard',
-        //             icon: 'pi pi-fw pi-home',
-        //             to: '/'
-        //         },
-        //         {
-        //             label: 'Analytics Dashboard',
-        //             icon: 'pi pi-fw pi-chart-pie',
-        //             to: '/dashboards/dashboardanalytics'
-        //         },
-        //         {
-        //             label: 'SaaS Dashboard',
-        //             icon: 'pi pi-fw pi-bolt',
-        //             to: '/dashboards/dashboardsaas'
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'Apps',
-        //     icon: 'pi pi-th-large',
-        //     items: [
-        //         {
-        //             label: 'Blog',
-        //             icon: 'pi pi-fw pi-comment',
-        //             items: [
-        //                 {
-        //                     label: 'List',
-        //                     icon: 'pi pi-fw pi-image',
-        //                     to: '/apps/blog/list'
-        //                 },
-        //                 {
-        //                     label: 'Detail',
-        //                     icon: 'pi pi-fw pi-list',
-        //                     to: '/apps/blog/detail'
-        //                 },
-        //                 {
-        //                     label: 'Edit',
-        //                     icon: 'pi pi-fw pi-pencil',
-        //                     to: '/apps/blog/edit'
-        //                 }
-        //             ]
-        //         },
-        //         {
-        //             label: 'Calendar',
-        //             icon: 'pi pi-fw pi-calendar',
-        //             to: '/apps/calendar'
-        //         },
-        //         {
-        //             label: 'Chat',
-        //             icon: 'pi pi-fw pi-comments',
-        //             to: '/apps/chat'
-        //         },
-        //         {
-        //             label: 'Files',
-        //             icon: 'pi pi-fw pi-folder',
-        //             to: '/apps/files'
-        //         },
-        //         {
-        //             label: 'Mail',
-        //             icon: 'pi pi-fw pi-envelope',
-        //             items: [
-        //                 {
-        //                     label: 'Inbox',
-        //                     icon: 'pi pi-fw pi-inbox',
-        //                     to: '/apps/mail/inbox'
-        //                 },
-        //                 {
-        //                     label: 'Compose',
-        //                     icon: 'pi pi-fw pi-pencil',
-        //                     to: '/apps/mail/compose'
-        //                 },
-        //                 {
-        //                     label: 'Detail',
-        //                     icon: 'pi pi-fw pi-comment',
-        //                     to: '/apps/mail/detail/1000'
-        //                 }
-        //             ]
-        //         },
-        //         {
-        //             label: 'Task List',
-        //             icon: 'pi pi-fw pi-check-square',
-        //             to: '/apps/tasklist'
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'UI Kit',
-        //     icon: 'pi pi-fw pi-star-fill',
-        //     items: [
-        //         {
-        //             label: 'Form Layout',
-        //             icon: 'pi pi-fw pi-id-card',
-        //             to: '/uikit/formlayout'
-        //         },
-        //         {
-        //             label: 'Input',
-        //             icon: 'pi pi-fw pi-check-square',
-        //             to: '/uikit/input'
-        //         },
-        //         {
-        //             label: 'Float Label',
-        //             icon: 'pi pi-fw pi-bookmark',
-        //             to: '/uikit/floatlabel'
-        //         },
-        //         {
-        //             label: 'Invalid State',
-        //             icon: 'pi pi-fw pi-exclamation-circle',
-        //             to: '/uikit/invalidstate'
-        //         },
-        //         {
-        //             label: 'Button',
-        //             icon: 'pi pi-fw pi-box',
-        //             to: '/uikit/button'
-        //         },
-        //         {
-        //             label: 'Table',
-        //             icon: 'pi pi-fw pi-table',
-        //             to: '/uikit/table'
-        //         },
-        //         {
-        //             label: 'List',
-        //             icon: 'pi pi-fw pi-list',
-        //             to: '/uikit/list'
-        //         },
-        //         {
-        //             label: 'Tree',
-        //             icon: 'pi pi-fw pi-share-alt',
-        //             to: '/uikit/tree'
-        //         },
-        //         {
-        //             label: 'Panel',
-        //             icon: 'pi pi-fw pi-tablet',
-        //             to: '/uikit/panel'
-        //         },
-        //         {
-        //             label: 'Overlay',
-        //             icon: 'pi pi-fw pi-clone',
-        //             to: '/uikit/overlay'
-        //         },
-        //         {
-        //             label: 'Media',
-        //             icon: 'pi pi-fw pi-image',
-        //             to: '/uikit/media'
-        //         },
-        //         {
-        //             label: 'Menu',
-        //             icon: 'pi pi-fw pi-bars',
-        //             to: '/uikit/menu'
-        //         },
-        //         {
-        //             label: 'Message',
-        //             icon: 'pi pi-fw pi-comment',
-        //             to: '/uikit/message'
-        //         },
-        //         {
-        //             label: 'File',
-        //             icon: 'pi pi-fw pi-file',
-        //             to: '/uikit/file'
-        //         },
-        //         {
-        //             label: 'Chart',
-        //             icon: 'pi pi-fw pi-chart-bar',
-        //             to: '/uikit/charts'
-        //         },
-        //         {
-        //             label: 'Misc',
-        //             icon: 'pi pi-fw pi-circle-off',
-        //             to: '/uikit/misc'
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'Prime Blocks',
-        //     icon: 'pi pi-fw pi-prime',
-        //     items: [
-        //         {
-        //             label: 'Free Blocks',
-        //             icon: 'pi pi-fw pi-eye',
-        //             to: '/blocks'
-        //         },
-        //         {
-        //             label: 'All Blocks',
-        //             icon: 'pi pi-fw pi-globe',
-        //             url: 'https://blocks.primereact.org/',
-        //             target: '_blank'
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'Utilities',
-        //     icon: 'pi pi-fw pi-compass',
-        //     items: [
-        //         {
-        //             label: 'PrimeIcons',
-        //             icon: 'pi pi-fw pi-prime',
-        //             to: '/utilities/icons'
-        //         },
-        //         {
-        //             label: 'Colors',
-        //             icon: 'pi pi-fw pi-palette',
-        //             to: '/utilities/colors'
-        //         },
-        //         {
-        //             label: 'PrimeFlex',
-        //             icon: 'pi pi-fw pi-desktop',
-        //             url: 'https://www.primeflex.org',
-        //             target: '_blank'
-        //         },
-        //         {
-        //             label: 'Figma',
-        //             icon: 'pi pi-fw pi-pencil',
-        //             url: 'https://www.figma.com/file/ijQrxq13lxacgkb6XHlLxA/Preview-%7C-Ultima-2022?node-id=354%3A7715&t=gjWHprUDE5RJIg78-1',
-        //             target: '_blank'
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'Pages',
-        //     icon: 'pi pi-fw pi-briefcase',
-        //     items: [
-        //         {
-        //             label: 'Landing',
-        //             icon: 'pi pi-fw pi-globe',
-        //             to: '/landing'
-        //         },
-        //         {
-        //             label: 'Auth',
-        //             icon: 'pi pi-fw pi-user',
-        //             items: [
-        //                 {
-        //                     label: 'Login',
-        //                     icon: 'pi pi-fw pi-sign-in',
-        //                     to: '/auth/login'
-        //                 },
-        //                 {
-        //                     label: 'Login 2',
-        //                     icon: 'pi pi-fw pi-sign-in',
-        //                     to: '/auth/login2'
-        //                 },
-        //                 {
-        //                     label: 'Error',
-        //                     icon: 'pi pi-fw pi-times-circle',
-        //                     to: '/auth/error'
-        //                 },
-        //                 {
-        //                     label: 'Error 2',
-        //                     icon: 'pi pi-fw pi-times-circle',
-        //                     to: '/auth/error2'
-        //                 },
-        //                 {
-        //                     label: 'Access Denied',
-        //                     icon: 'pi pi-fw pi-lock',
-        //                     to: '/auth/access'
-        //                 },
-        //                 {
-        //                     label: 'Access Denied 2',
-        //                     icon: 'pi pi-fw pi-lock',
-        //                     to: '/auth/access2'
-        //                 },
-        //                 {
-        //                     label: 'Register',
-        //                     icon: 'pi pi-fw pi-user-plus',
-        //                     to: '/auth/register'
-        //                 },
-        //                 {
-        //                     label: 'Forgot Password',
-        //                     icon: 'pi pi-fw pi-question',
-        //                     to: '/auth/forgotpassword'
-        //                 },
-        //                 {
-        //                     label: 'New Password',
-        //                     icon: 'pi pi-fw pi-cog',
-        //                     to: '/auth/newpassword'
-        //                 },
-        //                 {
-        //                     label: 'Verification',
-        //                     icon: 'pi pi-fw pi-envelope',
-        //                     to: '/auth/verification'
-        //                 },
-        //                 {
-        //                     label: 'Lock Screen',
-        //                     icon: 'pi pi-fw pi-eye-slash',
-        //                     to: '/auth/lockscreen'
-        //                 }
-        //             ]
-        //         },
-        //         {
-        //             label: 'Crud',
-        //             icon: 'pi pi-fw pi-pencil',
-        //             to: '/pages/crud'
-        //         },
-        //         {
-        //             label: 'Timeline',
-        //             icon: 'pi pi-fw pi-calendar',
-        //             to: '/pages/timeline'
-        //         },
-        //         {
-        //             label: 'Invoice',
-        //             icon: 'pi pi-fw pi-dollar',
-        //             to: '/pages/invoice'
-        //         },
-
-        //         {
-        //             label: 'Help',
-        //             icon: 'pi pi-fw pi-question-circle',
-        //             to: '/pages/help'
-        //         },
-        //         {
-        //             label: 'Not Found',
-        //             icon: 'pi pi-fw pi-exclamation-circle',
-        //             to: '/pages/notfound'
-        //         },
-        //         {
-        //             label: 'Empty',
-        //             icon: 'pi pi-fw pi-circle-off',
-        //             to: '/pages/empty'
-        //         },
-        //         {
-        //             label: 'Contact Us',
-        //             icon: 'pi pi-fw pi-phone',
-        //             to: '/pages/contact'
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'E-Commerce',
-        //     icon: 'pi pi-fw pi-wallet',
-        //     items: [
-        //         {
-        //             label: 'Product Overview',
-        //             icon: 'pi pi-fw pi-image',
-        //             to: '/ecommerce/product-overview'
-        //         },
-        //         {
-        //             label: 'Product List',
-        //             icon: 'pi pi-fw pi-list',
-        //             to: '/ecommerce/product-list'
-        //         },
-        //         {
-        //             label: 'New Product',
-        //             icon: 'pi pi-fw pi-plus',
-        //             to: '/ecommerce/new-product'
-        //         },
-        //         {
-        //             label: 'Shopping Cart',
-        //             icon: 'pi pi-fw pi-shopping-cart',
-        //             to: '/ecommerce/shopping-cart'
-        //         },
-        //         {
-        //             label: 'Checkout Form',
-        //             icon: 'pi pi-fw pi-check-square',
-        //             to: '/ecommerce/checkout-form'
-        //         },
-        //         {
-        //             label: 'Order History',
-        //             icon: 'pi pi-fw pi-history',
-        //             to: '/ecommerce/order-history'
-        //         },
-        //         {
-        //             label: 'Order Summary',
-        //             icon: 'pi pi-fw pi-file',
-        //             to: '/ecommerce/order-summary'
-        //         }
-        //     ]
-        // },
-
-        // {
-        //     label: 'User Management',
-        //     icon: 'pi pi-fw pi-user',
-        //     items: [
-        //         {
-        //             label: 'List',
-        //             icon: 'pi pi-fw pi-list',
-        //             to: '/profile/list'
-        //         },
-        //         {
-        //             label: 'Create',
-        //             icon: 'pi pi-fw pi-plus',
-        //             to: '/profile/create'
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'Hierarchy',
-        //     icon: 'pi pi-fw pi-align-left',
-        //     items: [
-        //         {
-        //             label: 'Submenu 1',
-        //             icon: 'pi pi-fw pi-align-left',
-        //             items: [
-        //                 {
-        //                     label: 'Submenu 1.1',
-        //                     icon: 'pi pi-fw pi-align-left',
-        //                     items: [
-        //                         {
-        //                             label: 'Submenu 1.1.1',
-        //                             icon: 'pi pi-fw pi-align-left'
-        //                         },
-        //                         {
-        //                             label: 'Submenu 1.1.2',
-        //                             icon: 'pi pi-fw pi-align-left'
-        //                         },
-        //                         {
-        //                             label: 'Submenu 1.1.3',
-        //                             icon: 'pi pi-fw pi-align-left'
-        //                         }
-        //                     ]
-        //                 },
-        //                 {
-        //                     label: 'Submenu 1.2',
-        //                     icon: 'pi pi-fw pi-align-left',
-        //                     items: [
-        //                         {
-        //                             label: 'Submenu 1.2.1',
-        //                             icon: 'pi pi-fw pi-align-left'
-        //                         }
-        //                     ]
-        //                 }
-        //             ]
-        //         },
-        //         {
-        //             label: 'Submenu 2',
-        //             icon: 'pi pi-fw pi-align-left',
-        //             items: [
-        //                 {
-        //                     label: 'Submenu 2.1',
-        //                     icon: 'pi pi-fw pi-align-left',
-        //                     items: [
-        //                         {
-        //                             label: 'Submenu 2.1.1',
-        //                             icon: 'pi pi-fw pi-align-left'
-        //                         },
-        //                         {
-        //                             label: 'Submenu 2.1.2',
-        //                             icon: 'pi pi-fw pi-align-left'
-        //                         }
-        //                     ]
-        //                 },
-        //                 {
-        //                     label: 'Submenu 2.2',
-        //                     icon: 'pi pi-fw pi-align-left',
-        //                     items: [
-        //                         {
-        //                             label: 'Submenu 2.2.1',
-        //                             icon: 'pi pi-fw pi-align-left'
-        //                         }
-        //                     ]
-        //                 }
-        //             ]
-        //         }
-        //     ]
-        // },
-        // {
-        //     label: 'Start',
-        //     icon: 'pi pi-fw pi-download',
-        //     items: [
-        //         {
-        //             label: 'Buy Now',
-        //             icon: 'pi pi-fw pi-shopping-cart',
-        //             url: 'https://www.primefaces.org/store'
-        //         },
-        //         {
-        //             label: 'Documentation',
-        //             icon: 'pi pi-fw pi-info-circle',
-        //             to: '/documentation'
-        //         }
-        //     ]
-        // }
+       
     ];
 
     return (

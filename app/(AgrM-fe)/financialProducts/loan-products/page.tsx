@@ -1,0 +1,405 @@
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import { Toolbar } from "primereact/toolbar";
+import { Dialog } from "primereact/dialog";
+import { InputText } from "primereact/inputtext";
+import { TabView, TabPanel } from "primereact/tabview";
+import { Tag } from "primereact/tag";
+import { LoanProduct } from "./LoanProduct";
+import LoanProductForm from "./LoanProductForm";
+import useConsumApi from "@/hooks/fetchData/useConsumApi";
+import { useRouter } from "next/navigation";
+
+const LoanProductPage = () => {
+  const [loanProducts, setLoanProducts] = useState<LoanProduct[]>([]);
+  const [selectedLoanProduct, setSelectedLoanProduct] = useState<LoanProduct | null>(null);
+  const [displayDialog, setDisplayDialog] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [loading, setLoading] = useState(false);
+  const toast = useRef<Toast>(null);
+  const dt = useRef<DataTable<LoanProduct[]>>(null);
+  const router = useRouter();
+
+  const { processRequest: fetchLoanProducts } = useConsumApi();
+  const { processRequest: createLoanProduct } = useConsumApi();
+  const { processRequest: updateLoanProduct } = useConsumApi();
+  const { processRequest: deleteLoanProduct } = useConsumApi();
+
+  useEffect(() => {
+    loadLoanProducts();
+  }, []);
+
+  const loadLoanProducts = async () => {
+    setLoading(true);
+    try {
+      const response = await fetchLoanProducts({
+        route: "/api/financial-products/loan-products/findall",
+        method: "GET",
+      });
+
+      if (response?.data) {
+        setLoanProducts(response.data);
+      }
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error / Erreur",
+        detail: "Failed to load produits de crédit / Échec du chargement des produits de crédit",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openNew = () => {
+    setSelectedLoanProduct(null);
+    setDisplayDialog(true);
+  };
+
+  const hideDialog = () => {
+    setDisplayDialog(false);
+    setSelectedLoanProduct(null);
+  };
+
+  const hideDeleteDialog = () => {
+    setDeleteDialog(false);
+    setSelectedLoanProduct(null);
+  };
+
+  const saveLoanProduct = async (loanProduct: LoanProduct) => {
+    try {
+      if (loanProduct.id) {
+        const response = await updateLoanProduct({
+          route: `/api/financial-products/loan-products/update/${loanProduct.id}`,
+          method: "PUT",
+          data: loanProduct,
+        });
+
+        if (response) {
+          toast.current?.show({
+            severity: "success",
+            summary: "Success / Succès",
+            detail: "Loan product updated successfully / Produit de crédit mis à jour avec succès",
+            life: 3000,
+          });
+          loadLoanProducts();
+        }
+      } else {
+        const response = await createLoanProduct({
+          route: "/api/financial-products/loan-products/save",
+          method: "POST",
+          data: loanProduct,
+        });
+
+        if (response) {
+          toast.current?.show({
+            severity: "success",
+            summary: "Success / Succès",
+            detail: "Loan product created successfully / Produit de crédit créé avec succès",
+            life: 3000,
+          });
+          loadLoanProducts();
+        }
+      }
+      hideDialog();
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error / Erreur",
+        detail: "Failed to save produit de crédit / Échec de l'enregistrement du produit de crédit",
+        life: 3000,
+      });
+    }
+  };
+
+  const editLoanProduct = (loanProduct: LoanProduct) => {
+    setSelectedLoanProduct({ ...loanProduct });
+    setDisplayDialog(true);
+  };
+
+  const confirmDelete = (loanProduct: LoanProduct) => {
+    setSelectedLoanProduct(loanProduct);
+    setDeleteDialog(true);
+  };
+
+  const deleteLoanProductAction = async () => {
+    if (selectedLoanProduct?.id) {
+      try {
+        const response = await deleteLoanProduct({
+          route: `/api/financial-products/loan-products/delete/${selectedLoanProduct.id}`,
+          method: "DELETE",
+        });
+
+        if (response) {
+          toast.current?.show({
+            severity: "success",
+            summary: "Success / Succès",
+            detail: "Loan product deleted successfully / Produit de crédit supprimé avec succès",
+            life: 3000,
+          });
+          loadLoanProducts();
+        }
+      } catch (error) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error / Erreur",
+          detail: "Failed to delete produit de crédit / Échec de la suppression du produit de crédit",
+          life: 3000,
+        });
+      }
+      hideDeleteDialog();
+    }
+  };
+
+  const exportCSV = () => {
+    dt.current?.exportCSV();
+  };
+
+  const leftToolbarTemplate = () => {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          label="New / Nouveau"
+          icon="pi pi-plus"
+          className="p-button-success"
+          onClick={openNew}
+        />
+      </div>
+    );
+  };
+
+  const rightToolbarTemplate = () => {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          label="Exporter"
+          icon="pi pi-upload"
+          className="p-button-help"
+          onClick={exportCSV}
+        />
+      </div>
+    );
+  };
+
+  const actionBodyTemplate = (rowData: LoanProduct) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-success p-button-sm"
+          onClick={() => editLoanProduct(rowData)}
+          tooltip="Edit / Modifier"
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-danger p-button-sm"
+          onClick={() => confirmDelete(rowData)}
+          tooltip="Delete / Supprimer"
+        />
+        <Button
+          icon="pi pi-money-bill"
+          className="p-button-rounded p-button-info p-button-sm"
+          onClick={() => router.push(`/financialProducts/loan-products/fees?productId=${rowData.id}`)}
+          tooltip="Manage Fees / Gérer les Frais"
+        />
+        <Button
+          icon="pi pi-shield"
+          className="p-button-rounded p-button-warning p-button-sm"
+          onClick={() => router.push(`/financialProducts/loan-products/guarantees?productId=${rowData.id}`)}
+          tooltip="Manage Guarantees / Gérer les Garanties"
+        />
+        <Button
+          icon="pi pi-sitemap"
+          className="p-button-rounded p-button-secondary p-button-sm"
+          onClick={() => router.push(`/financialProducts/loan-products/workflows?productId=${rowData.id}`)}
+          tooltip="Manage Workflows / Gérer les Flux de Travail"
+        />
+        <Button
+          icon="pi pi-file"
+          className="p-button-rounded p-button-help p-button-sm"
+          onClick={() => router.push(`/financialProducts/loan-products/documents?productId=${rowData.id}`)}
+          tooltip="Manage Documents / Gérer les Documents"
+        />
+      </div>
+    );
+  };
+
+  const statusBodyTemplate = (rowData: LoanProduct) => {
+    const statusMap: Record<string, { severity: "success" | "warning" | "danger" | "info", label: string }> = {
+      DRAFT: { severity: "info", label: "Draft / Brouillon" },
+      ACTIVE: { severity: "success", label: "Active / Actif" },
+      SUSPENDED: { severity: "warning", label: "Suspended / Suspendu" },
+      DISCONTINUED: { severity: "danger", label: "Discontinued / Abandonné" },
+    };
+
+    const status = statusMap[rowData.status] || { severity: "info", label: rowData.status };
+    return <Tag value={status.label} severity={status.severity} />;
+  };
+
+  const amountBodyTemplate = (rowData: LoanProduct, field: "minAmount" | "maxAmount" | "defaultAmount") => {
+    const value = rowData[field];
+    if (value === null || value === undefined) return "-";
+    return new Intl.NumberFormat("fr-BI", {
+      style: "currency",
+      currency: "BIF",
+    }).format(value);
+  };
+
+  const interestRateBodyTemplate = (rowData: LoanProduct, field: "minInterestRate" | "maxInterestRate" | "defaultInterestRate") => {
+    const value = rowData[field];
+    if (value === null || value === undefined) return "-";
+    return `${value.toFixed(2)}%`;
+  };
+
+  const header = (
+    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+      <h4 className="m-0">Gérer les Loan Products / Gérer les Produits de Crédit</h4>
+      <span className="p-input-icon-left">
+        <i className="pi pi-search" />
+        <InputText
+          type="search"
+          placeholder="Search / Rechercher..."
+          onInput={(e) => setGlobalFilter((e.target as HTMLInputElement).value)}
+        />
+      </span>
+    </div>
+  );
+
+  const deleteDialogFooter = (
+    <>
+      <Button
+        label="No / Non"
+        icon="pi pi-times"
+        className="p-button-text"
+        onClick={hideDeleteDialog}
+      />
+      <Button
+        label="Yes / Oui"
+        icon="pi pi-check"
+        className="p-button-text"
+        onClick={deleteLoanProductAction}
+      />
+    </>
+  );
+
+  return (
+    <div className="datatable-crud-demo">
+      <Toast ref={toast} />
+
+      <div className="card">
+        <TabView>
+          <TabPanel header="New / Nouveau">
+            <LoanProductForm
+              visible={displayDialog}
+              onHide={hideDialog}
+              loanProduct={selectedLoanProduct}
+              onSave={saveLoanProduct}
+            />
+            <Button
+              label="Create New Loan Product / Créer Nouveau Produit de Crédit"
+              icon="pi pi-plus"
+              className="p-button-success"
+              onClick={openNew}
+            />
+          </TabPanel>
+
+          <TabPanel header="All / Tous">
+            <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
+
+            <DataTable
+              ref={dt}
+              value={loanProducts}
+              dataKey="id"
+              paginator
+              rows={10}
+              rowsPerPageOptions={[5, 10, 25]}
+              paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+              currentPageReportTemplate="Showing {first} to {last} of {totalRecords} produits de crédit"
+              globalFilter={globalFilter}
+              header={header}
+              loading={loading}
+              emptyMessage="No produits de crédit found / Aucun produit de crédit trouvé"
+            >
+              <Column field="productCode" header="Product Code / Code" sortable />
+              <Column field="productName" header="Product Name / Nom" sortable />
+              <Column
+                field="productType.typeName"
+                header="Product Type / Type"
+                sortable
+              />
+              <Column
+                field="currency.currencyCode"
+                header="Currency / Devise"
+                sortable
+              />
+              <Column field="targetClientele" header="Target / Cible" sortable />
+              <Column
+                field="minAmount"
+                header="Min Amount / Montant Min"
+                body={(rowData) => amountBodyTemplate(rowData, "minAmount")}
+                sortable
+              />
+              <Column
+                field="maxAmount"
+                header="Max Amount / Montant Max"
+                body={(rowData) => amountBodyTemplate(rowData, "maxAmount")}
+                sortable
+              />
+              <Column
+                field="defaultInterestRate"
+                header="Interest Rate / Taux"
+                body={(rowData) => interestRateBodyTemplate(rowData, "defaultInterestRate")}
+                sortable
+              />
+              <Column
+                field="status"
+                header="Status / Statut"
+                body={statusBodyTemplate}
+                sortable
+              />
+              <Column
+                body={actionBodyTemplate}
+                exportable={false}
+                style={{ minWidth: "18rem" }}
+              />
+            </DataTable>
+          </TabPanel>
+        </TabView>
+      </div>
+
+      <LoanProductForm
+        visible={displayDialog}
+        onHide={hideDialog}
+        loanProduct={selectedLoanProduct}
+        onSave={saveLoanProduct}
+      />
+
+      <Dialog
+        visible={deleteDialog}
+        style={{ width: "450px" }}
+        header="Confirm / Confirmer"
+        modal
+        footer={deleteDialogFooter}
+        onHide={hideDeleteDialog}
+      >
+        <div className="confirmation-content">
+          <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: "2rem" }} />
+          {selectedLoanProduct && (
+            <span>
+              Êtes-vous sûr de vouloir supprimer <b>{selectedLoanProduct.productName}</b>? /
+              Êtes-vous sûr de vouloir supprimer <b>{selectedLoanProduct.productName}</b>?
+            </span>
+          )}
+        </div>
+      </Dialog>
+    </div>
+  );
+};
+
+export default LoanProductPage;

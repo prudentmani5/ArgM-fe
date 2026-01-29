@@ -1,0 +1,202 @@
+'use client';
+import React, { useState, useEffect, useRef } from 'react';
+import { TabView, TabPanel } from 'primereact/tabview';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Button } from 'primereact/button';
+import { InputText } from 'primereact/inputtext';
+import { Toast } from 'primereact/toast';
+import { Dialog } from 'primereact/dialog';
+import { Tag } from 'primereact/tag';
+import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { SavingsProductType } from './SavingsProductType';
+import SavingsProductTypeForm from './SavingsProductTypeForm';
+
+const SavingsProductTypesPage = () => {
+    const [savingsProductTypes, setSavingsProductTypes] = useState<SavingsProductType[]>([]);
+    const [savingsProductType, setSavingsProductType] = useState<SavingsProductType>(new SavingsProductType());
+    const [selectedSavingsProductType, setSelectedSavingsProductType] = useState<SavingsProductType | null>(null);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [lazyState, setLazyState] = useState({ first: 0, rows: 10, page: 0 });
+    const [displayDialog, setDisplayDialog] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+
+    const toast = useRef<Toast>(null);
+    const { data: fetchData, loading: fetchLoading, error: fetchError } = useConsumApi('/api/financial-products/reference/savings-product-types/findall');
+    const { data: createData, loading: createLoading, error: createError, postData } = useConsumApi('/api/financial-products/reference/savings-product-types/new');
+    const { data: updateData, loading: updateLoading, error: updateError, putData } = useConsumApi('');
+    const { data: deleteData, loading: deleteLoading, error: deleteError, deleteData: deleteRecord } = useConsumApi('');
+
+    useEffect(() => {
+        if (fetchData) {
+            setSavingsProductTypes(fetchData);
+            setTotalRecords(fetchData.length);
+        }
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (createData) {
+            toast.current?.show({ severity: 'success', summary: 'Success', detail: 'Savings product type created successfully' });
+            resetForm();
+        }
+    }, [createData]);
+
+    useEffect(() => {
+        if (updateData) {
+            toast.current?.show({ severity: 'success', summary: 'Success', detail: 'Savings product type updated successfully' });
+            resetForm();
+        }
+    }, [updateData]);
+
+    useEffect(() => {
+        if (deleteData) {
+            toast.current?.show({ severity: 'success', summary: 'Success', detail: 'Savings product type deleted successfully' });
+        }
+    }, [deleteData]);
+
+    useEffect(() => {
+        if (createError || updateError || deleteError || fetchError) {
+            toast.current?.show({ severity: 'error', summary: 'Error', detail: createError || updateError || deleteError || fetchError });
+        }
+    }, [createError, updateError, deleteError, fetchError]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setSavingsProductType(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleCheckboxChange = (name: string, checked: boolean) => {
+        setSavingsProductType(prev => ({ ...prev, [name]: checked }));
+    };
+
+    const saveSavingsProductType = async () => {
+        if (!savingsProductType.code || !savingsProductType.name || !savingsProductType.nameFr) {
+            toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Please fill required fields' });
+            return;
+        }
+
+        if (isEditing && savingsProductType.id) {
+            await putData(`/api/financial-products/reference/savings-product-types/update/${savingsProductType.id}`, savingsProductType);
+        } else {
+            await postData(savingsProductType);
+        }
+    };
+
+    const editSavingsProductType = (rowData: SavingsProductType) => {
+        setSavingsProductType({ ...rowData });
+        setIsEditing(true);
+    };
+
+    const confirmDelete = (rowData: SavingsProductType) => {
+        setSelectedSavingsProductType(rowData);
+        setDisplayDialog(true);
+    };
+
+    const deleteSavingsProductTypeConfirmed = async () => {
+        if (selectedSavingsProductType?.id) {
+            await deleteRecord(`/api/financial-products/reference/savings-product-types/delete/${selectedSavingsProductType.id}`);
+            setDisplayDialog(false);
+            setSelectedSavingsProductType(null);
+        }
+    };
+
+    const resetForm = () => {
+        setSavingsProductType(new SavingsProductType());
+        setIsEditing(false);
+    };
+
+    const onPage = (event: any) => {
+        setLazyState(event);
+    };
+
+    const actionBodyTemplate = (rowData: SavingsProductType) => {
+        return (
+            <div className="flex gap-2">
+                <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editSavingsProductType(rowData)} />
+                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} />
+            </div>
+        );
+    };
+
+    const statusBodyTemplate = (rowData: SavingsProductType) => {
+        return <Tag value={rowData.isActive ? 'Active' : 'Inactive'} severity={rowData.isActive ? 'success' : 'danger'} />;
+    };
+
+    const header = (
+        <div className="flex justify-content-between">
+            <h4 className="m-0">Manage Savings Product Types</h4>
+            <span className="p-input-icon-left">
+                <i className="pi pi-search" />
+                <InputText type="search" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Search..." />
+            </span>
+        </div>
+    );
+
+    return (
+        <div className="grid">
+            <Toast ref={toast} />
+            <div className="col-12">
+                <div className="card">
+                    <h5>Savings Product Types / Types de Produits d'Épargne</h5>
+                    <TabView>
+                        <TabPanel header="Nouveau">
+                            <SavingsProductTypeForm
+                                savingsProductType={savingsProductType}
+                                handleChange={handleChange}
+                                handleCheckboxChange={handleCheckboxChange}
+                            />
+                            <div className="flex gap-2 mt-4">
+                                <Button label={isEditing ? 'Update' : 'Save'} icon="pi pi-check" onClick={saveSavingsProductType} loading={createLoading || updateLoading} />
+                                <Button label="Cancel" icon="pi pi-times" severity="secondary" onClick={resetForm} />
+                            </div>
+                        </TabPanel>
+                        <TabPanel header="Tous">
+                            <DataTable
+                                value={savingsProductTypes}
+                                lazy
+                                paginator
+                                first={lazyState.first}
+                                rows={lazyState.rows}
+                                totalRecords={totalRecords}
+                                onPage={onPage}
+                                loading={loading || fetchLoading}
+                                globalFilter={globalFilter}
+                                header={header}
+                                emptyMessage="No savings product types found"
+                            >
+                                <Column field="code" header="Code" sortable />
+                                <Column field="name" header="Name" sortable />
+                                <Column field="nameFr" header="Nom (FR)" sortable />
+                                <Column field="isActive" header="Status" body={statusBodyTemplate} sortable />
+                                <Column body={actionBodyTemplate} header="Actions" />
+                            </DataTable>
+                        </TabPanel>
+                    </TabView>
+                </div>
+            </div>
+
+            <Dialog
+                visible={displayDialog}
+                style={{ width: '450px' }}
+                header="Confirm"
+                modal
+                footer={
+                    <>
+                        <Button label="No" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
+                        <Button label="Yes" icon="pi pi-check" onClick={deleteSavingsProductTypeConfirmed} autoFocus loading={deleteLoading} />
+                    </>
+                }
+                onHide={() => setDisplayDialog(false)}
+            >
+                <div className="confirmation-content">
+                    <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
+                    {selectedSavingsProductType && <span>Are you sure you want to delete <b>{selectedSavingsProductType.name}</b>?</span>}
+                </div>
+            </Dialog>
+        </div>
+    );
+};
+
+export default SavingsProductTypesPage;

@@ -1,0 +1,499 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
+import { Toast } from 'primereact/toast';
+import { Divider } from 'primereact/divider';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { LoanCommitteeSession, SessionStatus, SessionStatusLabels } from './LoanCommitteeSession';
+
+interface LoanCommitteeSessionFormProps {
+    visible: boolean;
+    session: LoanCommitteeSession | null;
+    onHide: () => void;
+    onSave: (session: LoanCommitteeSession) => void;
+}
+
+interface Branch {
+    id: number;
+    name: string;
+}
+
+interface User {
+    id: number;
+    name: string;
+}
+
+const LoanCommitteeSessionForm: React.FC<LoanCommitteeSessionFormProps> = ({
+    visible,
+    session,
+    onHide,
+    onSave
+}) => {
+    const toast = useRef<Toast>(null);
+    const [formData, setFormData] = useState<LoanCommitteeSession>({
+        id: 0,
+        sessionDate: new Date(),
+        sessionTime: '',
+        branchId: 0,
+        venue: '',
+        status: SessionStatus.SCHEDULED,
+        scheduledStartTime: '',
+        scheduledEndTime: '',
+        startedAt: null,
+        endedAt: null,
+        chairpersonId: 0,
+        secretaryId: 0,
+        agenda: '',
+        minutes: ''
+    });
+
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (session) {
+            setFormData({
+                ...session,
+                sessionDate: session.sessionDate ? new Date(session.sessionDate) : new Date()
+            });
+        } else {
+            setFormData({
+                id: 0,
+                sessionDate: new Date(),
+                sessionTime: '',
+                branchId: 0,
+                venue: '',
+                status: SessionStatus.SCHEDULED,
+                scheduledStartTime: '',
+                scheduledEndTime: '',
+                startedAt: null,
+                endedAt: null,
+                chairpersonId: 0,
+                secretaryId: 0,
+                agenda: '',
+                minutes: ''
+            });
+        }
+    }, [session]);
+
+    useEffect(() => {
+        fetchBranches();
+        fetchUsers();
+    }, []);
+
+    const fetchBranches = async () => {
+        try {
+            const response = await fetch('/api/financial-products/reference/branches/');
+            if (response.ok) {
+                const data = await response.json();
+                setBranches(data);
+            }
+        } catch (error) {
+            console.error('Error fetching branches:', error);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/users');
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const handleStartSession = () => {
+        confirmDialog({
+            message: 'Are you sure you want to start this session?',
+            header: 'Start Session',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+                setFormData({
+                    ...formData,
+                    status: SessionStatus.IN_PROGRESS,
+                    startedAt: new Date()
+                });
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Session Started',
+                    detail: 'The session has been started',
+                    life: 3000
+                });
+            }
+        });
+    };
+
+    const handleEndSession = () => {
+        if (!formData.minutes.trim()) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Minutes Required',
+                detail: 'Please enter session minutes before ending the session',
+                life: 3000
+            });
+            return;
+        }
+
+        confirmDialog({
+            message: 'Are you sure you want to end this session?',
+            header: 'End Session',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+                setFormData({
+                    ...formData,
+                    status: SessionStatus.COMPLETED,
+                    endedAt: new Date()
+                });
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Session Ended',
+                    detail: 'The session has been completed',
+                    life: 3000
+                });
+            }
+        });
+    };
+
+    const handleSubmit = () => {
+        if (!formData.sessionDate) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Session date is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.branchId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Branch is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.venue.trim()) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Venue is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.chairpersonId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Chairperson is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.secretaryId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Secretary is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (formData.chairpersonId === formData.secretaryId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Chairperson and Secretary must be different persons',
+                life: 3000
+            });
+            return;
+        }
+
+        setLoading(true);
+        onSave(formData);
+    };
+
+    const statusOptions = Object.values(SessionStatus).map(status => ({
+        label: SessionStatusLabels[status],
+        value: status
+    }));
+
+    const isMinutesEnabled = formData.status === SessionStatus.IN_PROGRESS || formData.status === SessionStatus.COMPLETED;
+
+    const dialogFooter = (
+        <div>
+            <Button
+                label="Annuler"
+                icon="pi pi-times"
+                onClick={onHide}
+                className="p-button-text"
+                disabled={loading}
+            />
+            <Button
+                label="Enregistrer"
+                icon="pi pi-check"
+                onClick={handleSubmit}
+                disabled={loading}
+                loading={loading}
+            />
+        </div>
+    );
+
+    return (
+        <>
+            <Toast ref={toast} />
+            <ConfirmDialog />
+            <Dialog
+                visible={visible}
+                style={{ width: '900px' }}
+                header={session?.id ? 'Edit Committee Session' : 'New Committee Session'}
+                modal
+                className="p-fluid"
+                footer={dialogFooter}
+                onHide={onHide}
+            >
+                <div className="formgrid grid">
+                    <Divider align="left">
+                        <span className="p-tag">Session Details</span>
+                    </Divider>
+
+                    {/* Session Date */}
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="sessionDate">Session Date *</label>
+                        <Calendar
+                            id="sessionDate"
+                            value={formData.sessionDate}
+                            onChange={(e) => setFormData({ ...formData, sessionDate: e.value as Date })}
+                            showIcon
+                            dateFormat="yy-mm-dd"
+                        />
+                    </div>
+
+                    {/* Session Time */}
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="sessionTime">Session Time</label>
+                        <InputText
+                            id="sessionTime"
+                            type="time"
+                            value={formData.sessionTime}
+                            onChange={(e) => setFormData({ ...formData, sessionTime: e.target.value })}
+                        />
+                    </div>
+
+                    {/* Venue */}
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="venue">Venue *</label>
+                        <InputText
+                            id="venue"
+                            value={formData.venue}
+                            onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
+                            placeholder="Enter venue"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Branch & Location</span>
+                    </Divider>
+
+                    {/* Branch */}
+                    <div className="field col-12">
+                        <label htmlFor="branchId">Branch *</label>
+                        <Dropdown
+                            id="branchId"
+                            value={formData.branchId}
+                            options={branches}
+                            onChange={(e) => setFormData({ ...formData, branchId: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select branch"
+                            filter
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Status</span>
+                    </Divider>
+
+                    {/* Status */}
+                    <div className="field col-12">
+                        <label htmlFor="status">Status *</label>
+                        <Dropdown
+                            id="status"
+                            value={formData.status}
+                            options={statusOptions}
+                            onChange={(e) => setFormData({ ...formData, status: e.value })}
+                            placeholder="Select status"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Timing</span>
+                    </Divider>
+
+                    {/* Scheduled Start Time */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="scheduledStartTime">Scheduled Start Time</label>
+                        <InputText
+                            id="scheduledStartTime"
+                            type="time"
+                            value={formData.scheduledStartTime}
+                            onChange={(e) => setFormData({ ...formData, scheduledStartTime: e.target.value })}
+                        />
+                    </div>
+
+                    {/* Scheduled End Time */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="scheduledEndTime">Scheduled End Time</label>
+                        <InputText
+                            id="scheduledEndTime"
+                            type="time"
+                            value={formData.scheduledEndTime}
+                            onChange={(e) => setFormData({ ...formData, scheduledEndTime: e.target.value })}
+                        />
+                    </div>
+
+                    {/* Started At */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="startedAt">Started At</label>
+                        <Calendar
+                            id="startedAt"
+                            value={formData.startedAt ? new Date(formData.startedAt) : null}
+                            showTime
+                            showIcon
+                            disabled
+                        />
+                    </div>
+
+                    {/* Ended At */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="endedAt">Ended At</label>
+                        <Calendar
+                            id="endedAt"
+                            value={formData.endedAt ? new Date(formData.endedAt) : null}
+                            showTime
+                            showIcon
+                            disabled
+                        />
+                    </div>
+
+                    {/* Action Buttons */}
+                    {formData.id && (
+                        <div className="field col-12">
+                            <div className="flex gap-2">
+                                {formData.status === SessionStatus.SCHEDULED && (
+                                    <Button
+                                        label="Start Session"
+                                        icon="pi pi-play"
+                                        severity="success"
+                                        onClick={handleStartSession}
+                                        type="button"
+                                    />
+                                )}
+                                {formData.status === SessionStatus.IN_PROGRESS && (
+                                    <Button
+                                        label="End Session"
+                                        icon="pi pi-stop"
+                                        severity="danger"
+                                        onClick={handleEndSession}
+                                        type="button"
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <Divider align="left">
+                        <span className="p-tag">Committee Members</span>
+                    </Divider>
+
+                    {/* Chairperson */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="chairpersonId">Chairperson *</label>
+                        <Dropdown
+                            id="chairpersonId"
+                            value={formData.chairpersonId}
+                            options={users}
+                            onChange={(e) => setFormData({ ...formData, chairpersonId: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select chairperson"
+                            filter
+                        />
+                    </div>
+
+                    {/* Secretary */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="secretaryId">Secretary *</label>
+                        <Dropdown
+                            id="secretaryId"
+                            value={formData.secretaryId}
+                            options={users}
+                            onChange={(e) => setFormData({ ...formData, secretaryId: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select secretary"
+                            filter
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Agenda</span>
+                    </Divider>
+
+                    {/* Agenda */}
+                    <div className="field col-12">
+                        <label htmlFor="agenda">Agenda</label>
+                        <InputTextarea
+                            id="agenda"
+                            value={formData.agenda}
+                            onChange={(e) => setFormData({ ...formData, agenda: e.target.value })}
+                            rows={4}
+                            placeholder="Enter session agenda"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Minutes</span>
+                    </Divider>
+
+                    {/* Minutes */}
+                    <div className="field col-12">
+                        <label htmlFor="minutes">Minutes</label>
+                        <InputTextarea
+                            id="minutes"
+                            value={formData.minutes}
+                            onChange={(e) => setFormData({ ...formData, minutes: e.target.value })}
+                            rows={6}
+                            placeholder="Enter session minutes"
+                            disabled={!isMinutesEnabled}
+                        />
+                        {!isMinutesEnabled && (
+                            <small className="text-500">
+                                Minutes can only be entered when session is In Progress or Completed
+                            </small>
+                        )}
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    );
+};
+
+export default LoanCommitteeSessionForm;

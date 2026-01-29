@@ -13,12 +13,12 @@ import Cookies from 'js-cookie';
 import { Dialog } from 'primereact/dialog';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { CptExercice } from '../app/(gps-fe)/comptabilite/exercice/CptExercice';
+import { CptExercice } from '../app/(AgrM-fe)/comptabilite/exercice/CptExercice';
 import { Toast } from 'primereact/toast';
 import { useCurrentUser } from '../hooks/fetchData/useCurrentUser';
 import { Password } from 'primereact/password';
 import { Tag } from 'primereact/tag';
-import { getFullName, getAccountStatusLabel, getAccountStatusSeverity } from '../app/(gps-fe)/usermanagement/types';
+import { getFullName, getAccountStatusLabel, getAccountStatusSeverity } from '../app/(AgrM-fe)/usermanagement/types';
 import { buildApiUrl } from '../utils/apiConfig';
 
 const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
@@ -350,7 +350,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
         {
             //label: 'GLOBAL PORT SERVICES-ERP'
             
-            label: <span style={{ fontSize: '1.75rem', fontWeight: 'bold',textAlign: 'center' }}>BUJUMBURA PORT INFORMATION SYSTEM - BUPORTIS</span>,
+            label: <span style={{ fontSize: '1.75rem', fontWeight: 'bold',textAlign: 'center' }}>MMMMMM- MMM</span>,
           
             // items: [
             //     [

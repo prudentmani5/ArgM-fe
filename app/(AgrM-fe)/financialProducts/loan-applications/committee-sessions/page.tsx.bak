@@ -1,0 +1,322 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Button } from 'primereact/button';
+import { Toast } from 'primereact/toast';
+import { Toolbar } from 'primereact/toolbar';
+import { InputText } from 'primereact/inputtext';
+import { Tag } from 'primereact/tag';
+import { Dropdown } from 'primereact/dropdown';
+import { confirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { useRouter } from 'next/navigation';
+import { LoanCommitteeSession, SessionStatus, SessionStatusLabels, SessionStatusColors } from './LoanCommitteeSession';
+import LoanCommitteeSessionForm from './LoanCommitteeSessionForm';
+
+const LoanCommitteeSessionPage = () => {
+    const [sessions, setSessions] = useState<LoanCommitteeSession[]>([]);
+    const [selectedSession, setSelectedSession] = useState<LoanCommitteeSession | null>(null);
+    const [dialogVisible, setDialogVisible] = useState(false);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState<SessionStatus | null>(null);
+    const [loading, setLoading] = useState(false);
+    const toast = useRef<Toast>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        fetchSessions();
+    }, [statusFilter]);
+
+    const fetchSessions = async () => {
+        setLoading(true);
+        try {
+            let url = '/api/financial-products/reference/committee-sessions/';
+            if (statusFilter) {
+                url += `?status=${statusFilter}`;
+            }
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                setSessions(data);
+            } else {
+                toast.current?.show({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Failed to fetch committee sessions',
+                    life: 3000
+                });
+            }
+        } catch (error) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Failed to fetch committee sessions',
+                life: 3000
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openNew = () => {
+        setSelectedSession(null);
+        setDialogVisible(true);
+    };
+
+    const editSession = (session: LoanCommitteeSession) => {
+        setSelectedSession(session);
+        setDialogVisible(true);
+    };
+
+    const deleteSession = (session: LoanCommitteeSession) => {
+        confirmDialog({
+            message: 'Are you sure you want to delete this committee session?',
+            header: 'Confirm Delete',
+            icon: 'pi pi-exclamation-triangle',
+            accept: async () => {
+                try {
+                    const response = await fetch(
+                        `/api/financial-products/reference/committee-sessions/${session.id}`,
+                        { method: 'DELETE' }
+                    );
+
+                    if (response.ok) {
+                        toast.current?.show({
+                            severity: 'success',
+                            summary: 'Success',
+                            detail: 'Committee session deleted successfully',
+                            life: 3000
+                        });
+                        fetchSessions();
+                    } else {
+                        throw new Error('Delete failed');
+                    }
+                } catch (error) {
+                    toast.current?.show({
+                        severity: 'error',
+                        summary: 'Error',
+                        detail: 'Failed to delete committee session',
+                        life: 3000
+                    });
+                }
+            }
+        });
+    };
+
+    const saveSession = async (session: LoanCommitteeSession) => {
+        try {
+            const url = session.id
+                ? `/api/financial-products/reference/committee-sessions/${session.id}`
+                : '/api/financial-products/reference/committee-sessions/';
+
+            const method = session.id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(session)
+            });
+
+            if (response.ok) {
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: `Committee session ${session.id ? 'updated' : 'created'} successfully`,
+                    life: 3000
+                });
+                setDialogVisible(false);
+                fetchSessions();
+            } else {
+                throw new Error('Save failed');
+            }
+        } catch (error) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: `Failed to ${session.id ? 'update' : 'create'} committee session`,
+                life: 3000
+            });
+        }
+    };
+
+    const navigateToMembers = (session: LoanCommitteeSession) => {
+        router.push(`/financialProducts/loan-applications/committee-sessions/members?sessionId=${session.id}`);
+    };
+
+    const navigateToReviews = (session: LoanCommitteeSession) => {
+        router.push(`/financialProducts/loan-applications/committee-sessions/reviews?sessionId=${session.id}`);
+    };
+
+    const sessionDateBodyTemplate = (rowData: LoanCommitteeSession) => {
+        return new Date(rowData.sessionDate).toLocaleDateString();
+    };
+
+    const statusBodyTemplate = (rowData: LoanCommitteeSession) => {
+        return (
+            <Tag
+                value={SessionStatusLabels[rowData.status]}
+                severity={SessionStatusColors[rowData.status] as any}
+            />
+        );
+    };
+
+    const durationBodyTemplate = (rowData: LoanCommitteeSession) => {
+        if (rowData.startedAt && rowData.endedAt) {
+            const start = new Date(rowData.startedAt);
+            const end = new Date(rowData.endedAt);
+            const durationMs = end.getTime() - start.getTime();
+            const hours = Math.floor(durationMs / 3600000);
+            const minutes = Math.floor((durationMs % 3600000) / 60000);
+            return `${hours}h ${minutes}m`;
+        }
+        return <span className="text-500">N/A</span>;
+    };
+
+    const actionBodyTemplate = (rowData: LoanCommitteeSession) => {
+        return (
+            <div className="flex gap-2">
+                <Button
+                    icon="pi pi-users"
+                    rounded
+                    outlined
+                    className="p-button-info"
+                    onClick={() => navigateToMembers(rowData)}
+                    tooltip="Members"
+                    tooltipOptions={{ position: 'top' }}
+                />
+                <Button
+                    icon="pi pi-list"
+                    rounded
+                    outlined
+                    className="p-button-help"
+                    onClick={() => navigateToReviews(rowData)}
+                    tooltip="Reviews"
+                    tooltipOptions={{ position: 'top' }}
+                />
+                <Button
+                    icon="pi pi-pencil"
+                    rounded
+                    outlined
+                    className="p-button-success"
+                    onClick={() => editSession(rowData)}
+                    tooltip="Edit"
+                    tooltipOptions={{ position: 'top' }}
+                />
+                <Button
+                    icon="pi pi-trash"
+                    rounded
+                    outlined
+                    severity="danger"
+                    onClick={() => deleteSession(rowData)}
+                    tooltip="Delete"
+                    tooltipOptions={{ position: 'top' }}
+                />
+            </div>
+        );
+    };
+
+    const statusFilterOptions = [
+        { label: 'All Statuses', value: null },
+        ...Object.values(SessionStatus).map(status => ({
+            label: SessionStatusLabels[status],
+            value: status
+        }))
+    ];
+
+    const leftToolbarTemplate = () => {
+        return (
+            <div className="flex flex-wrap gap-2">
+                <Button
+                    label="New Committee Session"
+                    icon="pi pi-plus"
+                    severity="success"
+                    onClick={openNew}
+                />
+            </div>
+        );
+    };
+
+    const rightToolbarTemplate = () => {
+        return (
+            <div className="flex gap-2">
+                <Dropdown
+                    value={statusFilter}
+                    options={statusFilterOptions}
+                    onChange={(e) => setStatusFilter(e.value)}
+                    placeholder="Filter by Status"
+                    className="w-full md:w-14rem"
+                />
+                <InputText
+                    type="search"
+                    placeholder="Search..."
+                    onInput={(e) => setGlobalFilter((e.target as HTMLInputElement).value)}
+                    className="w-full md:w-auto"
+                />
+            </div>
+        );
+    };
+
+    return (
+        <div className="card">
+            <Toast ref={toast} />
+            <ConfirmDialog />
+
+            <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
+
+            <DataTable
+                value={sessions}
+                loading={loading}
+                globalFilter={globalFilter}
+                emptyMessage="No committee sessions found."
+                paginator
+                rows={10}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} committee sessions"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            >
+                <Column
+                    field="sessionDate"
+                    header="Session Date"
+                    body={sessionDateBodyTemplate}
+                    sortable
+                />
+                <Column
+                    field="venue"
+                    header="Venue"
+                    sortable
+                />
+                <Column
+                    field="status"
+                    header="Status"
+                    body={statusBodyTemplate}
+                    sortable
+                />
+                <Column
+                    field="chairperson"
+                    header="Chairperson"
+                    sortable
+                />
+                <Column
+                    header="Duration"
+                    body={durationBodyTemplate}
+                />
+                <Column
+                    body={actionBodyTemplate}
+                    exportable={false}
+                    style={{ minWidth: '220px' }}
+                />
+            </DataTable>
+
+            <LoanCommitteeSessionForm
+                visible={dialogVisible}
+                session={selectedSession}
+                onHide={() => setDialogVisible(false)}
+                onSave={saveSession}
+            />
+        </div>
+    );
+};
+
+export default LoanCommitteeSessionPage;

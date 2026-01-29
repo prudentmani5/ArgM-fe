@@ -1,0 +1,115 @@
+'use client';
+import React from 'react';
+import { InputText } from 'primereact/inputtext';
+import { InputNumber } from 'primereact/inputnumber';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Checkbox } from 'primereact/checkbox';
+import { RiskLevel } from './RiskLevel';
+
+interface RiskLevelFormProps {
+    riskLevel: RiskLevel;
+    handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+    handleNumberChange: (name: string, value: number | null) => void;
+    handleCheckboxChange: (name: string, checked: boolean) => void;
+}
+
+const RiskLevelForm: React.FC<RiskLevelFormProps> = ({
+    riskLevel,
+    handleChange,
+    handleNumberChange,
+    handleCheckboxChange
+}) => {
+    return (
+        <div className="p-fluid">
+            <div className="surface-100 p-4 mb-4">
+                <h5>Informations de Base</h5>
+                <div className="grid">
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="code">Code *</label>
+                        <InputText
+                            id="code"
+                            name="code"
+                            value={riskLevel.code}
+                            onChange={handleChange}
+                            required
+                            maxLength={20}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="riskScore">Risk Score</label>
+                        <InputNumber
+                            id="riskScore"
+                            value={riskLevel.riskScore}
+                            onValueChange={(e) => handleNumberChange('riskScore', e.value)}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="name">Nom *</label>
+                        <InputText
+                            id="name"
+                            name="name"
+                            value={riskLevel.name}
+                            onChange={handleChange}
+                            required
+                            maxLength={100}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="nameFr">Nom (FR) *</label>
+                        <InputText
+                            id="nameFr"
+                            name="nameFr"
+                            value={riskLevel.nameFr}
+                            onChange={handleChange}
+                            required
+                            maxLength={100}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="color">Color</label>
+                        <InputText
+                            id="color"
+                            name="color"
+                            value={riskLevel.color || ''}
+                            onChange={handleChange}
+                            maxLength={20}
+                            placeholder="#RRGGBB"
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <div className="field-checkbox mt-4">
+                            <Checkbox
+                                inputId="isActive"
+                                checked={riskLevel.isActive}
+                                onChange={(e) => handleCheckboxChange('isActive', e.checked || false)}
+                            />
+                            <label htmlFor="isActive">Actif</label>
+                        </div>
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="description">Description</label>
+                        <InputTextarea
+                            id="description"
+                            name="description"
+                            value={riskLevel.description || ''}
+                            onChange={handleChange}
+                            rows={3}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="descriptionFr">Description (FR)</label>
+                        <InputTextarea
+                            id="descriptionFr"
+                            name="descriptionFr"
+                            value={riskLevel.descriptionFr || ''}
+                            onChange={handleChange}
+                            rows={3}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default RiskLevelForm;

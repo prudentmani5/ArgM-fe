@@ -1,0 +1,86 @@
+{
+  "communes": [
+    {
+      "province": "BUHUMUZA",
+      "provinceId": "1",
+      "communes": [
+        { "code": "BUH-001", "name": "Butaganzwa", "isActive": true },
+        { "code": "BUH-002", "name": "Butihinda", "isActive": true },
+        { "code": "BUH-003", "name": "Cankuzo", "isActive": true },
+        { "code": "BUH-004", "name": "Gisagara", "isActive": true },
+        { "code": "BUH-005", "name": "Gisuru", "isActive": true },
+        { "code": "BUH-006", "name": "Muyinga", "isActive": true },
+        { "code": "BUH-007", "name": "Ruyigi", "isActive": true }
+      ]
+    },
+    {
+      "province": "BUJUMBURA",
+      "provinceId": "2",
+      "communes": [
+        { "code": "BJM-001", "name": "Bubanza", "isActive": true },
+        { "code": "BJM-002", "name": "Bukinanyana", "isActive": true },
+        { "code": "BJM-003", "name": "Cibitoke", "isActive": true },
+        { "code": "BJM-004", "name": "Isare", "isActive": true },
+        { "code": "BJM-005", "name": "Mpanda", "isActive": true },
+        { "code": "BJM-006", "name": "Mugere", "isActive": true },
+        { "code": "BJM-007", "name": "Mugina", "isActive": true },
+        { "code": "BJM-008", "name": "Muhuta", "isActive": true },
+        { "code": "BJM-009", "name": "Mukaza", "isActive": true },
+        { "code": "BJM-010", "name": "Ntahangwa", "isActive": true },
+        { "code": "BJM-011", "name": "Rwibaga", "isActive": true }
+      ]
+    },
+    {
+      "province": "BURUNGA",
+      "provinceId": "3",
+      "communes": [
+        { "code": "BRG-001", "name": "Bururi", "isActive": true },
+        { "code": "BRG-002", "name": "Makamba", "isActive": true },
+        { "code": "BRG-003", "name": "Matana", "isActive": true },
+        { "code": "BRG-004", "name": "Musongati", "isActive": true },
+        { "code": "BRG-005", "name": "Nyanza", "isActive": true },
+        { "code": "BRG-006", "name": "Rumonge", "isActive": true },
+        { "code": "BRG-007", "name": "Rutana", "isActive": true }
+      ]
+    },
+    {
+      "province": "BUTANYERERA",
+      "provinceId": "4",
+      "communes": [
+        { "code": "BTN-001", "name": "Busoni", "isActive": true },
+        { "code": "BTN-002", "name": "Kayanza", "isActive": true },
+        { "code": "BTN-003", "name": "Kiremba", "isActive": true },
+        { "code": "BTN-004", "name": "Kirundo", "isActive": true },
+        { "code": "BTN-005", "name": "Matongo", "isActive": true },
+        { "code": "BTN-006", "name": "Muhanga", "isActive": true },
+        { "code": "BTN-007", "name": "Ngozi", "isActive": true },
+        { "code": "BTN-008", "name": "Tangara", "isActive": true }
+      ]
+    },
+    {
+      "province": "GITEGA",
+      "provinceId": "5",
+      "communes": [
+        { "code": "GTG-001", "name": "Bugendana", "isActive": true },
+        { "code": "GTG-002", "name": "Gishubi", "isActive": true },
+        { "code": "GTG-003", "name": "Gitega", "isActive": true },
+        { "code": "GTG-004", "name": "Karusi", "isActive": true },
+        { "code": "GTG-005", "name": "Kiganda", "isActive": true },
+        { "code": "GTG-006", "name": "Muramvya", "isActive": true },
+        { "code": "GTG-007", "name": "Mwaro", "isActive": true },
+        { "code": "GTG-008", "name": "Nyabihanga", "isActive": true },
+        { "code": "GTG-009", "name": "Shombo", "isActive": true }
+      ]
+    }
+  ],
+  "summary": {
+    "totalCommunes": 42,
+    "byProvince": {
+      "BUHUMUZA": 7,
+      "BUJUMBURA": 11,
+      "BURUNGA": 7,
+      "BUTANYERERA": 8,
+      "GITEGA": 9
+    }
+  }
+}

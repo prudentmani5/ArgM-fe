@@ -1,0 +1,335 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
+import { Checkbox } from 'primereact/checkbox';
+import { Toast } from 'primereact/toast';
+import { Divider } from 'primereact/divider';
+import { LoanReferenceCheck, CheckMethod, CheckMethodLabels } from './LoanReferenceCheck';
+
+interface LoanReferenceCheckFormProps {
+    visible: boolean;
+    referenceCheck: LoanReferenceCheck | null;
+    applicationId?: number;
+    onHide: () => void;
+    onSave: (referenceCheck: LoanReferenceCheck) => void;
+}
+
+interface User {
+    id: number;
+    name: string;
+}
+
+const LoanReferenceCheckForm: React.FC<LoanReferenceCheckFormProps> = ({
+    visible,
+    referenceCheck,
+    applicationId,
+    onHide,
+    onSave
+}) => {
+    const toast = useRef<Toast>(null);
+    const [formData, setFormData] = useState<LoanReferenceCheck>({
+        id: 0,
+        applicationId: applicationId || 0,
+        referenceName: '',
+        relationshipToApplicant: '',
+        contactPhone: '',
+        contactEmail: '',
+        checkMethod: CheckMethod.PHONE,
+        characterAssessment: '',
+        paymentHistoryFeedback: '',
+        businessRelationshipFeedback: '',
+        isPositive: false,
+        conductedById: 0,
+        notes: ''
+    });
+
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (referenceCheck) {
+            setFormData(referenceCheck);
+        } else {
+            setFormData({
+                id: 0,
+                applicationId: applicationId || 0,
+                referenceName: '',
+                relationshipToApplicant: '',
+                contactPhone: '',
+                contactEmail: '',
+                checkMethod: CheckMethod.PHONE,
+                characterAssessment: '',
+                paymentHistoryFeedback: '',
+                businessRelationshipFeedback: '',
+                isPositive: false,
+                conductedById: 0,
+                notes: ''
+            });
+        }
+    }, [referenceCheck, applicationId]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/users');
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const handleSubmit = () => {
+        if (!formData.applicationId) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Application ID is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.referenceName.trim()) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Reference name is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.contactPhone.trim() && !formData.contactEmail.trim()) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'At least one contact method (phone or email) is required',
+                life: 3000
+            });
+            return;
+        }
+
+        if (!formData.conductedById) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Validation Error',
+                detail: 'Conducted by is required',
+                life: 3000
+            });
+            return;
+        }
+
+        setLoading(true);
+        onSave(formData);
+    };
+
+    const checkMethodOptions = Object.values(CheckMethod).map(method => ({
+        label: CheckMethodLabels[method],
+        value: method
+    }));
+
+    const dialogFooter = (
+        <div>
+            <Button
+                label="Cancel"
+                icon="pi pi-times"
+                onClick={onHide}
+                className="p-button-text"
+                disabled={loading}
+            />
+            <Button
+                label="Save"
+                icon="pi pi-check"
+                onClick={handleSubmit}
+                disabled={loading}
+                loading={loading}
+            />
+        </div>
+    );
+
+    return (
+        <>
+            <Toast ref={toast} />
+            <Dialog
+                visible={visible}
+                style={{ width: '800px' }}
+                header={referenceCheck?.id ? 'Edit Reference Check' : 'New Reference Check'}
+                modal
+                className="p-fluid"
+                footer={dialogFooter}
+                onHide={onHide}
+            >
+                <div className="formgrid grid">
+                    <Divider align="left">
+                        <span className="p-tag">Reference Information</span>
+                    </Divider>
+
+                    {/* Reference Name */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="referenceName">Reference Name *</label>
+                        <InputText
+                            id="referenceName"
+                            value={formData.referenceName}
+                            onChange={(e) => setFormData({ ...formData, referenceName: e.target.value })}
+                            placeholder="Enter reference name"
+                        />
+                    </div>
+
+                    {/* Relationship */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="relationshipToApplicant">Relationship to Applicant *</label>
+                        <InputText
+                            id="relationshipToApplicant"
+                            value={formData.relationshipToApplicant}
+                            onChange={(e) => setFormData({ ...formData, relationshipToApplicant: e.target.value })}
+                            placeholder="e.g., Employer, Business Partner, Landlord"
+                        />
+                    </div>
+
+                    {/* Contact Phone */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="contactPhone">Contact Phone</label>
+                        <InputText
+                            id="contactPhone"
+                            value={formData.contactPhone}
+                            onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                            placeholder="+XXX-XXX-XXXX"
+                        />
+                    </div>
+
+                    {/* Contact Email */}
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="contactEmail">Contact Email</label>
+                        <InputText
+                            id="contactEmail"
+                            type="email"
+                            value={formData.contactEmail}
+                            onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                            placeholder="email@example.com"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Check Method</span>
+                    </Divider>
+
+                    {/* Check Method */}
+                    <div className="field col-12">
+                        <label htmlFor="checkMethod">Check Method *</label>
+                        <Dropdown
+                            id="checkMethod"
+                            value={formData.checkMethod}
+                            options={checkMethodOptions}
+                            onChange={(e) => setFormData({ ...formData, checkMethod: e.value })}
+                            placeholder="Select check method"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Assessment</span>
+                    </Divider>
+
+                    {/* Character Assessment */}
+                    <div className="field col-12">
+                        <label htmlFor="characterAssessment">Character Assessment</label>
+                        <InputTextarea
+                            id="characterAssessment"
+                            value={formData.characterAssessment}
+                            onChange={(e) => setFormData({ ...formData, characterAssessment: e.target.value })}
+                            rows={3}
+                            placeholder="Enter character assessment feedback"
+                        />
+                    </div>
+
+                    {/* Payment History Feedback */}
+                    <div className="field col-12">
+                        <label htmlFor="paymentHistoryFeedback">Payment History Feedback</label>
+                        <InputTextarea
+                            id="paymentHistoryFeedback"
+                            value={formData.paymentHistoryFeedback}
+                            onChange={(e) => setFormData({ ...formData, paymentHistoryFeedback: e.target.value })}
+                            rows={3}
+                            placeholder="Enter payment history feedback"
+                        />
+                    </div>
+
+                    {/* Business Relationship Feedback */}
+                    <div className="field col-12">
+                        <label htmlFor="businessRelationshipFeedback">Business Relationship Feedback</label>
+                        <InputTextarea
+                            id="businessRelationshipFeedback"
+                            value={formData.businessRelationshipFeedback}
+                            onChange={(e) => setFormData({ ...formData, businessRelationshipFeedback: e.target.value })}
+                            rows={3}
+                            placeholder="Enter business relationship feedback"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Conclusion</span>
+                    </Divider>
+
+                    {/* Is Positive */}
+                    <div className="field col-12">
+                        <div className="flex align-items-center">
+                            <Checkbox
+                                inputId="isPositive"
+                                checked={formData.isPositive}
+                                onChange={(e) => setFormData({ ...formData, isPositive: e.checked || false })}
+                            />
+                            <label htmlFor="isPositive" className="ml-2">Positive Reference</label>
+                        </div>
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Notes</span>
+                    </Divider>
+
+                    {/* Notes */}
+                    <div className="field col-12">
+                        <label htmlFor="notes">Additional Notes</label>
+                        <InputTextarea
+                            id="notes"
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            rows={3}
+                            placeholder="Enter any additional notes"
+                        />
+                    </div>
+
+                    <Divider align="left">
+                        <span className="p-tag">Conducted By</span>
+                    </Divider>
+
+                    {/* Conducted By */}
+                    <div className="field col-12">
+                        <label htmlFor="conductedById">Conducted By *</label>
+                        <Dropdown
+                            id="conductedById"
+                            value={formData.conductedById}
+                            options={users}
+                            onChange={(e) => setFormData({ ...formData, conductedById: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Select user"
+                            filter
+                        />
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    );
+};
+
+export default LoanReferenceCheckForm;

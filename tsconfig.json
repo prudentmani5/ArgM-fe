@@ -23,6 +23,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/(gps-fe)/(invoice)/invoice/otherInvoice/OtherInvoicePdf.jsx", "app/(gps-fe)/(invoice)/invoice/validationFactureAccostage/AccostagePdf.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/(AgrM-fe)/(invoice)/invoice/otherInvoice/OtherInvoicePdf.jsx", "app/(AgrM-fe)/(invoice)/invoice/validationFactureAccostage/AccostagePdf.jsx"],
   "exclude": ["node_modules"]
 }

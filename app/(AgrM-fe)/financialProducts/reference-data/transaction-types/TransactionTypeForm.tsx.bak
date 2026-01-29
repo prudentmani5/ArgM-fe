@@ -1,0 +1,111 @@
+'use client';
+import React from 'react';
+import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Checkbox } from 'primereact/checkbox';
+import { Dropdown } from 'primereact/dropdown';
+import { TransactionType } from './TransactionType';
+
+interface TransactionTypeFormProps {
+    transactionType: TransactionType;
+    handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+    handleDropdownChange: (name: string, value: any) => void;
+    handleCheckboxChange: (name: string, checked: boolean) => void;
+}
+
+const transactionClassOptions = [
+    { label: 'Debit', value: 'DEBIT' },
+    { label: 'Credit', value: 'CREDIT' }
+];
+
+const TransactionTypeForm: React.FC<TransactionTypeFormProps> = ({
+    transactionType,
+    handleChange,
+    handleDropdownChange,
+    handleCheckboxChange
+}) => {
+    return (
+        <div className="p-fluid">
+            <div className="surface-100 p-4 mb-4">
+                <h5>Basic Information</h5>
+                <div className="grid">
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="code">Code *</label>
+                        <InputText
+                            id="code"
+                            name="code"
+                            value={transactionType.code}
+                            onChange={handleChange}
+                            required
+                            maxLength={20}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="transactionClass">Transaction Class *</label>
+                        <Dropdown
+                            id="transactionClass"
+                            value={transactionType.transactionClass}
+                            options={transactionClassOptions}
+                            onChange={(e) => handleDropdownChange('transactionClass', e.value)}
+                            placeholder="Select Transaction Class"
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="name">Name *</label>
+                        <InputText
+                            id="name"
+                            name="name"
+                            value={transactionType.name}
+                            onChange={handleChange}
+                            required
+                            maxLength={100}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="nameFr">Nom (FR) *</label>
+                        <InputText
+                            id="nameFr"
+                            name="nameFr"
+                            value={transactionType.nameFr}
+                            onChange={handleChange}
+                            required
+                            maxLength={100}
+                        />
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <div className="field-checkbox mt-4">
+                            <Checkbox
+                                inputId="isActive"
+                                checked={transactionType.isActive}
+                                onChange={(e) => handleCheckboxChange('isActive', e.checked || false)}
+                            />
+                            <label htmlFor="isActive">Active</label>
+                        </div>
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="description">Description</label>
+                        <InputTextarea
+                            id="description"
+                            name="description"
+                            value={transactionType.description || ''}
+                            onChange={handleChange}
+                            rows={3}
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label htmlFor="descriptionFr">Description (FR)</label>
+                        <InputTextarea
+                            id="descriptionFr"
+                            name="descriptionFr"
+                            value={transactionType.descriptionFr || ''}
+                            onChange={handleChange}
+                            rows={3}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default TransactionTypeForm;

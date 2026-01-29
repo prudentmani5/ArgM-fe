@@ -1,7 +1,7 @@
 // hooks/useCurrentUser.ts
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
-import { AppUserResponse } from '../../app/(gps-fe)/usermanagement/types';
+import { AppUserResponse } from '../../app/(AgrM-fe)/usermanagement/types';
 
 interface UseCurrentUserReturn {
     user: AppUserResponse | null;

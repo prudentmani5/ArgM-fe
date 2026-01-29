@@ -217,9 +217,10 @@ const useConsumApi = (initialUrl: string) => {
         callType: string = 'default',
         skipAuth: boolean = false,
         responseType: 'json' | 'blob' = 'json'
-    ) => {
+    ): Promise<ApiResponse | null> => {
         setLoading(true);
-        setError(null);
+        setData(null); // Clear previous data
+        setError(null); // Clear previous error
         setCallType(callType);
 
         try {
@@ -229,8 +230,10 @@ const useConsumApi = (initialUrl: string) => {
             }, skipAuth, responseType);
 
             setData(responseData);
+            return responseData; // Return the data so callers can use it directly
         } catch (err) {
             setError(err as ApiError);
+            return null;
         } finally {
             setLoading(false);
         }
