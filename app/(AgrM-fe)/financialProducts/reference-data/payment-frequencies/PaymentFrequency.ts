@@ -7,6 +7,7 @@ export class PaymentFrequency {
     description?: string;
     descriptionFr?: string;
     isActive: boolean;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 

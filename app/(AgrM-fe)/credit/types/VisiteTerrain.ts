@@ -52,6 +52,10 @@ export interface VisiteTerrain {
     gpsLatitude?: string;
     gpsLongitude?: string;
 
+    // Sufficiency and tracking
+    guaranteesSufficient?: boolean;
+    userAction?: string;
+
     createdAt?: string;
     updatedAt?: string;
 }
@@ -88,6 +92,8 @@ export class VisiteTerrainClass implements VisiteTerrain {
     agentComments?: string = '';
     gpsLatitude?: string = '';
     gpsLongitude?: string = '';
+    guaranteesSufficient?: boolean = true;
+    userAction?: string = '';
     createdAt?: string;
     updatedAt?: string;
 
@@ -207,6 +213,7 @@ export interface EntretienClient {
     id?: number;
     visitId?: number;
     visit?: VisiteTerrain;
+    fieldVisit?: any;
 
     // Date et lieu
     interviewDate?: string;
@@ -221,6 +228,22 @@ export interface EntretienClient {
     expensesConfirmed: boolean;
     purposeConfirmed: boolean;
 
+    // Project Discussion (from backend)
+    projectUnderstanding?: string;
+    experienceInActivity?: string;
+    marketKnowledge?: string;
+    competitionAwareness?: string;
+
+    // Financial Discussion (from backend)
+    loanAmountJustification?: string;
+    repaymentPlanDiscussion?: string;
+    otherDebtsDisclosed?: string;
+
+    // Character Assessment (from backend)
+    communicationQuality?: string;
+    honestyAssessment?: string;
+    motivationLevel?: string;
+
     // Évaluation
     clientAttitude?: string;
     cooperationLevel?: string;
@@ -228,6 +251,8 @@ export interface EntretienClient {
 
     // Notes
     notes?: string;
+    generalNotes?: string;
+    userAction?: string;
 
     createdAt?: string;
     updatedAt?: string;
@@ -243,10 +268,26 @@ export class EntretienClientClass implements EntretienClient {
     incomeConfirmed: boolean = false;
     expensesConfirmed: boolean = false;
     purposeConfirmed: boolean = false;
+    // Project Discussion
+    projectUnderstanding?: string = '';
+    experienceInActivity?: string = '';
+    marketKnowledge?: string = '';
+    competitionAwareness?: string = '';
+    // Financial Discussion
+    loanAmountJustification?: string = '';
+    repaymentPlanDiscussion?: string = '';
+    otherDebtsDisclosed?: string = '';
+    // Character Assessment
+    communicationQuality?: string = '';
+    honestyAssessment?: string = '';
+    motivationLevel?: string = '';
+    // Evaluation
     clientAttitude?: string = '';
     cooperationLevel?: string = '';
     questionnaireCompleted: boolean = false;
     notes?: string = '';
+    generalNotes?: string = '';
+    userAction?: string = '';
     createdAt?: string;
     updatedAt?: string;
 

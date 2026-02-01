@@ -480,50 +480,304 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">6.3 Configuration d'un Produit de Crédit</h5>
+                        <h5 className="text-primary">6.3 Liste des Produits de Crédit</h5>
                         <div className="surface-100 p-3 border-round mb-3">
-                            <p><strong>Étapes de Configuration :</strong></p>
+                            <p><strong>Accès :</strong> Menu <Tag value="Produits Financiers" /> → <Tag value="Produits de Crédit" severity="info" /></p>
+
+                            <h6 className="text-blue-600 mt-3">Informations Affichées dans la Liste</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Code :</strong> Code unique du produit</li>
+                                <li><strong>Nom :</strong> Nom du produit en français</li>
+                                <li><strong>Type :</strong> Catégorie du produit (Court terme, Long terme, Agricole, etc.)</li>
+                                <li><strong>Montant Min/Max :</strong> Plage de montants autorisés</li>
+                                <li><strong>Taux :</strong> Taux d'intérêt par défaut</li>
+                                <li><strong>Durée :</strong> Plage de durées en mois</li>
+                                <li><strong>Statut :</strong> État du produit (Brouillon, Actif, Suspendu, Abandonné)</li>
+                                <li><strong>Actions :</strong> Boutons pour modifier et gérer les éléments du produit</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Boutons d'Action Disponibles</h6>
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <ul className="line-height-3">
+                                        <li><i className="pi pi-pencil text-orange-500 mr-2"></i><strong>Modifier :</strong> Éditer les informations du produit</li>
+                                        <li><i className="pi pi-money-bill text-info mr-2"></i><strong>Gérer les Frais :</strong> Configurer les frais</li>
+                                    </ul>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <ul className="line-height-3">
+                                        <li><i className="pi pi-shield text-warning mr-2"></i><strong>Gérer les Garanties :</strong> Définir les garanties</li>
+                                        <li><i className="pi pi-sitemap text-secondary mr-2"></i><strong>Gérer les Flux :</strong> Workflow d'approbation</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3">Statuts des Produits</h6>
+                            <div className="flex flex-wrap gap-2">
+                                <Tag value="Brouillon" /> - Produit en cours de configuration
+                                <Tag value="Actif" severity="success" /> - Produit disponible pour les demandes
+                                <Tag value="Suspendu" severity="warning" /> - Produit temporairement indisponible
+                                <Tag value="Abandonné" severity="danger" /> - Produit définitivement retiré
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">6.4 Configuration d'un Produit de Crédit</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Accès :</strong> Cliquer sur le bouton <Tag value="Nouveau" severity="info" /> pour ouvrir le formulaire de création.</p>
+                            <p className="mt-2"><strong>Le formulaire est organisé en 4 onglets :</strong></p>
+
+                            <h6 className="text-blue-600 mt-3"><i className="pi pi-info-circle mr-2"></i>Onglet 1 : Informations Générales</h6>
+                            <div className="ml-3">
+                                <p><strong>Identification du Produit :</strong></p>
+                                <ul>
+                                    <li><strong>Code Produit</strong> <span className="text-red-500">*</span> : Code unique en majuscules (ex: MICRO-001)</li>
+                                    <li><strong>Type de Produit</strong> <span className="text-red-500">*</span> : Sélectionner dans la liste</li>
+                                    <li><strong>Nom du Produit (EN)</strong> <span className="text-red-500">*</span> : Nom en anglais</li>
+                                    <li><strong>Nom du Produit (FR)</strong> <span className="text-red-500">*</span> : Nom en français</li>
+                                    <li><strong>Devise</strong> <span className="text-red-500">*</span> : BIF, USD, EUR...</li>
+                                    <li><strong>Clientèle Cible</strong> : Individuel, Groupe ou Mixte</li>
+                                    <li><strong>Statut</strong> : Brouillon, Actif, Suspendu, Abandonné</li>
+                                </ul>
+                                <p className="mt-2"><strong>Description :</strong></p>
+                                <ul>
+                                    <li>Description en anglais et en français (optionnel)</li>
+                                </ul>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3"><i className="pi pi-calculator mr-2"></i>Onglet 2 : Montants & Durées</h6>
+                            <div className="ml-3">
+                                <p><strong>Limites de Montant :</strong></p>
+                                <ul>
+                                    <li><strong>Montant Minimum</strong> <span className="text-red-500">*</span> : Montant minimum du prêt (doit être inférieur au maximum)</li>
+                                    <li><strong>Montant Maximum</strong> <span className="text-red-500">*</span> : Montant maximum du prêt</li>
+                                    <li><strong>Montant par Défaut</strong> : Montant suggéré par défaut</li>
+                                </ul>
+                                <p className="mt-2"><strong>Durée du Prêt (en mois) :</strong></p>
+                                <ul>
+                                    <li><strong>Durée Minimum</strong> <span className="text-red-500">*</span> : Durée minimale (doit être inférieure à la maximum)</li>
+                                    <li><strong>Durée Maximum</strong> <span className="text-red-500">*</span> : Durée maximale</li>
+                                    <li><strong>Durée par Défaut</strong> : Durée suggérée par défaut</li>
+                                </ul>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3"><i className="pi pi-percentage mr-2"></i>Onglet 3 : Intérêts & Paiements</h6>
+                            <div className="ml-3">
+                                <p><strong>Configuration des Intérêts :</strong></p>
+                                <ul>
+                                    <li><strong>Méthode de Calcul</strong> <span className="text-red-500">*</span> : Dégressif, Constant, Flat, etc.</li>
+                                    <li><strong>Taux Minimum</strong> <span className="text-red-500">*</span> : Taux minimum (doit être inférieur au maximum)</li>
+                                    <li><strong>Taux Maximum</strong> <span className="text-red-500">*</span> : Taux maximum autorisé</li>
+                                    <li><strong>Taux par Défaut</strong> : Taux suggéré par défaut</li>
+                                </ul>
+                                <p className="mt-2"><strong>Paiements & Période de Grâce :</strong></p>
+                                <ul>
+                                    <li><strong>Fréquence de Paiement</strong> <span className="text-red-500">*</span> : Journalier, Hebdomadaire, Mensuel, etc.</li>
+                                    <li><strong>Type de Période de Grâce</strong> : Aucun, Principal uniquement, Intérêt uniquement, Les deux</li>
+                                    <li><strong>Période de Grâce Maximum</strong> : Nombre de jours maximum</li>
+                                </ul>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3"><i className="pi pi-cog mr-2"></i>Onglet 4 : Options & Exigences</h6>
+                            <div className="ml-3">
+                                <p><strong>Remboursement Anticipé :</strong></p>
+                                <ul>
+                                    <li><strong>Autoriser le remboursement anticipé</strong> : Cocher si autorisé</li>
+                                    <li><strong>Taux de Pénalité</strong> : Pourcentage de pénalité si applicable</li>
+                                </ul>
+                                <p className="mt-2"><strong>Exigences de Garantie :</strong></p>
+                                <ul>
+                                    <li><strong>Exiger des garants</strong> : Cocher si des cautions sont requises</li>
+                                    <li><strong>Nombre Minimum de Garants</strong> : Si coché, indiquer le nombre minimum</li>
+                                    <li><strong>Exiger des garanties matérielles</strong> : Cocher si des garanties (hypothèque, gage) sont requises</li>
+                                </ul>
+                            </div>
+
+                            <h6 className="text-green-600 mt-3"><i className="pi pi-check-circle mr-2"></i>Validation et Enregistrement</h6>
+                            <div className="ml-3">
+                                <ul>
+                                    <li>Cliquer sur <Tag value="Enregistrer" severity="success" /> pour sauvegarder</li>
+                                    <li>Le système valide que le code et le nom français sont uniques</li>
+                                    <li>Après création, le produit apparaît dans la liste avec les boutons d'action suivants :
+                                        <ul>
+                                            <li><i className="pi pi-pencil text-orange-500 mr-1"></i> <strong>Modifier :</strong> Éditer les informations du produit</li>
+                                            <li><i className="pi pi-money-bill text-info mr-1"></i> <strong>Gérer les Frais :</strong> Configurer les frais applicables</li>
+                                            <li><i className="pi pi-shield text-warning mr-1"></i> <strong>Gérer les Garanties :</strong> Définir les types de garanties acceptées</li>
+                                            <li><i className="pi pi-sitemap text-secondary mr-1"></i> <strong>Gérer les Flux :</strong> Configurer le workflow d'approbation</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">6.3.1 Gestion des Frais du Produit</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Après création du produit, configurer les frais en cliquant sur le bouton <Tag value="Gérer les Frais" severity="info" /> <i className="pi pi-money-bill text-info mr-1"></i> dans la liste des produits.</p>
+
+                            <h6 className="text-blue-600 mt-3">Accès à la Gestion des Frais</h6>
                             <ol className="line-height-3">
-                                <li>Accéder au menu <Tag value="Produits de Crédit" /> puis <Tag value="Nouveau Produit" severity="info" /></li>
-                                <li><strong>Informations de Base :</strong>
-                                    <ul>
-                                        <li>Code produit (unique)</li>
-                                        <li>Nom du produit (français et anglais)</li>
-                                        <li>Type de produit et devise</li>
-                                        <li>Clientèle cible (Individuel/Groupe/Mixte)</li>
-                                    </ul>
-                                </li>
-                                <li><strong>Limites de Montant :</strong>
-                                    <ul>
-                                        <li>Montant minimum, maximum et par défaut</li>
-                                        <li>Durée minimum, maximum et par défaut (en mois)</li>
-                                    </ul>
-                                </li>
-                                <li><strong>Configuration des Intérêts :</strong>
-                                    <ul>
-                                        <li>Méthode de calcul des intérêts</li>
-                                        <li>Taux minimum, maximum et par défaut (%)</li>
-                                        <li>Fréquence de paiement</li>
-                                    </ul>
-                                </li>
-                                <li><strong>Exigences :</strong>
-                                    <ul>
-                                        <li>Garantie requise (Oui/Non)</li>
-                                        <li>Cautions requises et nombre minimum</li>
-                                        <li>Remboursement anticipé autorisé</li>
-                                        <li>Période de grâce autorisée</li>
-                                    </ul>
-                                </li>
-                                <li><strong>Configuration Avancée :</strong>
-                                    <ul>
-                                        <li>Définir les frais applicables (onglet Frais)</li>
-                                        <li>Définir les types de garanties acceptées</li>
-                                        <li>Configurer le workflow d'approbation</li>
-                                        <li>Spécifier les documents requis</li>
-                                    </ul>
-                                </li>
-                                <li>Définir le statut : <Tag value="BROUILLON" /> → <Tag value="ACTIF" severity="success" /></li>
+                                <li>Dans la liste des produits de crédit, repérer le produit souhaité</li>
+                                <li>Cliquer sur le bouton bleu <i className="pi pi-money-bill"></i> (Gérer les Frais)</li>
+                                <li>Une fenêtre popup s'ouvre avec la liste des frais configurés pour ce produit</li>
                             </ol>
+
+                            <h6 className="text-blue-600 mt-3">Création d'un Nouveau Frais</h6>
+                            <ol className="line-height-3">
+                                <li>Dans la popup, cliquer sur <Tag value="Nouveau" severity="info" /> pour ouvrir le formulaire</li>
+                                <li>Remplir les champs obligatoires et optionnels :
+                                    <ul>
+                                        <li><strong>Type de Frais</strong> <span className="text-red-500">*</span> : Sélectionner dans la liste (Frais de dossier, Commission, etc.)</li>
+                                        <li><strong>Méthode de Calcul</strong> <span className="text-red-500">*</span> : Montant fixe, Pourcentage du capital, Pourcentage du montant décaissé</li>
+                                        <li><strong>Montant Fixe</strong> : Saisir le montant en BIF si méthode = Montant fixe</li>
+                                        <li><strong>Taux de Pourcentage</strong> : Saisir le pourcentage si méthode = Pourcentage</li>
+                                        <li><strong>Montant Minimum</strong> : Montant minimum à facturer (optionnel)</li>
+                                        <li><strong>Montant Maximum</strong> : Plafond du frais (optionnel)</li>
+                                        <li><strong>Moment de Collecte</strong> : À la demande, À l'approbation, Au décaissement, Mensuel, À la clôture</li>
+                                        <li><strong>Obligatoire</strong> : Cocher si ce frais est toujours appliqué</li>
+                                        <li><strong>Remboursable</strong> : Cocher si le frais peut être remboursé</li>
+                                        <li><strong>Actif</strong> : Cocher pour activer le frais</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /> pour sauvegarder</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Gestion des Frais Existants</h6>
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-pencil text-orange-500 mr-2"></i><strong>Modifier :</strong> Cliquer sur l'icône crayon pour éditer un frais</li>
+                                <li><i className="pi pi-trash text-red-500 mr-2"></i><strong>Supprimer :</strong> Cliquer sur l'icône poubelle pour supprimer</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Types de Frais Disponibles</h6>
+                            <div className="flex flex-wrap gap-2">
+                                <Tag value="Frais de Dossier" />
+                                <Tag value="Commission d'Engagement" />
+                                <Tag value="Frais de Déblocage" />
+                                <Tag value="Commission de Gestion" />
+                                <Tag value="Frais d'Assurance" />
+                                <Tag value="Pénalité de Retard" />
+                                <Tag value="Frais de Remboursement Anticipé" />
+                            </div>
+
+                            <div className="border-left-3 border-blue-500 pl-3 mt-3">
+                                <p className="text-blue-600"><i className="pi pi-info-circle mr-2"></i><strong>Note :</strong> Le nom du frais est automatiquement rempli à partir du type de frais sélectionné.</p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">6.3.2 Gestion des Garanties du Produit</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Configurer les types de garanties acceptées en cliquant sur le bouton <Tag value="Gérer les Garanties" severity="warning" /> <i className="pi pi-shield text-warning mr-1"></i> dans la liste des produits.</p>
+
+                            <h6 className="text-blue-600 mt-3">Accès à la Gestion des Garanties</h6>
+                            <ol className="line-height-3">
+                                <li>Dans la liste des produits de crédit, repérer le produit souhaité</li>
+                                <li>Cliquer sur le bouton orange <i className="pi pi-shield"></i> (Gérer les Garanties)</li>
+                                <li>Une fenêtre popup s'ouvre avec la liste des garanties configurées pour ce produit</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Création d'une Nouvelle Garantie</h6>
+                            <ol className="line-height-3">
+                                <li>Dans la popup, cliquer sur <Tag value="Nouveau" severity="info" /> pour ouvrir le formulaire</li>
+                                <li>Remplir les champs :
+                                    <ul>
+                                        <li><strong>Type de Garantie</strong> <span className="text-red-500">*</span> : Sélectionner dans la liste (Hypothèque, Caution solidaire, Gage, Nantissement, etc.)</li>
+                                        <li><strong>Pourcentage de Couverture Minimum</strong> : Pourcentage minimum de la valeur du prêt à couvrir (ex: 100%, 120%)</li>
+                                        <li><strong>Obligatoire</strong> : Cocher si cette garantie est requise pour ce produit</li>
+                                        <li><strong>Actif</strong> : Cocher pour activer cette garantie</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /> pour sauvegarder</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Types de Garanties Disponibles</h6>
+                            <div className="flex flex-wrap gap-2">
+                                <Tag value="Hypothèque" />
+                                <Tag value="Caution Solidaire" />
+                                <Tag value="Gage" />
+                                <Tag value="Nantissement" />
+                                <Tag value="Épargne Bloquée" />
+                                <Tag value="Garantie Personnelle" />
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3">Gestion des Garanties Existantes</h6>
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-pencil text-orange-500 mr-2"></i><strong>Modifier :</strong> Cliquer sur l'icône crayon pour éditer une garantie</li>
+                                <li><i className="pi pi-trash text-red-500 mr-2"></i><strong>Supprimer :</strong> Cliquer sur l'icône poubelle pour supprimer</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">6.3.3 Flux d'Approbation</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Configurer le workflow d'approbation en cliquant sur le bouton <Tag value="Gérer les Flux" severity="secondary" /> <i className="pi pi-sitemap text-secondary mr-1"></i> dans la liste des produits.</p>
+
+                            <h6 className="text-blue-600 mt-3">Accès à la Gestion des Flux d'Approbation</h6>
+                            <ol className="line-height-3">
+                                <li>Dans la liste des produits de crédit, repérer le produit souhaité</li>
+                                <li>Cliquer sur le bouton gris <i className="pi pi-sitemap"></i> (Gérer les Flux)</li>
+                                <li>Une fenêtre popup s'ouvre avec la liste des niveaux d'approbation configurés</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Création d'un Niveau d'Approbation</h6>
+                            <ol className="line-height-3">
+                                <li>Dans la popup, cliquer sur <Tag value="Nouveau" severity="info" /> pour ouvrir le formulaire</li>
+                                <li>Remplir les champs :
+                                    <ul>
+                                        <li><strong>Niveau d'Approbation</strong> <span className="text-red-500">*</span> : Sélectionner le niveau (Agent de Crédit, Superviseur, Chef d'Agence, Directeur, Comité de Crédit)</li>
+                                        <li><strong>Ordre de Séquence</strong> : Numéro définissant l'ordre dans le workflow (1, 2, 3...)</li>
+                                        <li><strong>Montant Minimum</strong> : Seuil minimum pour ce niveau d'approbation</li>
+                                        <li><strong>Montant Maximum</strong> : Plafond pour ce niveau d'approbation</li>
+                                        <li><strong>Requiert Comité</strong> : Cocher si une réunion de comité est nécessaire</li>
+                                        <li><strong>Nombre Min. Membres Comité</strong> : Si comité requis, nombre minimum de membres</li>
+                                        <li><strong>Approbation Auto si Risque Faible</strong> : Cocher pour permettre l'approbation automatique</li>
+                                        <li><strong>Délai Max. de Traitement (jours)</strong> : Nombre de jours maximum pour traiter</li>
+                                        <li><strong>Actif</strong> : Cocher pour activer ce niveau</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /> pour sauvegarder</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Niveaux d'Approbation Disponibles</h6>
+                            <div className="flex flex-wrap gap-2">
+                                <Tag value="Agent de Crédit" severity="info" />
+                                <Tag value="Superviseur" severity="info" />
+                                <Tag value="Chef d'Agence" severity="warning" />
+                                <Tag value="Directeur Régional" severity="warning" />
+                                <Tag value="Directeur Général" severity="danger" />
+                                <Tag value="Comité de Crédit" severity="danger" />
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3">Exemple de Configuration</h6>
+                            <div className="grid">
+                                <div className="col-12">
+                                    <Card>
+                                        <ul className="text-sm line-height-3">
+                                            <li><strong>Niveau 1 - Agent de Crédit :</strong> Montant 0 - 500 000 BIF</li>
+                                            <li><strong>Niveau 2 - Superviseur :</strong> Montant 500 001 - 2 000 000 BIF</li>
+                                            <li><strong>Niveau 3 - Chef d'Agence :</strong> Montant 2 000 001 - 5 000 000 BIF</li>
+                                            <li><strong>Niveau 4 - Comité de Crédit :</strong> Montant supérieur à 5 000 000 BIF (3 membres minimum)</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3">Gestion des Niveaux Existants</h6>
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-pencil text-orange-500 mr-2"></i><strong>Modifier :</strong> Cliquer sur l'icône crayon pour éditer un niveau</li>
+                                <li><i className="pi pi-trash text-red-500 mr-2"></i><strong>Supprimer :</strong> Cliquer sur l'icône poubelle pour supprimer</li>
+                            </ul>
+
+                            <div className="border-left-3 border-orange-500 pl-3 mt-3">
+                                <p className="text-orange-600"><i className="pi pi-exclamation-triangle mr-2"></i><strong>Important :</strong> Les seuils de montant ne doivent pas se chevaucher entre les niveaux d'approbation.</p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">6.3.4 Documents Requis</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Configurer les documents requis via <i className="pi pi-file text-help mr-1"></i></p>
+                            <ul className="line-height-3">
+                                <li><strong>Nom du Document</strong> : CNI, Attestation de revenu, Titre foncier, etc.</li>
+                                <li><strong>Description</strong> : Instructions pour le client</li>
+                                <li><strong>Est Obligatoire</strong> : Cocher si le document est requis</li>
+                                <li><strong>Est Actif</strong> : Cocher pour activer la demande de ce document</li>
+                            </ul>
                         </div>
 
                         <h5 className="text-primary">6.4 Processus de Demande de Crédit</h5>
@@ -1537,7 +1791,130 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">8.9 Conseils et Bonnes Pratiques</h5>
+                        <h5 className="text-primary">8.9 Gestion des Décaissements</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le module Décaissement permet de mettre les fonds à disposition des clients dont les demandes
+                                ont été approuvées par le comité de crédit. Il comprend deux sous-modules principaux :
+                            </p>
+
+                            <div className="grid mt-3">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-green-500">
+                                        <h6 className="mt-0"><i className="pi pi-check-circle text-green-500 mr-2"></i>Demandes Approuvées</h6>
+                                        <p className="text-sm">Liste des demandes de crédit approuvées en attente de décaissement.</p>
+                                        <p className="text-sm"><strong>Accès :</strong> Menu <Tag value="Module Crédit" /> → <Tag value="Décaissements" severity="info" /> → <Tag value="Approuvés" severity="success" /></p>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-blue-500">
+                                        <h6 className="mt-0"><i className="pi pi-money-bill text-blue-500 mr-2"></i>Décaissements Effectués</h6>
+                                        <p className="text-sm">Historique de tous les décaissements réalisés avec détails et statistiques.</p>
+                                        <p className="text-sm"><strong>Accès :</strong> Menu <Tag value="Module Crédit" /> → <Tag value="Décaissements" severity="info" /> → <Tag value="Effectués" severity="info" /></p>
+                                    </Card>
+                                </div>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-4">Effectuer un Décaissement</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder à <Tag value="Décaissements" /> → <Tag value="Approuvés" severity="success" /></li>
+                                <li>La liste affiche toutes les demandes avec statut :
+                                    <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                                        <Tag value="Approuvé" severity="success" />
+                                        <Tag value="Approuvé sous réserve" severity="warning" />
+                                        <Tag value="Prêt au décaissement" severity="info" />
+                                    </div>
+                                </li>
+                                <li>Identifier la demande à décaisser - les colonnes affichent :
+                                    <ul>
+                                        <li><strong>N° Dossier :</strong> Numéro unique de la demande</li>
+                                        <li><strong>Client :</strong> Nom complet du bénéficiaire</li>
+                                        <li><strong>N° Compte :</strong> Numéro du compte d'épargne lié</li>
+                                        <li><strong>Montant Approuvé :</strong> Montant validé par le comité</li>
+                                        <li><strong>Durée :</strong> Durée du prêt en mois</li>
+                                        <li><strong>Statut :</strong> État actuel de la demande</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur le bouton <Tag value="Décaisser" severity="success" icon="pi pi-money-bill" /> (icône billet)</li>
+                                <li>Dans la boîte de dialogue de décaissement :
+                                    <ul>
+                                        <li><strong>Vérifier les informations :</strong> N° Dossier, Client, Montant Approuvé</li>
+                                        <li><strong>Date de Décaissement :</strong> Date effective (par défaut aujourd'hui)</li>
+                                        <li><strong>Mode de Décaissement * :</strong> Sélectionner parmi :
+                                            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                                                <Tag value="Espèces" severity="success" />
+                                                <Tag value="Virement Bancaire" severity="info" />
+                                                <Tag value="Chèque" severity="warning" />
+                                                <Tag value="Mobile Money" />
+                                            </div>
+                                        </li>
+                                        <li><strong>Référence de Paiement :</strong> N° chèque, référence virement, etc. (optionnel)</li>
+                                        <li><strong>Notes :</strong> Observations complémentaires (optionnel)</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Décaisser" severity="success" /> pour confirmer</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-4">Suivi des Décaissements Effectués</h6>
+                            <div className="surface-200 p-3 border-round">
+                                <p><strong>Accès :</strong> Menu <Tag value="Décaissements" /> → <Tag value="Effectués" severity="info" /></p>
+                                <p className="mt-2">Cette page affiche :</p>
+                                <ul>
+                                    <li><strong>Statistiques en haut de page :</strong>
+                                        <ul>
+                                            <li>Total Décaissé (montant cumulé)</li>
+                                            <li>Nombre de Décaissements</li>
+                                            <li>Montant Moyen par décaissement</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Tableau des décaissements :</strong>
+                                        <ul>
+                                            <li>N° Dossier - Référence de la demande originale</li>
+                                            <li>Client - Nom du bénéficiaire</li>
+                                            <li>N° Décaissement - Numéro unique généré</li>
+                                            <li>Montant - Somme décaissée</li>
+                                            <li>Date Décaissement - Date effective</li>
+                                            <li>Mode - Type de paiement utilisé</li>
+                                            <li>Référence - N° chèque/virement</li>
+                                            <li>Effectué par - Agent ayant réalisé l'opération</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                                <p className="mt-2"><strong>Filtres disponibles :</strong></p>
+                                <ul>
+                                    <li>Période (plage de dates)</li>
+                                    <li>Recherche globale (client, dossier, référence)</li>
+                                </ul>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-4">Points Importants</h6>
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <Card>
+                                        <h6 className="mt-0 text-green-500"><i className="pi pi-check mr-2"></i>Après le Décaissement</h6>
+                                        <ul className="text-sm">
+                                            <li>Le statut de la demande passe automatiquement à <Tag value="Décaissé" severity="success" /></li>
+                                            <li>Un numéro de décaissement unique est généré</li>
+                                            <li>L'historique du workflow est mis à jour</li>
+                                            <li>Le prêt devient actif dans le module Remboursement</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card>
+                                        <h6 className="mt-0 text-orange-500"><i className="pi pi-exclamation-triangle mr-2"></i>Vérifications Préalables</h6>
+                                        <ul className="text-sm">
+                                            <li>Vérifier que le compte d'épargne est actif</li>
+                                            <li>S'assurer que toutes les conditions sont remplies</li>
+                                            <li>Confirmer l'identité du client</li>
+                                            <li>Obtenir la signature du contrat de prêt</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">8.10 Conseils et Bonnes Pratiques</h5>
                         <div className="surface-100 p-3 border-round">
                             <h6 className="text-blue-600">Enregistrement des Demandes</h6>
                             <ul className="line-height-3">
@@ -1615,6 +1992,18 @@ function UserManualComponent() {
                             </AccordionTab>
                             <AccordionTab header="Quelle est la différence entre APPROUVÉE et DÉCAISSÉE ?">
                                 <p>APPROUVÉE signifie que le comité de crédit a approuvé la demande, mais l'argent n'a pas encore été décaissé. DÉCAISSÉE signifie que le prêt a été effectivement décaissé et est devenu un prêt actif.</p>
+                            </AccordionTab>
+                            <AccordionTab header="Comment effectuer un décaissement ?">
+                                <p>Accédez à "Module Crédit" → "Décaissements" → "Approuvés". Localisez la demande approuvée, cliquez sur le bouton vert "Décaisser" (icône billet), sélectionnez le mode de décaissement (Espèces, Virement, Chèque ou Mobile Money), ajoutez une référence de paiement si nécessaire, puis confirmez. Le statut passera automatiquement à "Décaissé".</p>
+                            </AccordionTab>
+                            <AccordionTab header="Quels modes de décaissement sont disponibles ?">
+                                <p>Quatre modes sont disponibles : <strong>Espèces</strong> (paiement en liquide au guichet), <strong>Virement Bancaire</strong> (transfert vers un compte bancaire), <strong>Chèque</strong> (émission d'un chèque au nom du client), et <strong>Mobile Money</strong> (transfert via service de paiement mobile). Le mode doit être sélectionné obligatoirement lors du décaissement.</p>
+                            </AccordionTab>
+                            <AccordionTab header="Où voir l'historique des décaissements effectués ?">
+                                <p>Accédez à "Module Crédit" → "Décaissements" → "Effectués". Cette page affiche tous les décaissements réalisés avec les statistiques (total décaissé, nombre d'opérations, montant moyen). Vous pouvez filtrer par période et rechercher par client, dossier ou référence.</p>
+                            </AccordionTab>
+                            <AccordionTab header="Pourquoi le numéro de compte n'apparaît-il pas dans la liste des décaissements ?">
+                                <p>Le numéro de compte est automatiquement récupéré depuis le compte d'épargne lié à la demande de crédit. Si le N° Compte affiche "-", vérifiez que la demande de crédit a bien un compte d'épargne associé lors de sa création. Le compte doit être actif dans le système.</p>
                             </AccordionTab>
                             <AccordionTab header="Comment rejeter une demande de crédit ?">
                                 <p>Dans la liste des demandes, sélectionnez la demande en question, cliquez sur le bouton "Rejeter", indiquez obligatoirement le motif du rejet dans le champ "Raison du Rejet", puis confirmez. Le statut passera à REJETÉE.</p>

@@ -8,74 +8,76 @@ import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 import { LoanProductType } from './LoanProductType';
 import LoanProductTypeForm from './LoanProductTypeForm';
+
+const BASE_URL = buildApiUrl('/api/financial-products/reference/loan-product-types');
 
 const LoanProductTypesPage = () => {
     const [loanProductTypes, setLoanProductTypes] = useState<LoanProductType[]>([]);
     const [loanProductType, setLoanProductType] = useState<LoanProductType>(new LoanProductType());
     const [selectedLoanProductType, setSelectedLoanProductType] = useState<LoanProductType | null>(null);
     const [globalFilter, setGlobalFilter] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [totalRecords, setTotalRecords] = useState(0);
-    const [lazyState, setLazyState] = useState({
-        first: 0,
-        rows: 10,
-        page: 0
-    });
+    const [activeIndex, setActiveIndex] = useState(0);
     const [displayDialog, setDisplayDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
     const toast = useRef<Toast>(null);
-    const { data: fetchData, loading: fetchLoading, error: fetchError } = useConsumApi('/api/financial-products/reference/loan-product-types/findall');
-    const { data: createData, loading: createLoading, error: createError, postData } = useConsumApi('/api/financial-products/reference/loan-product-types/new');
-    const { data: updateData, loading: updateLoading, error: updateError, putData } = useConsumApi('');
-    const { data: deleteData, loading: deleteLoading, error: deleteError, deleteData: deleteRecord } = useConsumApi('');
+    const { data, loading, error, fetchData, callType } = useConsumApi('');
+
+    // Get connected user from cookies
+    const getConnectedUser = (): string => {
+        const appUserCookie = Cookies.get('appUser');
+        if (appUserCookie) {
+            try {
+                const appUser = JSON.parse(appUserCookie);
+                return appUser.email || `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || 'Unknown';
+            } catch {
+                return 'Unknown';
+            }
+        }
+        return 'Unknown';
+    };
 
     useEffect(() => {
         loadLoanProductTypes();
     }, []);
 
     useEffect(() => {
-        if (fetchData) {
-            setLoanProductTypes(fetchData);
-            setTotalRecords(fetchData.length);
+        if (data) {
+            switch (callType) {
+                case 'loadLoanProductTypes':
+                    const items = Array.isArray(data) ? data : data.content || [];
+                    setLoanProductTypes(items);
+                    break;
+                case 'create':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de produit de crédit créé avec succès' });
+                    loadLoanProductTypes();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'update':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de produit de crédit modifié avec succès' });
+                    loadLoanProductTypes();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'delete':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de produit de crédit supprimé avec succès' });
+                    loadLoanProductTypes();
+                    break;
+            }
         }
-    }, [fetchData]);
-
-    useEffect(() => {
-        if (createData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de produit de crédit créé avec succès' });
-            loadLoanProductTypes();
-            resetForm();
+        if (error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue' });
         }
-    }, [createData]);
-
-    useEffect(() => {
-        if (updateData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de produit de crédit modifié avec succès' });
-            loadLoanProductTypes();
-            resetForm();
-        }
-    }, [updateData]);
-
-    useEffect(() => {
-        if (deleteData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de produit de crédit supprimé avec succès' });
-            loadLoanProductTypes();
-        }
-    }, [deleteData]);
-
-    useEffect(() => {
-        if (createError || updateError || deleteError || fetchError) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: createError || updateError || deleteError || fetchError });
-        }
-    }, [createError, updateError, deleteError, fetchError]);
+    }, [data, error, callType]);
 
     const loadLoanProductTypes = () => {
-        setLoading(true);
-        setLoading(false);
+        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadLoanProductTypes');
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -87,22 +89,25 @@ const LoanProductTypesPage = () => {
         setLoanProductType(prev => ({ ...prev, [name]: checked }));
     };
 
-    const saveLoanProductType = async () => {
+    const saveLoanProductType = () => {
         if (!loanProductType.code || !loanProductType.name || !loanProductType.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Veuillez remplir les champs obligatoires' });
             return;
         }
 
+        const loanProductTypeToSave = { ...loanProductType, userAction: getConnectedUser() };
+
         if (isEditing && loanProductType.id) {
-            await putData(`/api/financial-products/reference/loan-product-types/update/${loanProductType.id}`, loanProductType);
+            fetchData(loanProductTypeToSave, 'PUT', `${BASE_URL}/update/${loanProductType.id}`, 'update');
         } else {
-            await postData(loanProductType);
+            fetchData(loanProductTypeToSave, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
     const editLoanProductType = (rowData: LoanProductType) => {
         setLoanProductType({ ...rowData });
         setIsEditing(true);
+        setActiveIndex(0);
     };
 
     const confirmDelete = (rowData: LoanProductType) => {
@@ -110,9 +115,9 @@ const LoanProductTypesPage = () => {
         setDisplayDialog(true);
     };
 
-    const deleteLoanProductTypeConfirmed = async () => {
+    const deleteLoanProductTypeConfirmed = () => {
         if (selectedLoanProductType?.id) {
-            await deleteRecord(`/api/financial-products/reference/loan-product-types/delete/${selectedLoanProductType.id}`);
+            fetchData(null, 'DELETE', `${BASE_URL}/delete/${selectedLoanProductType.id}`, 'delete');
             setDisplayDialog(false);
             setSelectedLoanProductType(null);
         }
@@ -123,27 +128,11 @@ const LoanProductTypesPage = () => {
         setIsEditing(false);
     };
 
-    const onPage = (event: any) => {
-        setLazyState(event);
-    };
-
     const actionBodyTemplate = (rowData: LoanProductType) => {
         return (
             <div className="flex gap-2">
-                <Button
-                    icon="pi pi-pencil"
-                    rounded
-                    outlined
-                    className="p-button-warning"
-                    onClick={() => editLoanProductType(rowData)}
-                />
-                <Button
-                    icon="pi pi-trash"
-                    rounded
-                    outlined
-                    severity="danger"
-                    onClick={() => confirmDelete(rowData)}
-                />
+                <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editLoanProductType(rowData)} tooltip="Modifier" />
+                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} tooltip="Supprimer" />
             </div>
         );
     };
@@ -157,12 +146,7 @@ const LoanProductTypesPage = () => {
             <h4 className="m-0">Gérer les Types de Produits de Crédit</h4>
             <span className="p-input-icon-left">
                 <i className="pi pi-search" />
-                <InputText
-                    type="search"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Rechercher..."
-                />
+                <InputText type="search" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Rechercher..." />
             </span>
         </div>
     );
@@ -172,49 +156,37 @@ const LoanProductTypesPage = () => {
             <Toast ref={toast} />
             <div className="col-12">
                 <div className="card">
-                    <h5>Loan Product Types / Types de Produits de Crédit</h5>
-                    <TabView>
-                        <TabPanel header="Nouveau">
+                    <h5>Types de Produits de Crédit</h5>
+                    <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+                        <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
                             <LoanProductTypeForm
                                 loanProductType={loanProductType}
                                 handleChange={handleChange}
                                 handleCheckboxChange={handleCheckboxChange}
                             />
                             <div className="flex gap-2 mt-4">
-                                <Button
-                                    label={isEditing ? 'Modifier' : 'Enregistrer'}
-                                    icon="pi pi-check"
-                                    onClick={saveLoanProductType}
-                                    loading={createLoading || updateLoading}
-                                />
-                                <Button
-                                    label="Annuler"
-                                    icon="pi pi-times"
-                                    severity="secondary"
-                                    onClick={resetForm}
-                                />
+                                <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={saveLoanProductType} loading={loading && (callType === 'create' || callType === 'update')} />
+                                <Button label="Annuler" icon="pi pi-times" severity="secondary" onClick={resetForm} />
                             </div>
                         </TabPanel>
-                        <TabPanel header="Tous">
+                        <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
                             <DataTable
                                 value={loanProductTypes}
-                                lazy
                                 paginator
-                                first={lazyState.first}
-                                rows={lazyState.rows}
-                                totalRecords={totalRecords}
-                                onPage={onPage}
-                                loading={loading || fetchLoading}
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading && callType === 'loadLoanProductTypes'}
                                 globalFilter={globalFilter}
                                 header={header}
                                 emptyMessage="Aucun type de produit de crédit trouvé"
+                                className="p-datatable-sm"
                             >
-                                <Column field="code" header="Code" sortable />
-                                <Column field="name" header="Nom" sortable />
-                                <Column field="nameFr" header="Nom (FR)" sortable />
+                                <Column field="code" header="Code" sortable filter />
+                                <Column field="name" header="Nom" sortable filter />
+                                <Column field="nameFr" header="Nom (FR)" sortable filter />
                                 <Column field="description" header="Description" />
                                 <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
-                                <Column body={actionBodyTemplate} header="Actions" />
+                                <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
                             </DataTable>
                         </TabPanel>
                     </TabView>
@@ -224,12 +196,12 @@ const LoanProductTypesPage = () => {
             <Dialog
                 visible={displayDialog}
                 style={{ width: '450px' }}
-                header="Confirmer"
+                header="Confirmer la suppression"
                 modal
                 footer={
                     <>
                         <Button label="Non" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
-                        <Button label="Oui" icon="pi pi-check" onClick={deleteLoanProductTypeConfirmed} autoFocus loading={deleteLoading} />
+                        <Button label="Oui" icon="pi pi-check" onClick={deleteLoanProductTypeConfirmed} autoFocus loading={loading && callType === 'delete'} />
                     </>
                 }
                 onHide={() => setDisplayDialog(false)}

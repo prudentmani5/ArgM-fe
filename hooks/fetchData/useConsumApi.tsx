@@ -10,6 +10,49 @@ type ApiError = {
     data?: any;
 };
 
+// Connected user interface
+export interface ConnectedUser {
+    id?: number;
+    email?: string;
+    firstname?: string;
+    lastname?: string;
+    fullName?: string;
+    roleId?: number;
+    roleName?: string;
+}
+
+/**
+ * Get the connected user from cookies
+ * @returns ConnectedUser object or null if not logged in
+ */
+export const getConnectedUser = (): ConnectedUser | null => {
+    try {
+        const appUserCookie = Cookies.get('appUser');
+        if (!appUserCookie) {
+            return null;
+        }
+        const user = JSON.parse(appUserCookie);
+        return {
+            ...user,
+            fullName: user.firstname && user.lastname
+                ? `${user.firstname} ${user.lastname}`
+                : user.email
+        };
+    } catch (error) {
+        console.error('Error parsing appUser cookie:', error);
+        return null;
+    }
+};
+
+/**
+ * Get the connected user's email for userAction field
+ * @returns User email or 'anonymous' if not logged in
+ */
+export const getUserAction = (): string => {
+    const user = getConnectedUser();
+    return user?.email || 'anonymous';
+};
+
 const useConsumApi = (initialUrl: string) => {
     const [data, setData] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
@@ -196,7 +239,20 @@ const useConsumApi = (initialUrl: string) => {
                 return blob;
             }
 
-            const jsonData = await response.json();
+            // Handle empty responses (e.g., 204 No Content from DELETE requests)
+            if (response.status === 204 || response.headers.get('content-length') === '0') {
+                console.log('✅ Empty response received (204 No Content)');
+                return { success: true };
+            }
+
+            // Try to parse JSON, but handle empty responses gracefully
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                console.log('✅ Empty response body received');
+                return { success: true };
+            }
+
+            const jsonData = JSON.parse(text);
             console.log('✅ JSON response received:', {
                 hasData: !!jsonData,
                 dataType: Array.isArray(jsonData) ? 'array' : typeof jsonData,
@@ -255,7 +311,32 @@ const useConsumApi = (initialUrl: string) => {
     //     // initializeCsrfToken();
     //   }, []);
 
-    return { data, loading, error, fetchData, callType };
+    // Wrapper function for forms that use processRequest pattern
+    const processRequest = async (options: {
+        route: string;
+        method?: string;
+        data?: any;
+        callType?: string;
+        skipAuth?: boolean;
+        responseType?: 'json' | 'blob';
+    }): Promise<{ data: any } | null> => {
+        const {
+            route,
+            method = 'GET',
+            data: requestData = null,
+            callType: requestCallType = 'default',
+            skipAuth = false,
+            responseType = 'json'
+        } = options;
+
+        const fullUrl = route.startsWith('http') ? route : buildApiUrl(route);
+        const result = await fetchData(requestData, method, fullUrl, requestCallType, skipAuth, responseType);
+
+        // Wrap result in { data: ... } format for backward compatibility
+        return result !== null ? { data: result } : null;
+    };
+
+    return { data, loading, error, fetchData, callType, processRequest };
 };
 
 export default useConsumApi;

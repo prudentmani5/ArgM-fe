@@ -21,35 +21,41 @@ export default function RapportDecaissementsPage() {
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any[]>>(null);
 
-    const { data, loading, error, fetchData, callType } = useConsumApi('');
+    // Use separate hook instances for each data type to avoid race conditions
+    const decaissementsApi = useConsumApi('');
+    const branchesApi = useConsumApi('');
 
     useEffect(() => {
         loadDecaissements();
         loadBranches();
     }, []);
 
+    // Handle decaissements data
     useEffect(() => {
-        if (data) {
-            switch (callType) {
-                case 'loadDecaissements':
-                    setDecaissements(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadBranches':
-                    setBranches(Array.isArray(data) ? data : data.content || []);
-                    break;
-            }
+        if (decaissementsApi.data) {
+            setDecaissements(Array.isArray(decaissementsApi.data) ? decaissementsApi.data : decaissementsApi.data.content || []);
         }
-        if (error) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message, life: 3000 });
+        if (decaissementsApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: decaissementsApi.error.message, life: 3000 });
         }
-    }, [data, error, callType]);
+    }, [decaissementsApi.data, decaissementsApi.error]);
+
+    // Handle branches data
+    useEffect(() => {
+        if (branchesApi.data) {
+            setBranches(Array.isArray(branchesApi.data) ? branchesApi.data : branchesApi.data.content || []);
+        }
+        if (branchesApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: branchesApi.error.message, life: 3000 });
+        }
+    }, [branchesApi.data, branchesApi.error]);
 
     const loadDecaissements = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDecaissements');
+        decaissementsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDecaissements');
     };
 
     const loadBranches = () => {
-        fetchData(null, 'GET', buildApiUrl('/api/branches/findall'), 'loadBranches');
+        branchesApi.fetchData(null, 'GET', buildApiUrl('/api/reference-data/branches/findall'), 'loadBranches');
     };
 
     const formatCurrency = (value: number) => {
@@ -175,7 +181,7 @@ export default function RapportDecaissementsPage() {
                 paginator
                 rows={10}
                 rowsPerPageOptions={[5, 10, 25, 50]}
-                loading={loading && callType === 'loadDecaissements'}
+                loading={decaissementsApi.loading}
                 header={header}
                 emptyMessage="Aucun décaissement trouvé"
                 className="p-datatable-sm"

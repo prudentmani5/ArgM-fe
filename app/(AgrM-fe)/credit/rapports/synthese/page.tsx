@@ -18,7 +18,10 @@ export default function SynthesePortefeuillePage() {
     const [branchFilter, setBranchFilter] = useState<number | null>(null);
     const toast = useRef<Toast>(null);
 
-    const { data, loading, error, fetchData, callType } = useConsumApi('');
+    // Use separate hook instances for each data type to avoid race conditions
+    const demandesApi = useConsumApi('');
+    const decaissementsApi = useConsumApi('');
+    const branchesApi = useConsumApi('');
 
     useEffect(() => {
         loadDemandes();
@@ -26,35 +29,46 @@ export default function SynthesePortefeuillePage() {
         loadBranches();
     }, []);
 
+    // Handle demandes data
     useEffect(() => {
-        if (data) {
-            switch (callType) {
-                case 'loadDemandes':
-                    setDemandes(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadDecaissements':
-                    setDecaissements(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadBranches':
-                    setBranches(Array.isArray(data) ? data : data.content || []);
-                    break;
-            }
+        if (demandesApi.data) {
+            setDemandes(Array.isArray(demandesApi.data) ? demandesApi.data : demandesApi.data.content || []);
         }
-        if (error) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message, life: 3000 });
+        if (demandesApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: demandesApi.error.message, life: 3000 });
         }
-    }, [data, error, callType]);
+    }, [demandesApi.data, demandesApi.error]);
+
+    // Handle decaissements data
+    useEffect(() => {
+        if (decaissementsApi.data) {
+            setDecaissements(Array.isArray(decaissementsApi.data) ? decaissementsApi.data : decaissementsApi.data.content || []);
+        }
+        if (decaissementsApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: decaissementsApi.error.message, life: 3000 });
+        }
+    }, [decaissementsApi.data, decaissementsApi.error]);
+
+    // Handle branches data
+    useEffect(() => {
+        if (branchesApi.data) {
+            setBranches(Array.isArray(branchesApi.data) ? branchesApi.data : branchesApi.data.content || []);
+        }
+        if (branchesApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: branchesApi.error.message, life: 3000 });
+        }
+    }, [branchesApi.data, branchesApi.error]);
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', buildApiUrl('/api/credit/applications/findall'), 'loadDemandes');
+        demandesApi.fetchData(null, 'GET', buildApiUrl('/api/credit/applications/findall'), 'loadDemandes');
     };
 
     const loadDecaissements = () => {
-        fetchData(null, 'GET', buildApiUrl('/api/credit/disbursements/findall'), 'loadDecaissements');
+        decaissementsApi.fetchData(null, 'GET', buildApiUrl('/api/credit/disbursements/findall'), 'loadDecaissements');
     };
 
     const loadBranches = () => {
-        fetchData(null, 'GET', buildApiUrl('/api/branches/findall'), 'loadBranches');
+        branchesApi.fetchData(null, 'GET', buildApiUrl('/api/reference-data/branches/findall'), 'loadBranches');
     };
 
     const formatCurrency = (value: number) => {

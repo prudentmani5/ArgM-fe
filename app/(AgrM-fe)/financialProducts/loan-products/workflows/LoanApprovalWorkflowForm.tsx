@@ -56,7 +56,7 @@ const LoanApprovalWorkflowForm: React.FC<LoanApprovalWorkflowFormProps> = ({
         setApprovalLevels(response.data);
       }
     } catch (error) {
-      console.error("Error loading approval levels:", error);
+      console.error("Erreur lors du chargement des niveaux d'approbation:", error);
     }
   };
 
@@ -67,7 +67,7 @@ const LoanApprovalWorkflowForm: React.FC<LoanApprovalWorkflowFormProps> = ({
   const handleSubmit = () => {
     setSubmitted(true);
 
-    if (!formData.approvalLevelId || !formData.sequenceNumber) {
+    if (!formData.approvalLevelId || !formData.sequenceOrder) {
       return;
     }
 
@@ -78,13 +78,13 @@ const LoanApprovalWorkflowForm: React.FC<LoanApprovalWorkflowFormProps> = ({
     return (
       <div>
         <Button
-          label="Cancel / Annuler"
+          label="Annuler"
           icon="pi pi-times"
           className="p-button-text"
           onClick={onHide}
         />
         <Button
-          label="Save / Enregistrer"
+          label="Enregistrer"
           icon="pi pi-check"
           onClick={handleSubmit}
         />
@@ -98,8 +98,8 @@ const LoanApprovalWorkflowForm: React.FC<LoanApprovalWorkflowFormProps> = ({
       style={{ width: "50vw" }}
       header={
         loanApprovalWorkflow?.id
-          ? "Edit Loan Approval Workflow / Modifier Flux d'Approbation"
-          : "New Loan Approval Workflow / Nouveau Flux d'Approbation"
+          ? "Modifier Flux d'Approbation"
+          : "Nouveau Flux d'Approbation"
       }
       modal
       className="p-fluid"
@@ -107,14 +107,14 @@ const LoanApprovalWorkflowForm: React.FC<LoanApprovalWorkflowFormProps> = ({
       onHide={onHide}
     >
       <div className="p-fluid">
-        {/* Section 1: Workflow Configuration */}
+        {/* Section 1: Configuration du Flux */}
         <Divider>
-          <span className="p-tag">Workflow Configuration / Configuration du Flux</span>
+          <span className="p-tag">Configuration du Flux</span>
         </Divider>
 
         <div className="field grid">
           <label htmlFor="approvalLevelId" className="col-12 mb-2 md:col-3 md:mb-0">
-            Approval Level / Niveau d&apos;Approbation *
+            Niveau d&apos;Approbation *
           </label>
           <div className="col-12 md:col-9">
             <Dropdown
@@ -122,66 +122,62 @@ const LoanApprovalWorkflowForm: React.FC<LoanApprovalWorkflowFormProps> = ({
               value={formData.approvalLevelId}
               options={approvalLevels}
               onChange={(e) => handleChange("approvalLevelId", e.value)}
-              optionLabel="levelName"
+              optionLabel="nameFr"
               optionValue="id"
-              placeholder="Select / Sélectionner"
+              placeholder="Sélectionner"
               className={submitted && !formData.approvalLevelId ? "p-invalid" : ""}
             />
             {submitted && !formData.approvalLevelId && (
-              <small className="p-error">
-                Approval level is required / Niveau d&apos;approbation requis
-              </small>
+              <small className="p-error">Niveau d&apos;approbation requis</small>
             )}
           </div>
         </div>
 
         <div className="field grid">
-          <label htmlFor="sequenceNumber" className="col-12 mb-2 md:col-3 md:mb-0">
-            Sequence Number / Numéro de Séquence *
+          <label htmlFor="sequenceOrder" className="col-12 mb-2 md:col-3 md:mb-0">
+            Ordre de Séquence *
           </label>
           <div className="col-12 md:col-9">
             <InputNumber
-              id="sequenceNumber"
-              value={formData.sequenceNumber}
-              onValueChange={(e) => handleChange("sequenceNumber", e.value || 1)}
+              id="sequenceOrder"
+              value={formData.sequenceOrder}
+              onValueChange={(e) => handleChange("sequenceOrder", e.value || 1)}
               min={1}
-              className={submitted && !formData.sequenceNumber ? "p-invalid" : ""}
+              className={submitted && !formData.sequenceOrder ? "p-invalid" : ""}
             />
-            {submitted && !formData.sequenceNumber && (
-              <small className="p-error">
-                Sequence number is required / Numéro de séquence requis
-              </small>
+            {submitted && !formData.sequenceOrder && (
+              <small className="p-error">Ordre de séquence requis</small>
             )}
           </div>
         </div>
 
         <div className="field grid">
           <label className="col-12 mb-2 md:col-3 md:mb-0">
-            Is Required / Est Requis
+            Actif
           </label>
           <div className="col-12 md:col-9">
             <Checkbox
-              inputId="isRequired"
-              checked={formData.isRequired}
-              onChange={(e) => handleChange("isRequired", e.checked)}
+              inputId="isActive"
+              checked={formData.isActive}
+              onChange={(e) => handleChange("isActive", e.checked)}
             />
           </div>
         </div>
 
-        {/* Section 2: Amount Range */}
+        {/* Section 2: Plage de Montant */}
         <Divider>
-          <span className="p-tag">Amount Range / Plage de Montant</span>
+          <span className="p-tag">Plage de Montant du Prêt</span>
         </Divider>
 
         <div className="field grid">
-          <label htmlFor="minAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Minimum Amount / Montant Minimum
+          <label htmlFor="minLoanAmount" className="col-12 mb-2 md:col-3 md:mb-0">
+            Montant Minimum
           </label>
           <div className="col-12 md:col-9">
             <InputNumber
-              id="minAmount"
-              value={formData.minAmount || 0}
-              onValueChange={(e) => handleChange("minAmount", e.value || 0)}
+              id="minLoanAmount"
+              value={formData.minLoanAmount || 0}
+              onValueChange={(e) => handleChange("minLoanAmount", e.value || 0)}
               mode="currency"
               currency="BIF"
               locale="fr-BI"
@@ -190,14 +186,14 @@ const LoanApprovalWorkflowForm: React.FC<LoanApprovalWorkflowFormProps> = ({
         </div>
 
         <div className="field grid">
-          <label htmlFor="maxAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Maximum Amount / Montant Maximum
+          <label htmlFor="maxLoanAmount" className="col-12 mb-2 md:col-3 md:mb-0">
+            Montant Maximum
           </label>
           <div className="col-12 md:col-9">
             <InputNumber
-              id="maxAmount"
-              value={formData.maxAmount || 0}
-              onValueChange={(e) => handleChange("maxAmount", e.value || 0)}
+              id="maxLoanAmount"
+              value={formData.maxLoanAmount || 0}
+              onValueChange={(e) => handleChange("maxLoanAmount", e.value || 0)}
               mode="currency"
               currency="BIF"
               locale="fr-BI"

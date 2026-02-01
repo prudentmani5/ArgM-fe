@@ -21,6 +21,7 @@ const LoanProductFeePage = () => {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const toast = useRef<Toast>(null);
   const dt = useRef<DataTable<LoanProductFee[]>>(null);
   const searchParams = useSearchParams();
@@ -41,7 +42,7 @@ const LoanProductFeePage = () => {
     setLoading(true);
     try {
       const response = await fetchLoanProductFees({
-        route: `/api/financial-products/loan-products/fees/product/${productId}`,
+        route: `/api/financial-products/loan-products/${productId}/fees`,
         method: "GET",
       });
 
@@ -51,8 +52,8 @@ const LoanProductFeePage = () => {
     } catch (error) {
       toast.current?.show({
         severity: "error",
-        summary: "Error / Erreur",
-        detail: "Failed to load produit de crédit fees / Échec du chargement des frais",
+        summary: "Erreur",
+        detail: "Échec du chargement des frais",
         life: 3000,
       });
     } finally {
@@ -77,52 +78,66 @@ const LoanProductFeePage = () => {
 
   const saveLoanProductFee = async (loanProductFee: LoanProductFee) => {
     try {
+      const dataToSend = {
+        ...loanProductFee,
+        product: { id: productId },
+        feeType: { id: loanProductFee.feeTypeId },
+        calculationMethod: { id: loanProductFee.calculationMethodId },
+      };
+
       if (loanProductFee.id) {
         const response = await updateLoanProductFee({
-          route: `/api/financial-products/loan-products/fees/update/${loanProductFee.id}`,
+          route: `/api/financial-products/loan-products/fees/${loanProductFee.id}/update`,
           method: "PUT",
-          data: loanProductFee,
+          data: dataToSend,
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan product fee updated successfully / Frais mis à jour avec succès",
+            summary: "Succès",
+            detail: "Frais mis à jour avec succès",
             life: 3000,
           });
           loadLoanProductFees();
+          setActiveIndex(1);
         }
       } else {
         const response = await createLoanProductFee({
-          route: "/api/financial-products/loan-products/fees/save",
+          route: `/api/financial-products/loan-products/${productId}/fees/new`,
           method: "POST",
-          data: loanProductFee,
+          data: dataToSend,
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan product fee created successfully / Frais créé avec succès",
+            summary: "Succès",
+            detail: "Frais créé avec succès",
             life: 3000,
           });
           loadLoanProductFees();
+          setActiveIndex(1);
         }
       }
       hideDialog();
     } catch (error) {
       toast.current?.show({
         severity: "error",
-        summary: "Error / Erreur",
-        detail: "Failed to save produit de crédit fee / Échec de l'enregistrement du frais",
+        summary: "Erreur",
+        detail: "Échec de l'enregistrement du frais",
         life: 3000,
       });
     }
   };
 
   const editLoanProductFee = (loanProductFee: LoanProductFee) => {
-    setSelectedLoanProductFee({ ...loanProductFee });
+    const feeToEdit = {
+      ...loanProductFee,
+      feeTypeId: loanProductFee.feeType?.id || loanProductFee.feeTypeId,
+      calculationMethodId: loanProductFee.calculationMethod?.id || loanProductFee.calculationMethodId,
+    };
+    setSelectedLoanProductFee(feeToEdit);
     setDisplayDialog(true);
   };
 
@@ -135,15 +150,15 @@ const LoanProductFeePage = () => {
     if (selectedLoanProductFee?.id) {
       try {
         const response = await deleteLoanProductFee({
-          route: `/api/financial-products/loan-products/fees/delete/${selectedLoanProductFee.id}`,
+          route: `/api/financial-products/loan-products/fees/${selectedLoanProductFee.id}/delete`,
           method: "DELETE",
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan product fee deleted successfully / Frais supprimé avec succès",
+            summary: "Succès",
+            detail: "Frais supprimé avec succès",
             life: 3000,
           });
           loadLoanProductFees();
@@ -151,8 +166,8 @@ const LoanProductFeePage = () => {
       } catch (error) {
         toast.current?.show({
           severity: "error",
-          summary: "Error / Erreur",
-          detail: "Failed to delete produit de crédit fee / Échec de la suppression du frais",
+          summary: "Erreur",
+          detail: "Échec de la suppression du frais",
           life: 3000,
         });
       }
@@ -168,7 +183,7 @@ const LoanProductFeePage = () => {
     return (
       <div className="flex flex-wrap gap-2">
         <Button
-          label="New / Nouveau"
+          label="Nouveau"
           icon="pi pi-plus"
           className="p-button-success"
           onClick={openNew}
@@ -197,13 +212,13 @@ const LoanProductFeePage = () => {
           icon="pi pi-pencil"
           className="p-button-rounded p-button-success p-button-sm"
           onClick={() => editLoanProductFee(rowData)}
-          tooltip="Edit / Modifier"
+          tooltip="Modifier"
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-danger p-button-sm"
           onClick={() => confirmDelete(rowData)}
-          tooltip="Delete / Supprimer"
+          tooltip="Supprimer"
         />
       </div>
     );
@@ -212,7 +227,7 @@ const LoanProductFeePage = () => {
   const statusBodyTemplate = (rowData: LoanProductFee) => {
     return (
       <Tag
-        value={rowData.isActive ? "Active / Actif" : "Inactive / Inactif"}
+        value={rowData.isActive ? "Actif" : "Inactif"}
         severity={rowData.isActive ? "success" : "danger"}
       />
     );
@@ -223,6 +238,7 @@ const LoanProductFeePage = () => {
       return new Intl.NumberFormat("fr-BI", {
         style: "currency",
         currency: "BIF",
+        maximumFractionDigits: 0,
       }).format(rowData.fixedAmount);
     } else if (rowData.percentageRate) {
       return `${rowData.percentageRate.toFixed(2)}%`;
@@ -232,12 +248,12 @@ const LoanProductFeePage = () => {
 
   const header = (
     <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h4 className="m-0">Gérer les Loan Product Fees / Gérer les Frais de Produit</h4>
+      <h4 className="m-0">Gérer les Frais de Produit</h4>
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
           type="search"
-          placeholder="Search / Rechercher..."
+          placeholder="Rechercher..."
           onInput={(e) => setGlobalFilter((e.target as HTMLInputElement).value)}
         />
       </span>
@@ -247,13 +263,13 @@ const LoanProductFeePage = () => {
   const deleteDialogFooter = (
     <>
       <Button
-        label="No / Non"
+        label="Non"
         icon="pi pi-times"
         className="p-button-text"
         onClick={hideDeleteDialog}
       />
       <Button
-        label="Yes / Oui"
+        label="Oui"
         icon="pi pi-check"
         className="p-button-text"
         onClick={deleteLoanProductFeeAction}
@@ -267,8 +283,8 @@ const LoanProductFeePage = () => {
         <div className="flex align-items-center justify-content-center" style={{ minHeight: "400px" }}>
           <div className="text-center">
             <i className="pi pi-exclamation-triangle" style={{ fontSize: "3rem", color: "var(--orange-500)" }} />
-            <h3>No Product Selected / Aucun Produit Sélectionné</h3>
-            <p>Please select a produit de crédit first / Veuillez d&apos;abord sélectionner un produit de crédit</p>
+            <h3>Aucun Produit Sélectionné</h3>
+            <p>Veuillez d&apos;abord sélectionner un produit de crédit</p>
           </div>
         </div>
       </div>
@@ -280,8 +296,9 @@ const LoanProductFeePage = () => {
       <Toast ref={toast} />
 
       <div className="card">
-        <TabView>
-          <TabPanel header="New / Nouveau">
+        <h5>Frais du Produit de Crédit</h5>
+        <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+          <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
             <LoanProductFeeForm
               visible={displayDialog}
               onHide={hideDialog}
@@ -290,14 +307,14 @@ const LoanProductFeePage = () => {
               productId={productId}
             />
             <Button
-              label="Add Fee / Ajouter Frais"
+              label="Ajouter Frais"
               icon="pi pi-plus"
               className="p-button-success"
               onClick={openNew}
             />
           </TabPanel>
 
-          <TabPanel header="All / Tous">
+          <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
             <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
 
             <DataTable
@@ -308,21 +325,23 @@ const LoanProductFeePage = () => {
               rows={10}
               rowsPerPageOptions={[5, 10, 25]}
               paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-              currentPageReportTemplate="Showing {first} to {last} of {totalRecords} fees"
+              currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} frais"
               globalFilter={globalFilter}
               header={header}
               loading={loading}
-              emptyMessage="No fees found / Aucun frais trouvé"
+              emptyMessage="Aucun frais trouvé"
+              className="p-datatable-sm"
             >
-              <Column field="feeType.typeName" header="Fee Type / Type de Frais" sortable />
+              <Column field="feeType.nameFr" header="Type de Frais" sortable filter />
               <Column
-                field="calculationMethod.methodName"
-                header="Calculation Method / Méthode de Calcul"
+                field="calculationMethod.nameFr"
+                header="Méthode de Calcul"
                 sortable
+                filter
               />
-              <Column header="Amount / Montant" body={amountBodyTemplate} />
-              <Column field="collectionTime" header="Collection Time / Moment" sortable />
-              <Column header="Status / Statut" body={statusBodyTemplate} sortable />
+              <Column header="Montant" body={amountBodyTemplate} />
+              <Column field="collectionTime" header="Moment de Collecte" sortable />
+              <Column header="Statut" body={statusBodyTemplate} sortable />
               <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: "8rem" }} />
             </DataTable>
           </TabPanel>
@@ -340,7 +359,7 @@ const LoanProductFeePage = () => {
       <Dialog
         visible={deleteDialog}
         style={{ width: "450px" }}
-        header="Confirm / Confirmer"
+        header="Confirmer la suppression"
         modal
         footer={deleteDialogFooter}
         onHide={hideDeleteDialog}
@@ -349,7 +368,6 @@ const LoanProductFeePage = () => {
           <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: "2rem" }} />
           {selectedLoanProductFee && (
             <span>
-              Êtes-vous sûr de vouloir supprimer this fee? /
               Êtes-vous sûr de vouloir supprimer ce frais?
             </span>
           )}

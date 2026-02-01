@@ -25,7 +25,10 @@ export default function RapportDemandesPage() {
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any[]>>(null);
 
-    const { data, loading, error, fetchData, callType } = useConsumApi('');
+    // Separate hook instances for each data type
+    const demandesApi = useConsumApi('');
+    const branchesApi = useConsumApi('');
+    const statutsApi = useConsumApi('');
 
     useEffect(() => {
         loadDemandes();
@@ -33,35 +36,46 @@ export default function RapportDemandesPage() {
         loadStatuts();
     }, []);
 
+    // Handle demandes data
     useEffect(() => {
-        if (data) {
-            switch (callType) {
-                case 'loadDemandes':
-                    setDemandes(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadBranches':
-                    setBranches(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadStatuts':
-                    setStatuts(Array.isArray(data) ? data : data.content || []);
-                    break;
-            }
+        if (demandesApi.data) {
+            setDemandes(Array.isArray(demandesApi.data) ? demandesApi.data : demandesApi.data.content || []);
         }
-        if (error) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message, life: 3000 });
+        if (demandesApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: demandesApi.error.message, life: 3000 });
         }
-    }, [data, error, callType]);
+    }, [demandesApi.data, demandesApi.error]);
+
+    // Handle branches data
+    useEffect(() => {
+        if (branchesApi.data) {
+            setBranches(Array.isArray(branchesApi.data) ? branchesApi.data : branchesApi.data.content || []);
+        }
+        if (branchesApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des agences', life: 3000 });
+        }
+    }, [branchesApi.data, branchesApi.error]);
+
+    // Handle statuts data
+    useEffect(() => {
+        if (statutsApi.data) {
+            setStatuts(Array.isArray(statutsApi.data) ? statutsApi.data : statutsApi.data.content || []);
+        }
+        if (statutsApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des statuts', life: 3000 });
+        }
+    }, [statutsApi.data, statutsApi.error]);
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+        demandesApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
     };
 
     const loadBranches = () => {
-        fetchData(null, 'GET', buildApiUrl('/api/branches/findall'), 'loadBranches');
+        branchesApi.fetchData(null, 'GET', buildApiUrl('/api/reference-data/branches/findall'), 'loadBranches');
     };
 
     const loadStatuts = () => {
-        fetchData(null, 'GET', buildApiUrl('/api/credit/application-statuses/findall'), 'loadStatuts');
+        statutsApi.fetchData(null, 'GET', buildApiUrl('/api/credit/application-statuses/findall'), 'loadStatuts');
     };
 
     const formatCurrency = (value: number) => {
@@ -86,18 +100,11 @@ export default function RapportDemandesPage() {
     };
 
     const statusBodyTemplate = (rowData: any) => {
-        const colors: Record<string, string> = {
-            'BROUILLON': 'secondary',
-            'SOUMISE': 'info',
-            'EN_ANALYSE': 'warning',
-            'EN_VISITE': 'warning',
-            'EN_COMITE': 'info',
-            'APPROUVE': 'success',
-            'REJETE': 'danger',
-            'DECAISSE': 'success',
-            'ANNULE': 'danger'
-        };
-        return <Tag value={rowData.statusName || rowData.statusCode} severity={colors[rowData.statusCode] as any || 'info'} />;
+        const status = rowData.status;
+        if (status) {
+            return <Tag value={status.nameFr || status.name} style={{ backgroundColor: status.color || '#6366f1' }} />;
+        }
+        return <Tag value="-" severity="info" />;
     };
 
     // Filter data based on filters
@@ -107,7 +114,7 @@ export default function RapportDemandesPage() {
             match = match && d.branchId === filters.branchId;
         }
         if (filters.statusId) {
-            match = match && d.statusId === filters.statusId;
+            match = match && (d.statusId === filters.statusId || d.status?.id === filters.statusId);
         }
         if (filters.dateRange && filters.dateRange[0]) {
             const appDate = new Date(d.applicationDate);
@@ -121,9 +128,33 @@ export default function RapportDemandesPage() {
 
     // Calculate statistics
     const totalAmount = filteredDemandes.reduce((sum, d) => sum + (d.amountRequested || 0), 0);
-    const approvedCount = filteredDemandes.filter(d => d.statusCode === 'APPROUVE' || d.statusCode === 'DECAISSE').length;
-    const rejectedCount = filteredDemandes.filter(d => d.statusCode === 'REJETE').length;
-    const pendingCount = filteredDemandes.filter(d => !['APPROUVE', 'DECAISSE', 'REJETE', 'ANNULE'].includes(d.statusCode)).length;
+    const approvedCount = filteredDemandes.filter(d =>
+        d.status?.code === 'APPROUVE' || d.status?.code === 'APPROVED' ||
+        d.status?.code === 'DECAISSE' || d.status?.code === 'DISBURSED'
+    ).length;
+    const rejectedCount = filteredDemandes.filter(d =>
+        d.status?.code === 'REJETE' || d.status?.code === 'REJECTED'
+    ).length;
+    const pendingCount = filteredDemandes.filter(d =>
+        !['APPROUVE', 'APPROVED', 'DECAISSE', 'DISBURSED', 'REJETE', 'REJECTED', 'ANNULE', 'CANCELLED'].includes(d.status?.code || '')
+    ).length;
+
+    const clientBodyTemplate = (rowData: any) => {
+        const client = rowData.client;
+        return client ? `${client.firstName} ${client.lastName}` : '-';
+    };
+
+    const branchBodyTemplate = (rowData: any) => {
+        return rowData.branch?.name || '-';
+    };
+
+    const creditOfficerBodyTemplate = (rowData: any) => {
+        const officer = rowData.creditOfficer;
+        if (officer) {
+            return `${officer.firstName || ''} ${officer.lastName || ''}`.trim() || officer.email || '-';
+        }
+        return rowData.userAction || '-';
+    };
 
     const header = (
         <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
@@ -171,6 +202,7 @@ export default function RapportDemandesPage() {
                             placeholder="Toutes les agences"
                             className="w-full"
                             showClear
+                            filter
                         />
                     </div>
                     <div className="col-12 md:col-4">
@@ -184,6 +216,7 @@ export default function RapportDemandesPage() {
                             placeholder="Tous les statuts"
                             className="w-full"
                             showClear
+                            filter
                         />
                     </div>
                 </div>
@@ -229,7 +262,7 @@ export default function RapportDemandesPage() {
                 paginator
                 rows={10}
                 rowsPerPageOptions={[5, 10, 25, 50]}
-                loading={loading && callType === 'loadDemandes'}
+                loading={demandesApi.loading}
                 header={header}
                 emptyMessage="Aucune demande trouvée"
                 className="p-datatable-sm"
@@ -237,12 +270,12 @@ export default function RapportDemandesPage() {
             >
                 <Column field="applicationNumber" header="N° Dossier" sortable />
                 <Column field="applicationDate" header="Date Dépôt" body={(row) => formatDate(row.applicationDate)} sortable />
-                <Column field="clientName" header="Client" sortable />
+                <Column header="Client" body={clientBodyTemplate} sortable />
                 <Column field="amountRequested" header="Montant Demandé" body={(row) => formatCurrency(row.amountRequested)} sortable />
                 <Column field="durationMonths" header="Durée (mois)" sortable />
                 <Column header="Statut" body={statusBodyTemplate} />
-                <Column field="branchName" header="Agence" sortable />
-                <Column field="creditOfficerName" header="Agent de Crédit" sortable />
+                <Column header="Agence" body={branchBodyTemplate} sortable />
+                <Column header="Agent de Crédit" body={creditOfficerBodyTemplate} sortable />
             </DataTable>
         </div>
     );

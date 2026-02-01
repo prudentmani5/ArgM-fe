@@ -8,6 +8,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { Divider } from "primereact/divider";
+import { TabView, TabPanel } from "primereact/tabview";
+import { Card } from "primereact/card";
 import { LoanProduct } from "./LoanProduct";
 import useConsumApi from "@/hooks/fetchData/useConsumApi";
 
@@ -26,6 +28,7 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<LoanProduct>(new LoanProduct());
   const [submitted, setSubmitted] = useState(false);
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   const [productTypes, setProductTypes] = useState<any[]>([]);
   const [currencies, setCurrencies] = useState<any[]>([]);
@@ -38,32 +41,39 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
   const { processRequest: loadPaymentFrequencies } = useConsumApi();
 
   const targetClienteleOptions = [
-    { label: "Individual / Individuel", value: "INDIVIDUAL" },
-    { label: "Group / Groupe", value: "GROUP" },
-    { label: "Mixed / Mixte", value: "MIXED" },
+    { label: "Individuel", value: "INDIVIDUAL" },
+    { label: "Groupe", value: "GROUP" },
+    { label: "Mixte", value: "MIXED" },
   ];
 
   const gracePeriodTypeOptions = [
-    { label: "None / Aucun", value: "NONE" },
-    { label: "Principal / Principal", value: "PRINCIPAL" },
-    { label: "Interest / Intérêt", value: "INTEREST" },
-    { label: "Both / Les deux", value: "BOTH" },
+    { label: "Aucun", value: "NONE" },
+    { label: "Principal uniquement", value: "PRINCIPAL" },
+    { label: "Intérêt uniquement", value: "INTEREST" },
+    { label: "Principal et Intérêt", value: "BOTH" },
   ];
 
   const statusOptions = [
-    { label: "Draft / Brouillon", value: "DRAFT" },
-    { label: "Active / Actif", value: "ACTIVE" },
-    { label: "Suspended / Suspendu", value: "SUSPENDED" },
-    { label: "Discontinued / Abandonné", value: "DISCONTINUED" },
+    { label: "Brouillon", value: "DRAFT" },
+    { label: "Actif", value: "ACTIVE" },
+    { label: "Suspendu", value: "SUSPENDED" },
+    { label: "Abandonné", value: "DISCONTINUED" },
   ];
 
   useEffect(() => {
     if (loanProduct) {
-      setFormData({ ...loanProduct });
+      setFormData({
+        ...loanProduct,
+        productTypeId: loanProduct.productType?.id || loanProduct.productTypeId,
+        currencyId: loanProduct.currency?.id || loanProduct.currencyId,
+        interestCalculationMethodId: loanProduct.interestCalculationMethod?.id || loanProduct.interestCalculationMethodId,
+        paymentFrequencyId: loanProduct.paymentFrequency?.id || loanProduct.paymentFrequencyId,
+      });
     } else {
       setFormData(new LoanProduct());
     }
     setSubmitted(false);
+    setActiveTabIndex(0);
   }, [loanProduct, visible]);
 
   useEffect(() => {
@@ -96,7 +106,7 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
       if (icmResponse?.data) setInterestCalcMethods(icmResponse.data);
       if (pfResponse?.data) setPaymentFrequencies(pfResponse.data);
     } catch (error) {
-      console.error("Error loading reference data:", error);
+      console.error("Erreur lors du chargement des données de référence:", error);
     }
   };
 
@@ -121,21 +131,32 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
       return;
     }
 
-    onSave(formData);
+    // Transform data to match backend structure
+    const dataToSend = {
+      ...formData,
+      productType: { id: formData.productTypeId },
+      currency: { id: formData.currencyId },
+      interestCalculationMethod: { id: formData.interestCalculationMethodId },
+      paymentFrequency: { id: formData.paymentFrequencyId },
+    };
+
+    onSave(dataToSend);
   };
 
   const renderDialogFooter = () => {
     return (
-      <div>
+      <div className="flex justify-content-end gap-2">
         <Button
-          label="Cancel / Annuler"
+          label="Annuler"
           icon="pi pi-times"
-          className="p-button-text"
+          severity="secondary"
+          outlined
           onClick={onHide}
         />
         <Button
-          label="Save / Enregistrer"
+          label="Enregistrer"
           icon="pi pi-check"
+          severity="success"
           onClick={handleSubmit}
         />
       </div>
@@ -145,527 +166,600 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
   return (
     <Dialog
       visible={visible}
-      style={{ width: "60vw" }}
+      style={{ width: "75vw", maxWidth: "1200px" }}
       header={
-        loanProduct?.id
-          ? "Edit Loan Product / Modifier Produit de Crédit"
-          : "New Loan Product / Nouveau Produit de Crédit"
+        <div className="flex align-items-center gap-2">
+          <i className={`pi ${loanProduct?.id ? "pi-pencil" : "pi-plus-circle"} text-primary`} style={{ fontSize: "1.5rem" }}></i>
+          <span className="font-bold text-xl">
+            {loanProduct?.id ? "Modifier le Produit de Crédit" : "Nouveau Produit de Crédit"}
+          </span>
+        </div>
       }
       modal
       className="p-fluid"
       footer={renderDialogFooter()}
       onHide={onHide}
+      maximizable
+      draggable={false}
     >
-      <div className="p-fluid">
-        {/* Section 1: Basic Information */}
-        <Divider>
-          <span className="p-tag">Basic Information / Informations de Base</span>
-        </Divider>
+      <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
+        {/* Tab 1: Informations Générales */}
+        <TabPanel header="Informations Générales" leftIcon="pi pi-info-circle mr-2">
+          <div className="grid">
+            {/* Identification */}
+            <div className="col-12">
+              <Card className="shadow-2 mb-3">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-id-card text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Identification du Produit</span>
+                </div>
+                <Divider className="mt-0" />
 
-        <div className="field grid">
-          <label htmlFor="productCode" className="col-12 mb-2 md:col-3 md:mb-0">
-            Product Code / Code Produit *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputText
-              id="productCode"
-              value={formData.productCode}
-              onChange={(e) => handleChange("productCode", e.target.value)}
-              className={submitted && !formData.productCode ? "p-invalid" : ""}
-            />
-            {submitted && !formData.productCode && (
-              <small className="p-error">Product code is required / Code produit requis</small>
-            )}
-          </div>
-        </div>
+                <div className="grid">
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="productCode" className="font-medium">
+                        Code Produit <span className="text-red-500">*</span>
+                      </label>
+                      <InputText
+                        id="productCode"
+                        value={formData.productCode}
+                        onChange={(e) => handleChange("productCode", e.target.value.toUpperCase())}
+                        className={submitted && !formData.productCode ? "p-invalid" : ""}
+                        placeholder="Ex: MICRO-001"
+                      />
+                      {submitted && !formData.productCode && (
+                        <small className="p-error">Le code produit est requis</small>
+                      )}
+                    </div>
+                  </div>
 
-        <div className="field grid">
-          <label htmlFor="productName" className="col-12 mb-2 md:col-3 md:mb-0">
-            Product Name / Nom du Produit *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputText
-              id="productName"
-              value={formData.productName}
-              onChange={(e) => handleChange("productName", e.target.value)}
-              className={submitted && !formData.productName ? "p-invalid" : ""}
-            />
-            {submitted && !formData.productName && (
-              <small className="p-error">Product name is required / Nom produit requis</small>
-            )}
-          </div>
-        </div>
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="productTypeId" className="font-medium">
+                        Type de Produit <span className="text-red-500">*</span>
+                      </label>
+                      <Dropdown
+                        id="productTypeId"
+                        value={formData.productTypeId}
+                        options={productTypes}
+                        onChange={(e) => handleChange("productTypeId", e.value)}
+                        optionLabel="nameFr"
+                        optionValue="id"
+                        placeholder="Sélectionner un type"
+                        className={submitted && !formData.productTypeId ? "p-invalid" : ""}
+                        filter
+                        showClear
+                      />
+                      {submitted && !formData.productTypeId && (
+                        <small className="p-error">Le type de produit est requis</small>
+                      )}
+                    </div>
+                  </div>
 
-        <div className="field grid">
-          <label htmlFor="productNameFr" className="col-12 mb-2 md:col-3 md:mb-0">
-            Product Name (FR) / Nom du Produit (FR)
-          </label>
-          <div className="col-12 md:col-9">
-            <InputText
-              id="productNameFr"
-              value={formData.productNameFr || ""}
-              onChange={(e) => handleChange("productNameFr", e.target.value)}
-            />
-          </div>
-        </div>
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="productName" className="font-medium">
+                        Nom du Produit (EN) <span className="text-red-500">*</span>
+                      </label>
+                      <InputText
+                        id="productName"
+                        value={formData.productName}
+                        onChange={(e) => handleChange("productName", e.target.value)}
+                        className={submitted && !formData.productName ? "p-invalid" : ""}
+                        placeholder="Nom en anglais"
+                      />
+                      {submitted && !formData.productName && (
+                        <small className="p-error">Le nom du produit est requis</small>
+                      )}
+                    </div>
+                  </div>
 
-        {/* Section 2: Product Configuration */}
-        <Divider>
-          <span className="p-tag">Product Configuration / Configuration Produit</span>
-        </Divider>
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="productNameFr" className="font-medium">
+                        Nom du Produit (FR) <span className="text-red-500">*</span>
+                      </label>
+                      <InputText
+                        id="productNameFr"
+                        value={formData.productNameFr || ""}
+                        onChange={(e) => handleChange("productNameFr", e.target.value)}
+                        placeholder="Nom en français"
+                      />
+                    </div>
+                  </div>
 
-        <div className="field grid">
-          <label htmlFor="productTypeId" className="col-12 mb-2 md:col-3 md:mb-0">
-            Product Type / Type de Produit *
-          </label>
-          <div className="col-12 md:col-9">
-            <Dropdown
-              id="productTypeId"
-              value={formData.productTypeId}
-              options={productTypes}
-              onChange={(e) => handleChange("productTypeId", e.value)}
-              optionLabel="typeName"
-              optionValue="id"
-              placeholder="Select / Sélectionner"
-              className={submitted && !formData.productTypeId ? "p-invalid" : ""}
-            />
-            {submitted && !formData.productTypeId && (
-              <small className="p-error">Product type is required / Type produit requis</small>
-            )}
-          </div>
-        </div>
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="currencyId" className="font-medium">
+                        Devise <span className="text-red-500">*</span>
+                      </label>
+                      <Dropdown
+                        id="currencyId"
+                        value={formData.currencyId}
+                        options={currencies}
+                        onChange={(e) => handleChange("currencyId", e.value)}
+                        optionLabel="code"
+                        optionValue="id"
+                        placeholder="Sélectionner une devise"
+                        className={submitted && !formData.currencyId ? "p-invalid" : ""}
+                        filter
+                        showClear
+                      />
+                      {submitted && !formData.currencyId && (
+                        <small className="p-error">La devise est requise</small>
+                      )}
+                    </div>
+                  </div>
 
-        <div className="field grid">
-          <label htmlFor="currencyId" className="col-12 mb-2 md:col-3 md:mb-0">
-            Currency / Devise *
-          </label>
-          <div className="col-12 md:col-9">
-            <Dropdown
-              id="currencyId"
-              value={formData.currencyId}
-              options={currencies}
-              onChange={(e) => handleChange("currencyId", e.value)}
-              optionLabel="currencyCode"
-              optionValue="id"
-              placeholder="Select / Sélectionner"
-              className={submitted && !formData.currencyId ? "p-invalid" : ""}
-            />
-            {submitted && !formData.currencyId && (
-              <small className="p-error">Currency is required / Devise requise</small>
-            )}
-          </div>
-        </div>
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="targetClientele" className="font-medium">
+                        Clientèle Cible
+                      </label>
+                      <Dropdown
+                        id="targetClientele"
+                        value={formData.targetClientele}
+                        options={targetClienteleOptions}
+                        onChange={(e) => handleChange("targetClientele", e.value)}
+                        placeholder="Sélectionner"
+                      />
+                    </div>
+                  </div>
 
-        <div className="field grid">
-          <label htmlFor="targetClientele" className="col-12 mb-2 md:col-3 md:mb-0">
-            Target Clientele / Clientèle Cible *
-          </label>
-          <div className="col-12 md:col-9">
-            <Dropdown
-              id="targetClientele"
-              value={formData.targetClientele}
-              options={targetClienteleOptions}
-              onChange={(e) => handleChange("targetClientele", e.value)}
-              placeholder="Select / Sélectionner"
-            />
-          </div>
-        </div>
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="status" className="font-medium">
+                        Statut
+                      </label>
+                      <Dropdown
+                        id="status"
+                        value={formData.status}
+                        options={statusOptions}
+                        onChange={(e) => handleChange("status", e.value)}
+                        placeholder="Sélectionner"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
 
-        {/* Section 3: Amount Limits */}
-        <Divider>
-          <span className="p-tag">Amount Limits / Limites de Montant</span>
-        </Divider>
+            {/* Description */}
+            <div className="col-12">
+              <Card className="shadow-2">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-align-left text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Description</span>
+                </div>
+                <Divider className="mt-0" />
 
-        <div className="field grid">
-          <label htmlFor="minAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Minimum Amount / Montant Minimum *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="minAmount"
-              value={formData.minAmount}
-              onValueChange={(e) => handleChange("minAmount", e.value || 0)}
-              mode="currency"
-              currency="BIF"
-              locale="fr-BI"
-              className={
-                submitted && formData.minAmount >= formData.maxAmount ? "p-invalid" : ""
-              }
-            />
-            {submitted && formData.minAmount >= formData.maxAmount && (
-              <small className="p-error">
-                Min amount must be less than max / Montant min doit être inférieur au max
-              </small>
-            )}
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="maxAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Maximum Amount / Montant Maximum *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="maxAmount"
-              value={formData.maxAmount}
-              onValueChange={(e) => handleChange("maxAmount", e.value || 0)}
-              mode="currency"
-              currency="BIF"
-              locale="fr-BI"
-            />
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="defaultAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Default Amount / Montant par Défaut
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="defaultAmount"
-              value={formData.defaultAmount || 0}
-              onValueChange={(e) => handleChange("defaultAmount", e.value || 0)}
-              mode="currency"
-              currency="BIF"
-              locale="fr-BI"
-            />
-          </div>
-        </div>
-
-        {/* Section 4: Term Configuration */}
-        <Divider>
-          <span className="p-tag">Term Configuration / Configuration de Durée</span>
-        </Divider>
-
-        <div className="field grid">
-          <label htmlFor="minTermMonths" className="col-12 mb-2 md:col-3 md:mb-0">
-            Minimum Term (Months) / Durée Minimum (Mois) *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="minTermMonths"
-              value={formData.minTermMonths}
-              onValueChange={(e) => handleChange("minTermMonths", e.value || 1)}
-              min={1}
-              className={
-                submitted && formData.minTermMonths >= formData.maxTermMonths ? "p-invalid" : ""
-              }
-            />
-            {submitted && formData.minTermMonths >= formData.maxTermMonths && (
-              <small className="p-error">
-                Min term must be less than max / Durée min doit être inférieure au max
-              </small>
-            )}
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="maxTermMonths" className="col-12 mb-2 md:col-3 md:mb-0">
-            Maximum Term (Months) / Durée Maximum (Mois) *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="maxTermMonths"
-              value={formData.maxTermMonths}
-              onValueChange={(e) => handleChange("maxTermMonths", e.value || 12)}
-              min={1}
-            />
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="defaultTermMonths" className="col-12 mb-2 md:col-3 md:mb-0">
-            Default Term (Months) / Durée par Défaut (Mois)
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="defaultTermMonths"
-              value={formData.defaultTermMonths || 0}
-              onValueChange={(e) => handleChange("defaultTermMonths", e.value || 0)}
-              min={0}
-            />
-          </div>
-        </div>
-
-        {/* Section 5: Interest Configuration */}
-        <Divider>
-          <span className="p-tag">Interest Configuration / Configuration d&apos;Intérêt</span>
-        </Divider>
-
-        <div className="field grid">
-          <label htmlFor="interestCalculationMethodId" className="col-12 mb-2 md:col-3 md:mb-0">
-            Interest Calculation Method / Méthode de Calcul d&apos;Intérêt *
-          </label>
-          <div className="col-12 md:col-9">
-            <Dropdown
-              id="interestCalculationMethodId"
-              value={formData.interestCalculationMethodId}
-              options={interestCalcMethods}
-              onChange={(e) => handleChange("interestCalculationMethodId", e.value)}
-              optionLabel="methodName"
-              optionValue="id"
-              placeholder="Select / Sélectionner"
-              className={submitted && !formData.interestCalculationMethodId ? "p-invalid" : ""}
-            />
-            {submitted && !formData.interestCalculationMethodId && (
-              <small className="p-error">
-                Interest calculation method is required / Méthode de calcul requise
-              </small>
-            )}
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="minInterestRate" className="col-12 mb-2 md:col-3 md:mb-0">
-            Minimum Interest Rate / Taux d&apos;Intérêt Minimum *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="minInterestRate"
-              value={formData.minInterestRate}
-              onValueChange={(e) => handleChange("minInterestRate", e.value || 0)}
-              suffix="%"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              className={
-                submitted && formData.minInterestRate >= formData.maxInterestRate
-                  ? "p-invalid"
-                  : ""
-              }
-            />
-            {submitted && formData.minInterestRate >= formData.maxInterestRate && (
-              <small className="p-error">
-                Min rate must be less than max / Taux min doit être inférieur au max
-              </small>
-            )}
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="maxInterestRate" className="col-12 mb-2 md:col-3 md:mb-0">
-            Maximum Interest Rate / Taux d&apos;Intérêt Maximum *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="maxInterestRate"
-              value={formData.maxInterestRate}
-              onValueChange={(e) => handleChange("maxInterestRate", e.value || 0)}
-              suffix="%"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-            />
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="defaultInterestRate" className="col-12 mb-2 md:col-3 md:mb-0">
-            Default Interest Rate / Taux d&apos;Intérêt par Défaut *
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="defaultInterestRate"
-              value={formData.defaultInterestRate}
-              onValueChange={(e) => handleChange("defaultInterestRate", e.value || 0)}
-              suffix="%"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-            />
-          </div>
-        </div>
-
-        {/* Section 6: Payment & Grace Period */}
-        <Divider>
-          <span className="p-tag">Payment & Grace Period / Paiement & Période de Grâce</span>
-        </Divider>
-
-        <div className="field grid">
-          <label htmlFor="paymentFrequencyId" className="col-12 mb-2 md:col-3 md:mb-0">
-            Payment Frequency / Fréquence de Paiement *
-          </label>
-          <div className="col-12 md:col-9">
-            <Dropdown
-              id="paymentFrequencyId"
-              value={formData.paymentFrequencyId}
-              options={paymentFrequencies}
-              onChange={(e) => handleChange("paymentFrequencyId", e.value)}
-              optionLabel="frequencyName"
-              optionValue="id"
-              placeholder="Select / Sélectionner"
-              className={submitted && !formData.paymentFrequencyId ? "p-invalid" : ""}
-            />
-            {submitted && !formData.paymentFrequencyId && (
-              <small className="p-error">
-                Payment frequency is required / Fréquence de paiement requise
-              </small>
-            )}
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="gracePeriodType" className="col-12 mb-2 md:col-3 md:mb-0">
-            Grace Period Type / Type de Période de Grâce
-          </label>
-          <div className="col-12 md:col-9">
-            <Dropdown
-              id="gracePeriodType"
-              value={formData.gracePeriodType || "NONE"}
-              options={gracePeriodTypeOptions}
-              onChange={(e) => handleChange("gracePeriodType", e.value)}
-              placeholder="Select / Sélectionner"
-            />
-          </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="maxGracePeriodDays" className="col-12 mb-2 md:col-3 md:mb-0">
-            Max Grace Period (Days) / Période de Grâce Max (Jours)
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="maxGracePeriodDays"
-              value={formData.maxGracePeriodDays || 0}
-              onValueChange={(e) => handleChange("maxGracePeriodDays", e.value || 0)}
-              min={0}
-            />
-          </div>
-        </div>
-
-        {/* Section 7: Early Repayment */}
-        <Divider>
-          <span className="p-tag">Early Repayment / Remboursement Anticipé</span>
-        </Divider>
-
-        <div className="field grid">
-          <label className="col-12 mb-2 md:col-3 md:mb-0">
-            Allows Early Repayment / Autorise Remboursement Anticipé
-          </label>
-          <div className="col-12 md:col-9">
-            <Checkbox
-              inputId="allowsEarlyRepayment"
-              checked={formData.allowsEarlyRepayment}
-              onChange={(e) => handleChange("allowsEarlyRepayment", e.checked)}
-            />
-          </div>
-        </div>
-
-        {formData.allowsEarlyRepayment && (
-          <div className="field grid">
-            <label htmlFor="earlyRepaymentPenaltyRate" className="col-12 mb-2 md:col-3 md:mb-0">
-              Early Repayment Penalty Rate / Taux de Pénalité
-            </label>
-            <div className="col-12 md:col-9">
-              <InputNumber
-                id="earlyRepaymentPenaltyRate"
-                value={formData.earlyRepaymentPenaltyRate || 0}
-                onValueChange={(e) => handleChange("earlyRepaymentPenaltyRate", e.value || 0)}
-                suffix="%"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-              />
+                <div className="grid">
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="description" className="font-medium">Description (EN)</label>
+                      <InputTextarea
+                        id="description"
+                        value={formData.description || ""}
+                        onChange={(e) => handleChange("description", e.target.value)}
+                        rows={4}
+                        autoResize
+                        placeholder="Description en anglais..."
+                      />
+                    </div>
+                  </div>
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="descriptionFr" className="font-medium">Description (FR)</label>
+                      <InputTextarea
+                        id="descriptionFr"
+                        value={formData.descriptionFr || ""}
+                        onChange={(e) => handleChange("descriptionFr", e.target.value)}
+                        rows={4}
+                        autoResize
+                        placeholder="Description en français..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
-        )}
+        </TabPanel>
 
-        {/* Section 8: Requirements */}
-        <Divider>
-          <span className="p-tag">Requirements / Exigences</span>
-        </Divider>
+        {/* Tab 2: Montants et Durées */}
+        <TabPanel header="Montants & Durées" leftIcon="pi pi-calculator mr-2">
+          <div className="grid">
+            {/* Limites de Montant */}
+            <div className="col-12 lg:col-6">
+              <Card className="shadow-2 h-full">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-wallet text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Limites de Montant</span>
+                </div>
+                <Divider className="mt-0" />
 
-        <div className="field grid">
-          <label className="col-12 mb-2 md:col-3 md:mb-0">
-            Requires Guarantors / Exige des Garants
-          </label>
-          <div className="col-12 md:col-9">
-            <Checkbox
-              inputId="requiresGuarantors"
-              checked={formData.requiresGuarantors}
-              onChange={(e) => handleChange("requiresGuarantors", e.checked)}
-            />
-          </div>
-        </div>
+                <div className="grid">
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="minAmount" className="font-medium">
+                        Montant Minimum <span className="text-red-500">*</span>
+                      </label>
+                      <InputNumber
+                        id="minAmount"
+                        value={formData.minAmount}
+                        onValueChange={(e) => handleChange("minAmount", e.value || 0)}
+                        mode="currency"
+                        currency="BIF"
+                        locale="fr-BI"
+                        className={submitted && formData.minAmount >= formData.maxAmount ? "p-invalid" : ""}
+                      />
+                      {submitted && formData.minAmount >= formData.maxAmount && (
+                        <small className="p-error">Le montant minimum doit être inférieur au maximum</small>
+                      )}
+                    </div>
+                  </div>
 
-        {formData.requiresGuarantors && (
-          <div className="field grid">
-            <label htmlFor="minGuarantors" className="col-12 mb-2 md:col-3 md:mb-0">
-              Minimum Guarantors / Nombre Minimum de Garants
-            </label>
-            <div className="col-12 md:col-9">
-              <InputNumber
-                id="minGuarantors"
-                value={formData.minGuarantors || 1}
-                onValueChange={(e) => handleChange("minGuarantors", e.value || 1)}
-                min={1}
-              />
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="maxAmount" className="font-medium">
+                        Montant Maximum <span className="text-red-500">*</span>
+                      </label>
+                      <InputNumber
+                        id="maxAmount"
+                        value={formData.maxAmount}
+                        onValueChange={(e) => handleChange("maxAmount", e.value || 0)}
+                        mode="currency"
+                        currency="BIF"
+                        locale="fr-BI"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="defaultAmount" className="font-medium">Montant par Défaut</label>
+                      <InputNumber
+                        id="defaultAmount"
+                        value={formData.defaultAmount || 0}
+                        onValueChange={(e) => handleChange("defaultAmount", e.value || 0)}
+                        mode="currency"
+                        currency="BIF"
+                        locale="fr-BI"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Configuration de Durée */}
+            <div className="col-12 lg:col-6">
+              <Card className="shadow-2 h-full">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-calendar text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Durée du Prêt (en mois)</span>
+                </div>
+                <Divider className="mt-0" />
+
+                <div className="grid">
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="minTermMonths" className="font-medium">
+                        Durée Minimum <span className="text-red-500">*</span>
+                      </label>
+                      <InputNumber
+                        id="minTermMonths"
+                        value={formData.minTermMonths}
+                        onValueChange={(e) => handleChange("minTermMonths", e.value || 1)}
+                        min={1}
+                        suffix=" mois"
+                        className={submitted && formData.minTermMonths >= formData.maxTermMonths ? "p-invalid" : ""}
+                      />
+                      {submitted && formData.minTermMonths >= formData.maxTermMonths && (
+                        <small className="p-error">La durée minimum doit être inférieure à la maximum</small>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="maxTermMonths" className="font-medium">
+                        Durée Maximum <span className="text-red-500">*</span>
+                      </label>
+                      <InputNumber
+                        id="maxTermMonths"
+                        value={formData.maxTermMonths}
+                        onValueChange={(e) => handleChange("maxTermMonths", e.value || 12)}
+                        min={1}
+                        suffix=" mois"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="defaultTermMonths" className="font-medium">Durée par Défaut</label>
+                      <InputNumber
+                        id="defaultTermMonths"
+                        value={formData.defaultTermMonths || 0}
+                        onValueChange={(e) => handleChange("defaultTermMonths", e.value || 0)}
+                        min={0}
+                        suffix=" mois"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
-        )}
+        </TabPanel>
 
-        <div className="field grid">
-          <label className="col-12 mb-2 md:col-3 md:mb-0">
-            Requires Collateral / Exige des Garanties
-          </label>
-          <div className="col-12 md:col-9">
-            <Checkbox
-              inputId="requiresCollateral"
-              checked={formData.requiresCollateral}
-              onChange={(e) => handleChange("requiresCollateral", e.checked)}
-            />
+        {/* Tab 3: Intérêts et Paiements */}
+        <TabPanel header="Intérêts & Paiements" leftIcon="pi pi-percentage mr-2">
+          <div className="grid">
+            {/* Configuration des Intérêts */}
+            <div className="col-12 lg:col-6">
+              <Card className="shadow-2 h-full">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-chart-line text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Configuration des Intérêts</span>
+                </div>
+                <Divider className="mt-0" />
+
+                <div className="grid">
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="interestCalculationMethodId" className="font-medium">
+                        Méthode de Calcul <span className="text-red-500">*</span>
+                      </label>
+                      <Dropdown
+                        id="interestCalculationMethodId"
+                        value={formData.interestCalculationMethodId}
+                        options={interestCalcMethods}
+                        onChange={(e) => handleChange("interestCalculationMethodId", e.value)}
+                        optionLabel="nameFr"
+                        optionValue="id"
+                        placeholder="Sélectionner une méthode"
+                        className={submitted && !formData.interestCalculationMethodId ? "p-invalid" : ""}
+                        filter
+                        showClear
+                      />
+                      {submitted && !formData.interestCalculationMethodId && (
+                        <small className="p-error">La méthode de calcul est requise</small>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="minInterestRate" className="font-medium">
+                        Taux Minimum <span className="text-red-500">*</span>
+                      </label>
+                      <InputNumber
+                        id="minInterestRate"
+                        value={formData.minInterestRate}
+                        onValueChange={(e) => handleChange("minInterestRate", e.value || 0)}
+                        suffix=" %"
+                        minFractionDigits={2}
+                        maxFractionDigits={2}
+                        className={submitted && formData.minInterestRate >= formData.maxInterestRate ? "p-invalid" : ""}
+                      />
+                      {submitted && formData.minInterestRate >= formData.maxInterestRate && (
+                        <small className="p-error">Le taux minimum doit être inférieur au maximum</small>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="maxInterestRate" className="font-medium">
+                        Taux Maximum <span className="text-red-500">*</span>
+                      </label>
+                      <InputNumber
+                        id="maxInterestRate"
+                        value={formData.maxInterestRate}
+                        onValueChange={(e) => handleChange("maxInterestRate", e.value || 0)}
+                        suffix=" %"
+                        minFractionDigits={2}
+                        maxFractionDigits={2}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="defaultInterestRate" className="font-medium">Taux par Défaut</label>
+                      <InputNumber
+                        id="defaultInterestRate"
+                        value={formData.defaultInterestRate}
+                        onValueChange={(e) => handleChange("defaultInterestRate", e.value || 0)}
+                        suffix=" %"
+                        minFractionDigits={2}
+                        maxFractionDigits={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Paiements et Période de Grâce */}
+            <div className="col-12 lg:col-6">
+              <Card className="shadow-2 h-full">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-money-bill text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Paiements & Période de Grâce</span>
+                </div>
+                <Divider className="mt-0" />
+
+                <div className="grid">
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="paymentFrequencyId" className="font-medium">
+                        Fréquence de Paiement <span className="text-red-500">*</span>
+                      </label>
+                      <Dropdown
+                        id="paymentFrequencyId"
+                        value={formData.paymentFrequencyId}
+                        options={paymentFrequencies}
+                        onChange={(e) => handleChange("paymentFrequencyId", e.value)}
+                        optionLabel="nameFr"
+                        optionValue="id"
+                        placeholder="Sélectionner une fréquence"
+                        className={submitted && !formData.paymentFrequencyId ? "p-invalid" : ""}
+                        filter
+                        showClear
+                      />
+                      {submitted && !formData.paymentFrequencyId && (
+                        <small className="p-error">La fréquence de paiement est requise</small>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="gracePeriodType" className="font-medium">Type de Période de Grâce</label>
+                      <Dropdown
+                        id="gracePeriodType"
+                        value={formData.gracePeriodType || "NONE"}
+                        options={gracePeriodTypeOptions}
+                        onChange={(e) => handleChange("gracePeriodType", e.value)}
+                        placeholder="Sélectionner"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <div className="field">
+                      <label htmlFor="maxGracePeriodDays" className="font-medium">
+                        Période de Grâce Maximum (jours)
+                      </label>
+                      <InputNumber
+                        id="maxGracePeriodDays"
+                        value={formData.maxGracePeriodDays || 0}
+                        onValueChange={(e) => handleChange("maxGracePeriodDays", e.value || 0)}
+                        min={0}
+                        suffix=" jours"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
-        </div>
+        </TabPanel>
 
-        {/* Section 9: Description */}
-        <Divider>
-          <span className="p-tag">Description</span>
-        </Divider>
+        {/* Tab 4: Options et Exigences */}
+        <TabPanel header="Options & Exigences" leftIcon="pi pi-cog mr-2">
+          <div className="grid">
+            {/* Remboursement Anticipé */}
+            <div className="col-12 lg:col-6">
+              <Card className="shadow-2 h-full">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-fast-forward text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Remboursement Anticipé</span>
+                </div>
+                <Divider className="mt-0" />
 
-        <div className="field grid">
-          <label htmlFor="description" className="col-12 mb-2 md:col-3 md:mb-0">
-            Description (EN)
-          </label>
-          <div className="col-12 md:col-9">
-            <InputTextarea
-              id="description"
-              value={formData.description || ""}
-              onChange={(e) => handleChange("description", e.target.value)}
-              rows={3}
-            />
+                <div className="grid">
+                  <div className="col-12">
+                    <div className="field-checkbox">
+                      <Checkbox
+                        inputId="allowsEarlyRepayment"
+                        checked={formData.allowsEarlyRepayment}
+                        onChange={(e) => handleChange("allowsEarlyRepayment", e.checked)}
+                      />
+                      <label htmlFor="allowsEarlyRepayment" className="ml-2 font-medium">
+                        Autoriser le remboursement anticipé
+                      </label>
+                    </div>
+                  </div>
+
+                  {formData.allowsEarlyRepayment && (
+                    <div className="col-12">
+                      <div className="field">
+                        <label htmlFor="earlyRepaymentPenaltyRate" className="font-medium">
+                          Taux de Pénalité
+                        </label>
+                        <InputNumber
+                          id="earlyRepaymentPenaltyRate"
+                          value={formData.earlyRepaymentPenaltyRate || 0}
+                          onValueChange={(e) => handleChange("earlyRepaymentPenaltyRate", e.value || 0)}
+                          suffix=" %"
+                          minFractionDigits={2}
+                          maxFractionDigits={2}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {/* Exigences */}
+            <div className="col-12 lg:col-6">
+              <Card className="shadow-2 h-full">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-shield text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Exigences de Garantie</span>
+                </div>
+                <Divider className="mt-0" />
+
+                <div className="grid">
+                  <div className="col-12">
+                    <div className="field-checkbox">
+                      <Checkbox
+                        inputId="requiresGuarantors"
+                        checked={formData.requiresGuarantors}
+                        onChange={(e) => handleChange("requiresGuarantors", e.checked)}
+                      />
+                      <label htmlFor="requiresGuarantors" className="ml-2 font-medium">
+                        Exiger des garants
+                      </label>
+                    </div>
+                  </div>
+
+                  {formData.requiresGuarantors && (
+                    <div className="col-12">
+                      <div className="field">
+                        <label htmlFor="minGuarantors" className="font-medium">
+                          Nombre Minimum de Garants
+                        </label>
+                        <InputNumber
+                          id="minGuarantors"
+                          value={formData.minGuarantors || 1}
+                          onValueChange={(e) => handleChange("minGuarantors", e.value || 1)}
+                          min={1}
+                          showButtons
+                          buttonLayout="horizontal"
+                          decrementButtonClassName="p-button-secondary"
+                          incrementButtonClassName="p-button-secondary"
+                          incrementButtonIcon="pi pi-plus"
+                          decrementButtonIcon="pi pi-minus"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="col-12 mt-3">
+                    <div className="field-checkbox">
+                      <Checkbox
+                        inputId="requiresCollateral"
+                        checked={formData.requiresCollateral}
+                        onChange={(e) => handleChange("requiresCollateral", e.checked)}
+                      />
+                      <label htmlFor="requiresCollateral" className="ml-2 font-medium">
+                        Exiger des garanties matérielles
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
-        </div>
-
-        <div className="field grid">
-          <label htmlFor="descriptionFr" className="col-12 mb-2 md:col-3 md:mb-0">
-            Description (FR)
-          </label>
-          <div className="col-12 md:col-9">
-            <InputTextarea
-              id="descriptionFr"
-              value={formData.descriptionFr || ""}
-              onChange={(e) => handleChange("descriptionFr", e.target.value)}
-              rows={3}
-            />
-          </div>
-        </div>
-
-        {/* Section 10: Status */}
-        <Divider>
-          <span className="p-tag">Status / Statut</span>
-        </Divider>
-
-        <div className="field grid">
-          <label htmlFor="status" className="col-12 mb-2 md:col-3 md:mb-0">
-            Status / Statut *
-          </label>
-          <div className="col-12 md:col-9">
-            <Dropdown
-              id="status"
-              value={formData.status}
-              options={statusOptions}
-              onChange={(e) => handleChange("status", e.value)}
-              placeholder="Select / Sélectionner"
-            />
-          </div>
-        </div>
-      </div>
+        </TabPanel>
+      </TabView>
     </Dialog>
   );
 };

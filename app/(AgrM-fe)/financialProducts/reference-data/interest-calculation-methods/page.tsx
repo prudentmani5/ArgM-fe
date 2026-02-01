@@ -8,74 +8,78 @@ import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 import { InterestCalculationMethod } from './InterestCalculationMethod';
 import InterestCalculationMethodForm from './InterestCalculationMethodForm';
+
+const BASE_URL = buildApiUrl('/api/financial-products/reference/interest-calculation-methods');
 
 const InterestCalculationMethodsPage = () => {
     const [interestCalculationMethods, setInterestCalculationMethods] = useState<InterestCalculationMethod[]>([]);
     const [interestCalculationMethod, setInterestCalculationMethod] = useState<InterestCalculationMethod>(new InterestCalculationMethod());
     const [selectedInterestCalculationMethod, setSelectedInterestCalculationMethod] = useState<InterestCalculationMethod | null>(null);
     const [globalFilter, setGlobalFilter] = useState('');
-    const [loading, setLoading] = useState(false);
     const [totalRecords, setTotalRecords] = useState(0);
-    const [lazyState, setLazyState] = useState({
-        first: 0,
-        rows: 10,
-        page: 0
-    });
+    const [activeIndex, setActiveIndex] = useState(0);
     const [displayDialog, setDisplayDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
     const toast = useRef<Toast>(null);
-    const { data: fetchData, loading: fetchLoading, error: fetchError } = useConsumApi('/api/financial-products/reference/interest-calculation-methods/findall');
-    const { data: createData, loading: createLoading, error: createError, postData } = useConsumApi('/api/financial-products/reference/interest-calculation-methods/new');
-    const { data: updateData, loading: updateLoading, error: updateError, putData } = useConsumApi('');
-    const { data: deleteData, loading: deleteLoading, error: deleteError, deleteData: deleteRecord } = useConsumApi('');
+    const { data, loading, error, fetchData, callType } = useConsumApi('');
+
+    // Get connected user from cookies
+    const getConnectedUser = (): string => {
+        const appUserCookie = Cookies.get('appUser');
+        if (appUserCookie) {
+            try {
+                const appUser = JSON.parse(appUserCookie);
+                return appUser.email || `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || 'Unknown';
+            } catch {
+                return 'Unknown';
+            }
+        }
+        return 'Unknown';
+    };
 
     useEffect(() => {
         loadInterestCalculationMethods();
     }, []);
 
     useEffect(() => {
-        if (fetchData) {
-            setInterestCalculationMethods(fetchData);
-            setTotalRecords(fetchData.length);
+        if (data) {
+            switch (callType) {
+                case 'loadInterestCalculationMethods':
+                    const items = Array.isArray(data) ? data : data.content || [];
+                    setInterestCalculationMethods(items);
+                    setTotalRecords(items.length);
+                    break;
+                case 'create':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Méthode de calcul d\'intérêt créée avec succès' });
+                    loadInterestCalculationMethods();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'update':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Méthode de calcul d\'intérêt modifiée avec succès' });
+                    loadInterestCalculationMethods();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'delete':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Méthode de calcul d\'intérêt supprimée avec succès' });
+                    loadInterestCalculationMethods();
+                    break;
+            }
         }
-    }, [fetchData]);
-
-    useEffect(() => {
-        if (createData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Méthode de calcul d\'intérêt créée avec succès' });
-            loadInterestCalculationMethods();
-            resetForm();
+        if (error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue' });
         }
-    }, [createData]);
-
-    useEffect(() => {
-        if (updateData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Méthode de calcul d\'intérêt modifiée avec succès' });
-            loadInterestCalculationMethods();
-            resetForm();
-        }
-    }, [updateData]);
-
-    useEffect(() => {
-        if (deleteData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Méthode de calcul d\'intérêt supprimée avec succès' });
-            loadInterestCalculationMethods();
-        }
-    }, [deleteData]);
-
-    useEffect(() => {
-        if (createError || updateError || deleteError || fetchError) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: createError || updateError || deleteError || fetchError });
-        }
-    }, [createError, updateError, deleteError, fetchError]);
+    }, [data, error, callType]);
 
     const loadInterestCalculationMethods = () => {
-        setLoading(true);
-        setLoading(false);
+        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadInterestCalculationMethods');
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -87,22 +91,25 @@ const InterestCalculationMethodsPage = () => {
         setInterestCalculationMethod(prev => ({ ...prev, [name]: checked }));
     };
 
-    const saveInterestCalculationMethod = async () => {
+    const saveInterestCalculationMethod = () => {
         if (!interestCalculationMethod.code || !interestCalculationMethod.name || !interestCalculationMethod.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Veuillez remplir les champs obligatoires' });
             return;
         }
 
+        const methodToSave = { ...interestCalculationMethod, userAction: getConnectedUser() };
+
         if (isEditing && interestCalculationMethod.id) {
-            await putData(`/api/financial-products/reference/interest-calculation-methods/update/${interestCalculationMethod.id}`, interestCalculationMethod);
+            fetchData(methodToSave, 'PUT', `${BASE_URL}/update/${interestCalculationMethod.id}`, 'update');
         } else {
-            await postData(interestCalculationMethod);
+            fetchData(methodToSave, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
     const editInterestCalculationMethod = (rowData: InterestCalculationMethod) => {
         setInterestCalculationMethod({ ...rowData });
         setIsEditing(true);
+        setActiveIndex(0);
     };
 
     const confirmDelete = (rowData: InterestCalculationMethod) => {
@@ -110,9 +117,9 @@ const InterestCalculationMethodsPage = () => {
         setDisplayDialog(true);
     };
 
-    const deleteInterestCalculationMethodConfirmed = async () => {
+    const deleteInterestCalculationMethodConfirmed = () => {
         if (selectedInterestCalculationMethod?.id) {
-            await deleteRecord(`/api/financial-products/reference/interest-calculation-methods/delete/${selectedInterestCalculationMethod.id}`);
+            fetchData(null, 'DELETE', `${BASE_URL}/delete/${selectedInterestCalculationMethod.id}`, 'delete');
             setDisplayDialog(false);
             setSelectedInterestCalculationMethod(null);
         }
@@ -121,10 +128,6 @@ const InterestCalculationMethodsPage = () => {
     const resetForm = () => {
         setInterestCalculationMethod(new InterestCalculationMethod());
         setIsEditing(false);
-    };
-
-    const onPage = (event: any) => {
-        setLazyState(event);
     };
 
     const actionBodyTemplate = (rowData: InterestCalculationMethod) => {
@@ -136,6 +139,7 @@ const InterestCalculationMethodsPage = () => {
                     outlined
                     className="p-button-warning"
                     onClick={() => editInterestCalculationMethod(rowData)}
+                    tooltip="Modifier"
                 />
                 <Button
                     icon="pi pi-trash"
@@ -143,6 +147,7 @@ const InterestCalculationMethodsPage = () => {
                     outlined
                     severity="danger"
                     onClick={() => confirmDelete(rowData)}
+                    tooltip="Supprimer"
                 />
             </div>
         );
@@ -172,9 +177,9 @@ const InterestCalculationMethodsPage = () => {
             <Toast ref={toast} />
             <div className="col-12">
                 <div className="card">
-                    <h5>Interest Calculation Methods / Méthodes de Calcul d'Intérêts</h5>
-                    <TabView>
-                        <TabPanel header="Nouveau">
+                    <h5>Méthodes de Calcul d'Intérêts</h5>
+                    <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+                        <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
                             <InterestCalculationMethodForm
                                 interestCalculationMethod={interestCalculationMethod}
                                 handleChange={handleChange}
@@ -185,7 +190,7 @@ const InterestCalculationMethodsPage = () => {
                                     label={isEditing ? 'Modifier' : 'Enregistrer'}
                                     icon="pi pi-check"
                                     onClick={saveInterestCalculationMethod}
-                                    loading={createLoading || updateLoading}
+                                    loading={loading && (callType === 'create' || callType === 'update')}
                                 />
                                 <Button
                                     label="Annuler"
@@ -195,27 +200,25 @@ const InterestCalculationMethodsPage = () => {
                                 />
                             </div>
                         </TabPanel>
-                        <TabPanel header="Tous">
+                        <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
                             <DataTable
                                 value={interestCalculationMethods}
-                                lazy
                                 paginator
-                                first={lazyState.first}
-                                rows={lazyState.rows}
-                                totalRecords={totalRecords}
-                                onPage={onPage}
-                                loading={loading || fetchLoading}
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading && callType === 'loadInterestCalculationMethods'}
                                 globalFilter={globalFilter}
                                 header={header}
                                 emptyMessage="Aucune méthode de calcul d'intérêt trouvée"
+                                className="p-datatable-sm"
                             >
-                                <Column field="code" header="Code" sortable />
-                                <Column field="name" header="Nom" sortable />
-                                <Column field="nameFr" header="Nom (FR)" sortable />
+                                <Column field="code" header="Code" sortable filter />
+                                <Column field="name" header="Nom" sortable filter />
+                                <Column field="nameFr" header="Nom (FR)" sortable filter />
                                 <Column field="formula" header="Formule" />
                                 <Column field="description" header="Description" />
                                 <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
-                                <Column body={actionBodyTemplate} header="Actions" />
+                                <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
                             </DataTable>
                         </TabPanel>
                     </TabView>
@@ -225,12 +228,12 @@ const InterestCalculationMethodsPage = () => {
             <Dialog
                 visible={displayDialog}
                 style={{ width: '450px' }}
-                header="Confirmer"
+                header="Confirmer la suppression"
                 modal
                 footer={
                     <>
                         <Button label="Non" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
-                        <Button label="Oui" icon="pi pi-check" onClick={deleteInterestCalculationMethodConfirmed} autoFocus loading={deleteLoading} />
+                        <Button label="Oui" icon="pi pi-check" onClick={deleteInterestCalculationMethodConfirmed} autoFocus loading={loading && callType === 'delete'} />
                     </>
                 }
                 onHide={() => setDisplayDialog(false)}

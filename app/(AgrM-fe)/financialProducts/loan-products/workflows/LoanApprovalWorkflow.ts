@@ -3,17 +3,17 @@ export class LoanApprovalWorkflow {
     productId: number;
     approvalLevelId: number;
     approvalLevel?: any;
-    sequenceNumber: number;
-    minAmount?: number;
-    maxAmount?: number;
-    isRequired: boolean;
+    sequenceOrder: number;
+    minLoanAmount?: number;
+    maxLoanAmount?: number;
+    isActive: boolean;
     createdAt?: string;
     updatedAt?: string;
 
     constructor() {
         this.productId = 0;
         this.approvalLevelId = 0;
-        this.sequenceNumber = 1;
-        this.isRequired = true;
+        this.sequenceOrder = 1;
+        this.isActive = true;
     }
 }

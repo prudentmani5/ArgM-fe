@@ -8,59 +8,77 @@ import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 import { FeeType } from './FeeType';
 import FeeTypeForm from './FeeTypeForm';
+
+const BASE_URL = buildApiUrl('/api/financial-products/reference/fee-types');
 
 const FeeTypesPage = () => {
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
     const [feeType, setFeeType] = useState<FeeType>(new FeeType());
     const [selectedFeeType, setSelectedFeeType] = useState<FeeType | null>(null);
     const [globalFilter, setGlobalFilter] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [totalRecords, setTotalRecords] = useState(0);
-    const [lazyState, setLazyState] = useState({ first: 0, rows: 10, page: 0 });
+    const [activeIndex, setActiveIndex] = useState(0);
     const [displayDialog, setDisplayDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
     const toast = useRef<Toast>(null);
-    const { data: fetchData, loading: fetchLoading, error: fetchError } = useConsumApi('/api/financial-products/reference/fee-types/findall');
-    const { data: createData, loading: createLoading, error: createError, postData } = useConsumApi('/api/financial-products/reference/fee-types/new');
-    const { data: updateData, loading: updateLoading, error: updateError, putData } = useConsumApi('');
-    const { data: deleteData, loading: deleteLoading, error: deleteError, deleteData: deleteRecord } = useConsumApi('');
+    const { data, loading, error, fetchData, callType } = useConsumApi('');
+
+    // Get connected user from cookies
+    const getConnectedUser = (): string => {
+        const appUserCookie = Cookies.get('appUser');
+        if (appUserCookie) {
+            try {
+                const appUser = JSON.parse(appUserCookie);
+                return appUser.email || `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || 'Unknown';
+            } catch {
+                return 'Unknown';
+            }
+        }
+        return 'Unknown';
+    };
 
     useEffect(() => {
-        if (fetchData) {
-            setFeeTypes(fetchData);
-            setTotalRecords(fetchData.length);
-        }
-    }, [fetchData]);
+        loadFeeTypes();
+    }, []);
 
     useEffect(() => {
-        if (createData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de frais créé avec succès' });
-            resetForm();
+        if (data) {
+            switch (callType) {
+                case 'loadFeeTypes':
+                    const items = Array.isArray(data) ? data : data.content || [];
+                    setFeeTypes(items);
+                    break;
+                case 'create':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de frais créé avec succès' });
+                    loadFeeTypes();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'update':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de frais modifié avec succès' });
+                    loadFeeTypes();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'delete':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de frais supprimé avec succès' });
+                    loadFeeTypes();
+                    break;
+            }
         }
-    }, [createData]);
+        if (error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue' });
+        }
+    }, [data, error, callType]);
 
-    useEffect(() => {
-        if (updateData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de frais modifié avec succès' });
-            resetForm();
-        }
-    }, [updateData]);
-
-    useEffect(() => {
-        if (deleteData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de frais supprimé avec succès' });
-        }
-    }, [deleteData]);
-
-    useEffect(() => {
-        if (createError || updateError || deleteError || fetchError) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: createError || updateError || deleteError || fetchError });
-        }
-    }, [createError, updateError, deleteError, fetchError]);
+    const loadFeeTypes = () => {
+        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadFeeTypes');
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -71,22 +89,25 @@ const FeeTypesPage = () => {
         setFeeType(prev => ({ ...prev, [name]: checked }));
     };
 
-    const saveFeeType = async () => {
+    const saveFeeType = () => {
         if (!feeType.code || !feeType.name || !feeType.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Veuillez remplir les champs obligatoires' });
             return;
         }
 
+        const feeTypeToSave = { ...feeType, userAction: getConnectedUser() };
+
         if (isEditing && feeType.id) {
-            await putData(`/api/financial-products/reference/fee-types/update/${feeType.id}`, feeType);
+            fetchData(feeTypeToSave, 'PUT', `${BASE_URL}/update/${feeType.id}`, 'update');
         } else {
-            await postData(feeType);
+            fetchData(feeTypeToSave, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
     const editFeeType = (rowData: FeeType) => {
         setFeeType({ ...rowData });
         setIsEditing(true);
+        setActiveIndex(0);
     };
 
     const confirmDelete = (rowData: FeeType) => {
@@ -94,9 +115,9 @@ const FeeTypesPage = () => {
         setDisplayDialog(true);
     };
 
-    const deleteFeeTypeConfirmed = async () => {
+    const deleteFeeTypeConfirmed = () => {
         if (selectedFeeType?.id) {
-            await deleteRecord(`/api/financial-products/reference/fee-types/delete/${selectedFeeType.id}`);
+            fetchData(null, 'DELETE', `${BASE_URL}/delete/${selectedFeeType.id}`, 'delete');
             setDisplayDialog(false);
             setSelectedFeeType(null);
         }
@@ -107,15 +128,11 @@ const FeeTypesPage = () => {
         setIsEditing(false);
     };
 
-    const onPage = (event: any) => {
-        setLazyState(event);
-    };
-
     const actionBodyTemplate = (rowData: FeeType) => {
         return (
             <div className="flex gap-2">
-                <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editFeeType(rowData)} />
-                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} />
+                <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editFeeType(rowData)} tooltip="Modifier" />
+                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} tooltip="Supprimer" />
             </div>
         );
     };
@@ -139,38 +156,36 @@ const FeeTypesPage = () => {
             <Toast ref={toast} />
             <div className="col-12">
                 <div className="card">
-                    <h5>Fee Types / Types de Frais</h5>
-                    <TabView>
-                        <TabPanel header="Nouveau">
+                    <h5>Types de Frais</h5>
+                    <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+                        <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
                             <FeeTypeForm
                                 feeType={feeType}
                                 handleChange={handleChange}
                                 handleCheckboxChange={handleCheckboxChange}
                             />
                             <div className="flex gap-2 mt-4">
-                                <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={saveFeeType} loading={createLoading || updateLoading} />
+                                <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={saveFeeType} loading={loading && (callType === 'create' || callType === 'update')} />
                                 <Button label="Annuler" icon="pi pi-times" severity="secondary" onClick={resetForm} />
                             </div>
                         </TabPanel>
-                        <TabPanel header="Tous">
+                        <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
                             <DataTable
                                 value={feeTypes}
-                                lazy
                                 paginator
-                                first={lazyState.first}
-                                rows={lazyState.rows}
-                                totalRecords={totalRecords}
-                                onPage={onPage}
-                                loading={loading || fetchLoading}
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading && callType === 'loadFeeTypes'}
                                 globalFilter={globalFilter}
                                 header={header}
-                                emptyMessage="Aucun(e) types de frais trouvé(e)"
+                                emptyMessage="Aucun type de frais trouvé"
+                                className="p-datatable-sm"
                             >
-                                <Column field="code" header="Code" sortable />
-                                <Column field="name" header="Nom" sortable />
-                                <Column field="nameFr" header="Nom (FR)" sortable />
+                                <Column field="code" header="Code" sortable filter />
+                                <Column field="name" header="Nom" sortable filter />
+                                <Column field="nameFr" header="Nom (FR)" sortable filter />
                                 <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
-                                <Column body={actionBodyTemplate} header="Actions" />
+                                <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
                             </DataTable>
                         </TabPanel>
                     </TabView>
@@ -180,12 +195,12 @@ const FeeTypesPage = () => {
             <Dialog
                 visible={displayDialog}
                 style={{ width: '450px' }}
-                header="Confirmer"
+                header="Confirmer la suppression"
                 modal
                 footer={
                     <>
                         <Button label="Non" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
-                        <Button label="Oui" icon="pi pi-check" onClick={deleteFeeTypeConfirmed} autoFocus loading={deleteLoading} />
+                        <Button label="Oui" icon="pi pi-check" onClick={deleteFeeTypeConfirmed} autoFocus loading={loading && callType === 'delete'} />
                     </>
                 }
                 onHide={() => setDisplayDialog(false)}

@@ -7,6 +7,7 @@ export class Currency {
     decimalPlaces: number;
     isDefault: boolean;
     isActive: boolean;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 

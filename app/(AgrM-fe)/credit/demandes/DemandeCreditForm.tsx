@@ -20,7 +20,11 @@ interface DemandeCreditFormProps {
     loanProducts: any[];
     statuts: any[];
     objetsCredit: any[];
+    savingsAccounts: any[];
+    onAccountChange?: (account: any) => void;
     onClientChange?: (clientId: number) => void;
+    onProductChange?: (product: any) => void;
+    connectedUser?: string;
     isViewMode?: boolean;
 }
 
@@ -36,9 +40,40 @@ export default function DemandeCreditForm({
     loanProducts,
     statuts,
     objetsCredit,
+    savingsAccounts,
+    onAccountChange,
     onClientChange,
+    onProductChange,
+    connectedUser,
     isViewMode = false
 }: DemandeCreditFormProps) {
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+    };
+
+    const accountOptionTemplate = (option: any) => {
+        if (!option) return null;
+        const clientName = option.client ? `${option.client.firstName} ${option.client.lastName}` : '';
+        return (
+            <div className="flex flex-column">
+                <div className="flex align-items-center gap-2">
+                    <span className="font-semibold">{option.accountNumber}</span>
+                    <span className="text-500">-</span>
+                    <span>{clientName}</span>
+                </div>
+                <small className="text-500">Solde: {formatCurrency(option.currentBalance || 0)}</small>
+            </div>
+        );
+    };
+
+    const selectedAccountTemplate = (option: any, props: any) => {
+        if (option) {
+            const clientName = option.client ? `${option.client.firstName} ${option.client.lastName}` : '';
+            return <span>{option.accountNumber} - {clientName}</span>;
+        }
+        return <span>{props.placeholder}</span>;
+    };
 
     const clientOptionTemplate = (option: any) => {
         if (!option) return null;
@@ -55,6 +90,25 @@ export default function DemandeCreditForm({
             return <span>{option.firstName} {option.lastName}</span>;
         }
         return <span>{props.placeholder}</span>;
+    };
+
+    // Get the selected client object
+    const selectedClient = clients.find(c => c.id === demande.clientId);
+
+    // Get the selected loan product for validation
+    const selectedProduct = loanProducts.find((p: any) => p.id === demande.loanProductId);
+
+    // Validation helpers
+    const isAmountValid = () => {
+        if (!selectedProduct || !demande.amountRequested) return true;
+        return demande.amountRequested >= selectedProduct.minAmount &&
+               demande.amountRequested <= selectedProduct.maxAmount;
+    };
+
+    const isDurationValid = () => {
+        if (!selectedProduct || !demande.durationMonths) return true;
+        return demande.durationMonths >= selectedProduct.minTermMonths &&
+               demande.durationMonths <= selectedProduct.maxTermMonths;
     };
 
     return (
@@ -145,46 +199,73 @@ export default function DemandeCreditForm({
 
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-6">
-                        <label htmlFor="clientId" className="font-semibold">
-                            Client *
+                        <label htmlFor="savingsAccountId" className="font-semibold">
+                            Compte d'Épargne *
                         </label>
                         <Dropdown
-                            id="clientId"
-                            value={demande.clientId}
-                            options={clients}
+                            id="savingsAccountId"
+                            value={demande.savingsAccountId}
+                            options={savingsAccounts}
                             onChange={(e) => {
-                                handleDropdownChange('clientId', e.value);
-                                if (onClientChange) onClientChange(e.value);
+                                handleDropdownChange('savingsAccountId', e.value);
+                                if (onAccountChange) {
+                                    if (e.value) {
+                                        const selectedAccount = savingsAccounts.find((a: any) => a.id === e.value);
+                                        onAccountChange(selectedAccount);
+                                    } else {
+                                        // Dropdown cleared - notify parent to clear client
+                                        onAccountChange(null);
+                                    }
+                                }
                             }}
-                            optionLabel="firstName"
+                            optionLabel="accountNumber"
                             optionValue="id"
-                            placeholder="Rechercher un client (ID, nom, téléphone)"
+                            placeholder="Sélectionner un compte d'épargne"
                             className="w-full"
                             disabled={isViewMode}
                             filter
-                            filterPlaceholder="Rechercher..."
-                            itemTemplate={clientOptionTemplate}
-                            valueTemplate={selectedClientTemplate}
+                            filterPlaceholder="Rechercher par N° compte..."
+                            itemTemplate={accountOptionTemplate}
+                            valueTemplate={selectedAccountTemplate}
                             showClear
                         />
+                        <small className="text-500">Le client sera automatiquement récupéré depuis le compte</small>
                     </div>
 
                     <div className="field col-12 md:col-6">
-                        <label htmlFor="creditOfficerId" className="font-semibold">
-                            Agent de Crédit *
+                        <label htmlFor="clientId" className="font-semibold">
+                            Client (auto-rempli)
                         </label>
-                        <Dropdown
-                            id="creditOfficerId"
-                            value={demande.creditOfficerId}
-                            options={creditOfficers}
-                            onChange={(e) => handleDropdownChange('creditOfficerId', e.value)}
-                            optionLabel="fullName"
-                            optionValue="id"
-                            placeholder="Sélectionner un agent"
+                        <InputText
+                            id="clientDisplay"
+                            value={selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName} - ${selectedClient.clientNumber || ''}` : ''}
                             className="w-full"
-                            disabled={isViewMode}
-                            filter
+                            disabled={true}
+                            placeholder="Sélectionnez d'abord un compte..."
                         />
+                        {demande.savingsAccountId && (
+                            <small className="text-500">
+                                <i className="pi pi-info-circle mr-1"></i>
+                                Client récupéré automatiquement du compte
+                            </small>
+                        )}
+                    </div>
+
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="userAction" className="font-semibold">
+                            Utilisateur Connecté (Agent)
+                        </label>
+                        <InputText
+                            id="userAction"
+                            value={connectedUser || ''}
+                            className="w-full"
+                            disabled={true}
+                            placeholder="Utilisateur connecté..."
+                        />
+                        <small className="text-500">
+                            <i className="pi pi-user mr-1"></i>
+                            Récupéré automatiquement de la session
+                        </small>
                     </div>
                 </div>
             </div>
@@ -205,14 +286,26 @@ export default function DemandeCreditForm({
                             id="loanProductId"
                             value={demande.loanProductId}
                             options={loanProducts}
-                            onChange={(e) => handleDropdownChange('loanProductId', e.value)}
-                            optionLabel="name"
+                            onChange={(e) => {
+                                handleDropdownChange('loanProductId', e.value);
+                                if (onProductChange) {
+                                    const product = loanProducts.find((p: any) => p.id === e.value);
+                                    onProductChange(product || null);
+                                }
+                            }}
+                            optionLabel="productNameFr"
                             optionValue="id"
                             placeholder="Sélectionner un produit"
                             className="w-full"
                             disabled={isViewMode}
                             filter
                         />
+                        {selectedProduct && (
+                            <small className="text-500 block mt-1">
+                                <i className="pi pi-info-circle mr-1"></i>
+                                {selectedProduct.productName || selectedProduct.productNameFr}
+                            </small>
+                        )}
                     </div>
 
                     <div className="field col-12 md:col-4">
@@ -222,15 +315,41 @@ export default function DemandeCreditForm({
                         <InputNumber
                             id="amountRequested"
                             value={demande.amountRequested || 0}
-                            onValueChange={(e) => handleNumberChange('amountRequested', e.value ?? 0)}
-                            className="w-full"
-                            disabled={isViewMode}
+                            onValueChange={(e) => {
+                                let newValue = e.value ?? 0;
+                                // Enforce strict limits if product is selected
+                                if (selectedProduct) {
+                                    if (newValue < selectedProduct.minAmount) {
+                                        newValue = selectedProduct.minAmount;
+                                    }
+                                    if (newValue > selectedProduct.maxAmount) {
+                                        newValue = selectedProduct.maxAmount;
+                                    }
+                                }
+                                handleNumberChange('amountRequested', newValue);
+                            }}
+                            className={`w-full ${selectedProduct && !isAmountValid() ? 'p-invalid' : ''}`}
+                            disabled={isViewMode || !demande.loanProductId}
                             mode="currency"
                             currency="BIF"
                             locale="fr-FR"
                             minFractionDigits={0}
                             maxFractionDigits={0}
+                            min={selectedProduct?.minAmount || 0}
+                            max={selectedProduct?.maxAmount || undefined}
                         />
+                        {!demande.loanProductId && (
+                            <small className="text-orange-500 block mt-1">
+                                <i className="pi pi-exclamation-circle mr-1"></i>
+                                Selectionnez d'abord un produit
+                            </small>
+                        )}
+                        {selectedProduct && (
+                            <small className={`block mt-1 ${!isAmountValid() ? 'text-red-500' : 'text-green-600'}`}>
+                                <i className={`pi ${!isAmountValid() ? 'pi-exclamation-triangle' : 'pi-check-circle'} mr-1`}></i>
+                                Min: {formatCurrency(selectedProduct.minAmount)} | Max: {formatCurrency(selectedProduct.maxAmount)}
+                            </small>
+                        )}
                     </div>
 
                     <div className="field col-12 md:col-2">
@@ -240,14 +359,38 @@ export default function DemandeCreditForm({
                         <InputNumber
                             id="durationMonths"
                             value={demande.durationMonths || 12}
-                            onValueChange={(e) => handleNumberChange('durationMonths', e.value ?? 12)}
-                            className="w-full"
-                            disabled={isViewMode}
-                            min={1}
-                            max={120}
+                            onValueChange={(e) => {
+                                let newValue = e.value ?? 12;
+                                // Enforce strict limits if product is selected
+                                if (selectedProduct) {
+                                    if (newValue < selectedProduct.minTermMonths) {
+                                        newValue = selectedProduct.minTermMonths;
+                                    }
+                                    if (newValue > selectedProduct.maxTermMonths) {
+                                        newValue = selectedProduct.maxTermMonths;
+                                    }
+                                }
+                                handleNumberChange('durationMonths', newValue);
+                            }}
+                            className={`w-full ${selectedProduct && !isDurationValid() ? 'p-invalid' : ''}`}
+                            disabled={isViewMode || !demande.loanProductId}
+                            min={selectedProduct?.minTermMonths || 1}
+                            max={selectedProduct?.maxTermMonths || 120}
                             showButtons
                             suffix=" mois"
                         />
+                        {!demande.loanProductId && (
+                            <small className="text-orange-500 block mt-1">
+                                <i className="pi pi-exclamation-circle mr-1"></i>
+                                Selectionnez un produit
+                            </small>
+                        )}
+                        {selectedProduct && (
+                            <small className={`block mt-1 ${!isDurationValid() ? 'text-red-500' : 'text-green-600'}`}>
+                                <i className={`pi ${!isDurationValid() ? 'pi-exclamation-triangle' : 'pi-check-circle'} mr-1`}></i>
+                                {selectedProduct.minTermMonths} - {selectedProduct.maxTermMonths} mois
+                            </small>
+                        )}
                     </div>
 
                     <div className="field col-12 md:col-2">

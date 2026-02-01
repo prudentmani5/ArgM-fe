@@ -21,6 +21,7 @@ const LoanApprovalWorkflowPage = () => {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const toast = useRef<Toast>(null);
   const dt = useRef<DataTable<LoanApprovalWorkflow[]>>(null);
   const searchParams = useSearchParams();
@@ -41,7 +42,7 @@ const LoanApprovalWorkflowPage = () => {
     setLoading(true);
     try {
       const response = await fetchLoanApprovalWorkflows({
-        route: `/api/financial-products/loan-products/workflows/product/${productId}`,
+        route: `/api/financial-products/loan-products/${productId}/workflows`,
         method: "GET",
       });
 
@@ -51,8 +52,8 @@ const LoanApprovalWorkflowPage = () => {
     } catch (error) {
       toast.current?.show({
         severity: "error",
-        summary: "Error / Erreur",
-        detail: "Failed to load loan approval workflows / Échec du chargement des flux d'approbation",
+        summary: "Erreur",
+        detail: "Échec du chargement des flux d'approbation",
         life: 3000,
       });
     } finally {
@@ -77,52 +78,64 @@ const LoanApprovalWorkflowPage = () => {
 
   const saveLoanApprovalWorkflow = async (loanApprovalWorkflow: LoanApprovalWorkflow) => {
     try {
+      const dataToSend = {
+        ...loanApprovalWorkflow,
+        product: { id: productId },
+        approvalLevel: { id: loanApprovalWorkflow.approvalLevelId },
+      };
+
       if (loanApprovalWorkflow.id) {
         const response = await updateLoanApprovalWorkflow({
-          route: `/api/financial-products/loan-products/workflows/update/${loanApprovalWorkflow.id}`,
+          route: `/api/financial-products/loan-products/workflows/${loanApprovalWorkflow.id}/update`,
           method: "PUT",
-          data: loanApprovalWorkflow,
+          data: dataToSend,
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan approval workflow updated successfully / Flux d'approbation mis à jour avec succès",
+            summary: "Succès",
+            detail: "Flux d'approbation mis à jour avec succès",
             life: 3000,
           });
           loadLoanApprovalWorkflows();
+          setActiveIndex(1);
         }
       } else {
         const response = await createLoanApprovalWorkflow({
-          route: "/api/financial-products/loan-products/workflows/save",
+          route: `/api/financial-products/loan-products/${productId}/workflows/new`,
           method: "POST",
-          data: loanApprovalWorkflow,
+          data: dataToSend,
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan approval workflow created successfully / Flux d'approbation créé avec succès",
+            summary: "Succès",
+            detail: "Flux d'approbation créé avec succès",
             life: 3000,
           });
           loadLoanApprovalWorkflows();
+          setActiveIndex(1);
         }
       }
       hideDialog();
     } catch (error) {
       toast.current?.show({
         severity: "error",
-        summary: "Error / Erreur",
-        detail: "Failed to save loan approval workflow / Échec de l'enregistrement du flux d'approbation",
+        summary: "Erreur",
+        detail: "Échec de l'enregistrement du flux d'approbation",
         life: 3000,
       });
     }
   };
 
   const editLoanApprovalWorkflow = (loanApprovalWorkflow: LoanApprovalWorkflow) => {
-    setSelectedLoanApprovalWorkflow({ ...loanApprovalWorkflow });
+    const workflowToEdit = {
+      ...loanApprovalWorkflow,
+      approvalLevelId: loanApprovalWorkflow.approvalLevel?.id || loanApprovalWorkflow.approvalLevelId,
+    };
+    setSelectedLoanApprovalWorkflow(workflowToEdit);
     setDisplayDialog(true);
   };
 
@@ -135,15 +148,15 @@ const LoanApprovalWorkflowPage = () => {
     if (selectedLoanApprovalWorkflow?.id) {
       try {
         const response = await deleteLoanApprovalWorkflow({
-          route: `/api/financial-products/loan-products/workflows/delete/${selectedLoanApprovalWorkflow.id}`,
+          route: `/api/financial-products/loan-products/workflows/${selectedLoanApprovalWorkflow.id}/delete`,
           method: "DELETE",
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan approval workflow deleted successfully / Flux d'approbation supprimé avec succès",
+            summary: "Succès",
+            detail: "Flux d'approbation supprimé avec succès",
             life: 3000,
           });
           loadLoanApprovalWorkflows();
@@ -151,8 +164,8 @@ const LoanApprovalWorkflowPage = () => {
       } catch (error) {
         toast.current?.show({
           severity: "error",
-          summary: "Error / Erreur",
-          detail: "Failed to delete loan approval workflow / Échec de la suppression du flux d'approbation",
+          summary: "Erreur",
+          detail: "Échec de la suppression du flux d'approbation",
           life: 3000,
         });
       }
@@ -168,7 +181,7 @@ const LoanApprovalWorkflowPage = () => {
     return (
       <div className="flex flex-wrap gap-2">
         <Button
-          label="New / Nouveau"
+          label="Nouveau"
           icon="pi pi-plus"
           className="p-button-success"
           onClick={openNew}
@@ -197,13 +210,13 @@ const LoanApprovalWorkflowPage = () => {
           icon="pi pi-pencil"
           className="p-button-rounded p-button-success p-button-sm"
           onClick={() => editLoanApprovalWorkflow(rowData)}
-          tooltip="Edit / Modifier"
+          tooltip="Modifier"
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-danger p-button-sm"
           onClick={() => confirmDelete(rowData)}
-          tooltip="Delete / Supprimer"
+          tooltip="Supprimer"
         />
       </div>
     );
@@ -212,7 +225,7 @@ const LoanApprovalWorkflowPage = () => {
   const requiredBodyTemplate = (rowData: LoanApprovalWorkflow) => {
     return (
       <Tag
-        value={rowData.isRequired ? "Required / Requis" : "Optional / Optionnel"}
+        value={rowData.isRequired ? "Requis" : "Optionnel"}
         severity={rowData.isRequired ? "warning" : "info"}
       />
     );
@@ -222,6 +235,7 @@ const LoanApprovalWorkflowPage = () => {
     const formatter = new Intl.NumberFormat("fr-BI", {
       style: "currency",
       currency: "BIF",
+      maximumFractionDigits: 0,
     });
 
     if (rowData.minAmount && rowData.maxAmount) {
@@ -231,17 +245,17 @@ const LoanApprovalWorkflowPage = () => {
     } else if (rowData.maxAmount) {
       return `Max: ${formatter.format(rowData.maxAmount)}`;
     }
-    return "All / Tous";
+    return "Tous";
   };
 
   const header = (
     <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h4 className="m-0">Gérer les Loan Approval Workflows / Gérer les Flux d&apos;Approbation</h4>
+      <h4 className="m-0">Gérer les Flux d&apos;Approbation</h4>
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
           type="search"
-          placeholder="Search / Rechercher..."
+          placeholder="Rechercher..."
           onInput={(e) => setGlobalFilter((e.target as HTMLInputElement).value)}
         />
       </span>
@@ -251,13 +265,13 @@ const LoanApprovalWorkflowPage = () => {
   const deleteDialogFooter = (
     <>
       <Button
-        label="No / Non"
+        label="Non"
         icon="pi pi-times"
         className="p-button-text"
         onClick={hideDeleteDialog}
       />
       <Button
-        label="Yes / Oui"
+        label="Oui"
         icon="pi pi-check"
         className="p-button-text"
         onClick={deleteLoanApprovalWorkflowAction}
@@ -271,8 +285,8 @@ const LoanApprovalWorkflowPage = () => {
         <div className="flex align-items-center justify-content-center" style={{ minHeight: "400px" }}>
           <div className="text-center">
             <i className="pi pi-exclamation-triangle" style={{ fontSize: "3rem", color: "var(--orange-500)" }} />
-            <h3>No Product Selected / Aucun Produit Sélectionné</h3>
-            <p>Please select a produit de crédit first / Veuillez d&apos;abord sélectionner un produit de crédit</p>
+            <h3>Aucun Produit Sélectionné</h3>
+            <p>Veuillez d&apos;abord sélectionner un produit de crédit</p>
           </div>
         </div>
       </div>
@@ -284,8 +298,9 @@ const LoanApprovalWorkflowPage = () => {
       <Toast ref={toast} />
 
       <div className="card">
-        <TabView>
-          <TabPanel header="New / Nouveau">
+        <h5>Flux d&apos;Approbation du Produit de Crédit</h5>
+        <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+          <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
             <LoanApprovalWorkflowForm
               visible={displayDialog}
               onHide={hideDialog}
@@ -294,14 +309,14 @@ const LoanApprovalWorkflowPage = () => {
               productId={productId}
             />
             <Button
-              label="Add Workflow / Ajouter Flux"
+              label="Ajouter Flux"
               icon="pi pi-plus"
               className="p-button-success"
               onClick={openNew}
             />
           </TabPanel>
 
-          <TabPanel header="All / Tous">
+          <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
             <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
 
             <DataTable
@@ -312,20 +327,21 @@ const LoanApprovalWorkflowPage = () => {
               rows={10}
               rowsPerPageOptions={[5, 10, 25]}
               paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-              currentPageReportTemplate="Showing {first} to {last} of {totalRecords} workflows"
+              currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} flux"
               globalFilter={globalFilter}
               header={header}
               loading={loading}
-              emptyMessage="No workflows found / Aucun flux trouvé"
+              emptyMessage="Aucun flux trouvé"
+              className="p-datatable-sm"
             >
-              <Column field="sequenceNumber" header="Sequence / Séquence" sortable />
+              <Column field="sequenceNumber" header="Séquence" sortable />
               <Column
-                field="approvalLevel.levelName"
-                header="Approval Level / Niveau d'Approbation"
+                field="approvalLevel.levelNameFr"
+                header="Niveau d'Approbation"
                 sortable
               />
-              <Column header="Amount Range / Plage de Montant" body={amountRangeBodyTemplate} />
-              <Column header="Required / Requis" body={requiredBodyTemplate} sortable />
+              <Column header="Plage de Montant" body={amountRangeBodyTemplate} />
+              <Column header="Requis" body={requiredBodyTemplate} sortable />
               <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: "8rem" }} />
             </DataTable>
           </TabPanel>
@@ -343,7 +359,7 @@ const LoanApprovalWorkflowPage = () => {
       <Dialog
         visible={deleteDialog}
         style={{ width: "450px" }}
-        header="Confirm / Confirmer"
+        header="Confirmer la suppression"
         modal
         footer={deleteDialogFooter}
         onHide={hideDeleteDialog}
@@ -351,10 +367,7 @@ const LoanApprovalWorkflowPage = () => {
         <div className="confirmation-content">
           <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: "2rem" }} />
           {selectedLoanApprovalWorkflow && (
-            <span>
-              Êtes-vous sûr de vouloir supprimer this workflow? /
-              Êtes-vous sûr de vouloir supprimer ce flux?
-            </span>
+            <span>Êtes-vous sûr de vouloir supprimer ce flux?</span>
           )}
         </div>
       </Dialog>

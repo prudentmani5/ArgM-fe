@@ -3,17 +3,16 @@ export class LoanProductGuarantee {
     productId: number;
     guaranteeTypeId: number;
     guaranteeType?: any;
-    minValue?: number;
-    maxValue?: number;
-    isRequired: boolean;
-    description?: string;
-    descriptionFr?: string;
+    minCoveragePercentage?: number;
+    isMandatory: boolean;
+    isActive: boolean;
     createdAt?: string;
     updatedAt?: string;
 
     constructor() {
         this.productId = 0;
         this.guaranteeTypeId = 0;
-        this.isRequired = false;
+        this.isMandatory = false;
+        this.isActive = true;
     }
 }

@@ -19,6 +19,7 @@ export class LoanProduct {
     minInterestRate: number;
     maxInterestRate: number;
     defaultInterestRate: number;
+    nominalInterestRate?: number;
     paymentFrequencyId: number;
     paymentFrequency?: any;
     gracePeriodType?: string;
@@ -34,6 +35,7 @@ export class LoanProduct {
     createdById?: number;
     approvedById?: number;
     approvedAt?: string;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 

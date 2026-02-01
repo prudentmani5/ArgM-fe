@@ -1,16 +1,35 @@
+export interface FeeType {
+    id: number;
+    code?: string;
+    name?: string;
+    nameFr?: string;
+    description?: string;
+    isActive?: boolean;
+}
+
+export interface FeeCalculationMethod {
+    id: number;
+    code?: string;
+    name?: string;
+    nameFr?: string;
+    description?: string;
+    isActive?: boolean;
+}
+
 export class LoanProductFee {
     id?: number;
     productId: number;
     feeTypeId: number;
-    feeType?: any;
+    feeType?: FeeType;
     calculationMethodId: number;
-    calculationMethod?: any;
+    calculationMethod?: FeeCalculationMethod;
     fixedAmount?: number;
     percentageRate?: number;
     minAmount?: number;
     maxAmount?: number;
     collectionTime: string; // APPLICATION, APPROVAL, DISBURSEMENT, MONTHLY, CLOSURE, ANNUALLY
     isActive: boolean;
+    isMandatory?: boolean;
     createdAt?: string;
     updatedAt?: string;
 
@@ -20,5 +39,6 @@ export class LoanProductFee {
         this.calculationMethodId = 0;
         this.collectionTime = 'APPLICATION';
         this.isActive = true;
+        this.isMandatory = false;
     }
 }

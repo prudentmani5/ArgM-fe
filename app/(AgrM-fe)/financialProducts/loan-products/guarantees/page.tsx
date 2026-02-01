@@ -21,6 +21,7 @@ const LoanProductGuaranteePage = () => {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const toast = useRef<Toast>(null);
   const dt = useRef<DataTable<LoanProductGuarantee[]>>(null);
   const searchParams = useSearchParams();
@@ -41,7 +42,7 @@ const LoanProductGuaranteePage = () => {
     setLoading(true);
     try {
       const response = await fetchLoanProductGuarantees({
-        route: `/api/financial-products/loan-products/guarantees/product/${productId}`,
+        route: `/api/financial-products/loan-products/${productId}/guarantees`,
         method: "GET",
       });
 
@@ -51,8 +52,8 @@ const LoanProductGuaranteePage = () => {
     } catch (error) {
       toast.current?.show({
         severity: "error",
-        summary: "Error / Erreur",
-        detail: "Failed to load produit de crédit guarantees / Échec du chargement des garanties",
+        summary: "Erreur",
+        detail: "Échec du chargement des garanties",
         life: 3000,
       });
     } finally {
@@ -77,45 +78,52 @@ const LoanProductGuaranteePage = () => {
 
   const saveLoanProductGuarantee = async (loanProductGuarantee: LoanProductGuarantee) => {
     try {
+      const dataToSend = {
+        ...loanProductGuarantee,
+        product: { id: productId },
+      };
+
       if (loanProductGuarantee.id) {
         const response = await updateLoanProductGuarantee({
-          route: `/api/financial-products/loan-products/guarantees/update/${loanProductGuarantee.id}`,
+          route: `/api/financial-products/loan-products/guarantees/${loanProductGuarantee.id}/update`,
           method: "PUT",
-          data: loanProductGuarantee,
+          data: dataToSend,
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan product guarantee updated successfully / Garantie mise à jour avec succès",
+            summary: "Succès",
+            detail: "Garantie mise à jour avec succès",
             life: 3000,
           });
           loadLoanProductGuarantees();
+          setActiveIndex(1);
         }
       } else {
         const response = await createLoanProductGuarantee({
-          route: "/api/financial-products/loan-products/guarantees/save",
+          route: `/api/financial-products/loan-products/${productId}/guarantees/new`,
           method: "POST",
-          data: loanProductGuarantee,
+          data: dataToSend,
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan product guarantee created successfully / Garantie créée avec succès",
+            summary: "Succès",
+            detail: "Garantie créée avec succès",
             life: 3000,
           });
           loadLoanProductGuarantees();
+          setActiveIndex(1);
         }
       }
       hideDialog();
     } catch (error) {
       toast.current?.show({
         severity: "error",
-        summary: "Error / Erreur",
-        detail: "Failed to save produit de crédit guarantee / Échec de l'enregistrement de la garantie",
+        summary: "Erreur",
+        detail: "Échec de l'enregistrement de la garantie",
         life: 3000,
       });
     }
@@ -135,15 +143,15 @@ const LoanProductGuaranteePage = () => {
     if (selectedLoanProductGuarantee?.id) {
       try {
         const response = await deleteLoanProductGuarantee({
-          route: `/api/financial-products/loan-products/guarantees/delete/${selectedLoanProductGuarantee.id}`,
+          route: `/api/financial-products/loan-products/guarantees/${selectedLoanProductGuarantee.id}/delete`,
           method: "DELETE",
         });
 
         if (response) {
           toast.current?.show({
             severity: "success",
-            summary: "Success / Succès",
-            detail: "Loan product guarantee deleted successfully / Garantie supprimée avec succès",
+            summary: "Succès",
+            detail: "Garantie supprimée avec succès",
             life: 3000,
           });
           loadLoanProductGuarantees();
@@ -151,8 +159,8 @@ const LoanProductGuaranteePage = () => {
       } catch (error) {
         toast.current?.show({
           severity: "error",
-          summary: "Error / Erreur",
-          detail: "Failed to delete produit de crédit guarantee / Échec de la suppression de la garantie",
+          summary: "Erreur",
+          detail: "Échec de la suppression de la garantie",
           life: 3000,
         });
       }
@@ -168,7 +176,7 @@ const LoanProductGuaranteePage = () => {
     return (
       <div className="flex flex-wrap gap-2">
         <Button
-          label="New / Nouveau"
+          label="Nouveau"
           icon="pi pi-plus"
           className="p-button-success"
           onClick={openNew}
@@ -197,13 +205,13 @@ const LoanProductGuaranteePage = () => {
           icon="pi pi-pencil"
           className="p-button-rounded p-button-success p-button-sm"
           onClick={() => editLoanProductGuarantee(rowData)}
-          tooltip="Edit / Modifier"
+          tooltip="Modifier"
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-danger p-button-sm"
           onClick={() => confirmDelete(rowData)}
-          tooltip="Delete / Supprimer"
+          tooltip="Supprimer"
         />
       </div>
     );
@@ -212,7 +220,7 @@ const LoanProductGuaranteePage = () => {
   const requiredBodyTemplate = (rowData: LoanProductGuarantee) => {
     return (
       <Tag
-        value={rowData.isRequired ? "Required / Requis" : "Optional / Optionnel"}
+        value={rowData.isRequired ? "Requis" : "Optionnel"}
         severity={rowData.isRequired ? "warning" : "info"}
       />
     );
@@ -222,6 +230,7 @@ const LoanProductGuaranteePage = () => {
     const formatter = new Intl.NumberFormat("fr-BI", {
       style: "currency",
       currency: "BIF",
+      maximumFractionDigits: 0,
     });
 
     if (rowData.minValue && rowData.maxValue) {
@@ -236,12 +245,12 @@ const LoanProductGuaranteePage = () => {
 
   const header = (
     <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h4 className="m-0">Gérer les Loan Product Guarantees / Gérer les Garanties de Produit</h4>
+      <h4 className="m-0">Gérer les Garanties de Produit</h4>
       <span className="p-input-icon-left">
         <i className="pi pi-search" />
         <InputText
           type="search"
-          placeholder="Search / Rechercher..."
+          placeholder="Rechercher..."
           onInput={(e) => setGlobalFilter((e.target as HTMLInputElement).value)}
         />
       </span>
@@ -251,13 +260,13 @@ const LoanProductGuaranteePage = () => {
   const deleteDialogFooter = (
     <>
       <Button
-        label="No / Non"
+        label="Non"
         icon="pi pi-times"
         className="p-button-text"
         onClick={hideDeleteDialog}
       />
       <Button
-        label="Yes / Oui"
+        label="Oui"
         icon="pi pi-check"
         className="p-button-text"
         onClick={deleteLoanProductGuaranteeAction}
@@ -271,8 +280,8 @@ const LoanProductGuaranteePage = () => {
         <div className="flex align-items-center justify-content-center" style={{ minHeight: "400px" }}>
           <div className="text-center">
             <i className="pi pi-exclamation-triangle" style={{ fontSize: "3rem", color: "var(--orange-500)" }} />
-            <h3>No Product Selected / Aucun Produit Sélectionné</h3>
-            <p>Please select a produit de crédit first / Veuillez d&apos;abord sélectionner un produit de crédit</p>
+            <h3>Aucun Produit Sélectionné</h3>
+            <p>Veuillez d&apos;abord sélectionner un produit de crédit</p>
           </div>
         </div>
       </div>
@@ -284,8 +293,9 @@ const LoanProductGuaranteePage = () => {
       <Toast ref={toast} />
 
       <div className="card">
-        <TabView>
-          <TabPanel header="New / Nouveau">
+        <h5>Garanties du Produit de Crédit</h5>
+        <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+          <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
             <LoanProductGuaranteeForm
               visible={displayDialog}
               onHide={hideDialog}
@@ -294,14 +304,14 @@ const LoanProductGuaranteePage = () => {
               productId={productId}
             />
             <Button
-              label="Add Guarantee / Ajouter Garantie"
+              label="Ajouter Garantie"
               icon="pi pi-plus"
               className="p-button-success"
               onClick={openNew}
             />
           </TabPanel>
 
-          <TabPanel header="All / Tous">
+          <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
             <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
 
             <DataTable
@@ -312,19 +322,21 @@ const LoanProductGuaranteePage = () => {
               rows={10}
               rowsPerPageOptions={[5, 10, 25]}
               paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-              currentPageReportTemplate="Showing {first} to {last} of {totalRecords} guarantees"
+              currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} garanties"
               globalFilter={globalFilter}
               header={header}
               loading={loading}
-              emptyMessage="No guarantees found / Aucune garantie trouvée"
+              emptyMessage="Aucune garantie trouvée"
+              className="p-datatable-sm"
             >
               <Column
-                field="guaranteeType.typeName"
-                header="Guarantee Type / Type de Garantie"
+                field="guaranteeType.nameFr"
+                header="Type de Garantie"
                 sortable
+                filter
               />
-              <Column header="Value Range / Plage de Valeur" body={valueBodyTemplate} />
-              <Column header="Required / Requis" body={requiredBodyTemplate} sortable />
+              <Column header="Plage de Valeur" body={valueBodyTemplate} />
+              <Column header="Requis" body={requiredBodyTemplate} sortable />
               <Column field="description" header="Description" sortable />
               <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: "8rem" }} />
             </DataTable>
@@ -343,7 +355,7 @@ const LoanProductGuaranteePage = () => {
       <Dialog
         visible={deleteDialog}
         style={{ width: "450px" }}
-        header="Confirm / Confirmer"
+        header="Confirmer la suppression"
         modal
         footer={deleteDialogFooter}
         onHide={hideDeleteDialog}
@@ -352,7 +364,6 @@ const LoanProductGuaranteePage = () => {
           <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: "2rem" }} />
           {selectedLoanProductGuarantee && (
             <span>
-              Êtes-vous sûr de vouloir supprimer this guarantee? /
               Êtes-vous sûr de vouloir supprimer cette garantie?
             </span>
           )}

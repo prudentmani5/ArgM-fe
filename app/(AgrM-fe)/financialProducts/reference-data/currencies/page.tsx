@@ -8,75 +8,78 @@ import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 import { Currency } from './Currency';
 import CurrencyForm from './CurrencyForm';
+
+const BASE_URL = buildApiUrl('/api/financial-products/reference/currencies');
 
 const CurrenciesPage = () => {
     const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [currency, setCurrency] = useState<Currency>(new Currency());
     const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(null);
     const [globalFilter, setGlobalFilter] = useState('');
-    const [loading, setLoading] = useState(false);
     const [totalRecords, setTotalRecords] = useState(0);
-    const [lazyState, setLazyState] = useState({
-        first: 0,
-        rows: 10,
-        page: 0
-    });
+    const [activeIndex, setActiveIndex] = useState(0);
     const [displayDialog, setDisplayDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
     const toast = useRef<Toast>(null);
-    const { data: fetchData, loading: fetchLoading, error: fetchError } = useConsumApi('/api/financial-products/reference/currencies/findall');
-    const { data: createData, loading: createLoading, error: createError, postData } = useConsumApi('/api/financial-products/reference/currencies/new');
-    const { data: updateData, loading: updateLoading, error: updateError, putData } = useConsumApi('');
-    const { data: deleteData, loading: deleteLoading, error: deleteError, deleteData: deleteRecord } = useConsumApi('');
+    const { data, loading, error, fetchData, callType } = useConsumApi('');
+
+    // Get connected user from cookies
+    const getConnectedUser = (): string => {
+        const appUserCookie = Cookies.get('appUser');
+        if (appUserCookie) {
+            try {
+                const appUser = JSON.parse(appUserCookie);
+                return appUser.email || `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || 'Unknown';
+            } catch {
+                return 'Unknown';
+            }
+        }
+        return 'Unknown';
+    };
 
     useEffect(() => {
         loadCurrencies();
     }, []);
 
     useEffect(() => {
-        if (fetchData) {
-            setCurrencies(fetchData);
-            setTotalRecords(fetchData.length);
+        if (data) {
+            switch (callType) {
+                case 'loadCurrencies':
+                    const items = Array.isArray(data) ? data : data.content || [];
+                    setCurrencies(items);
+                    setTotalRecords(items.length);
+                    break;
+                case 'create':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Devise créée avec succès' });
+                    loadCurrencies();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'update':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Devise modifiée avec succès' });
+                    loadCurrencies();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'delete':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Devise supprimée avec succès' });
+                    loadCurrencies();
+                    break;
+            }
         }
-    }, [fetchData]);
-
-    useEffect(() => {
-        if (createData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Devise créée avec succès' });
-            loadCurrencies();
-            resetForm();
+        if (error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue' });
         }
-    }, [createData]);
-
-    useEffect(() => {
-        if (updateData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Devise modifiée avec succès' });
-            loadCurrencies();
-            resetForm();
-        }
-    }, [updateData]);
-
-    useEffect(() => {
-        if (deleteData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Devise supprimée avec succès' });
-            loadCurrencies();
-        }
-    }, [deleteData]);
-
-    useEffect(() => {
-        if (createError || updateError || deleteError || fetchError) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: createError || updateError || deleteError || fetchError });
-        }
-    }, [createError, updateError, deleteError, fetchError]);
+    }, [data, error, callType]);
 
     const loadCurrencies = () => {
-        setLoading(true);
-        // Trigger fetch - useConsumApi will handle it
-        setLoading(false);
+        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadCurrencies');
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -92,22 +95,25 @@ const CurrenciesPage = () => {
         setCurrency(prev => ({ ...prev, [name]: checked }));
     };
 
-    const saveCurrency = async () => {
+    const saveCurrency = () => {
         if (!currency.code || !currency.name || !currency.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Veuillez remplir les champs obligatoires' });
             return;
         }
 
+        const currencyToSave = { ...currency, userAction: getConnectedUser() };
+
         if (isEditing && currency.id) {
-            await putData(`/api/financial-products/reference/currencies/update/${currency.id}`, currency);
+            fetchData(currencyToSave, 'PUT', `${BASE_URL}/update/${currency.id}`, 'update');
         } else {
-            await postData(currency);
+            fetchData(currencyToSave, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
     const editCurrency = (rowData: Currency) => {
         setCurrency({ ...rowData });
         setIsEditing(true);
+        setActiveIndex(0);
     };
 
     const confirmDelete = (rowData: Currency) => {
@@ -115,9 +121,9 @@ const CurrenciesPage = () => {
         setDisplayDialog(true);
     };
 
-    const deleteCurrencyConfirmed = async () => {
+    const deleteCurrencyConfirmed = () => {
         if (selectedCurrency?.id) {
-            await deleteRecord(`/api/financial-products/reference/currencies/delete/${selectedCurrency.id}`);
+            fetchData(null, 'DELETE', `${BASE_URL}/delete/${selectedCurrency.id}`, 'delete');
             setDisplayDialog(false);
             setSelectedCurrency(null);
         }
@@ -126,10 +132,6 @@ const CurrenciesPage = () => {
     const resetForm = () => {
         setCurrency(new Currency());
         setIsEditing(false);
-    };
-
-    const onPage = (event: any) => {
-        setLazyState(event);
     };
 
     const actionBodyTemplate = (rowData: Currency) => {
@@ -141,6 +143,7 @@ const CurrenciesPage = () => {
                     outlined
                     className="p-button-warning"
                     onClick={() => editCurrency(rowData)}
+                    tooltip="Modifier"
                 />
                 <Button
                     icon="pi pi-trash"
@@ -148,6 +151,7 @@ const CurrenciesPage = () => {
                     outlined
                     severity="danger"
                     onClick={() => confirmDelete(rowData)}
+                    tooltip="Supprimer"
                 />
             </div>
         );
@@ -181,9 +185,9 @@ const CurrenciesPage = () => {
             <Toast ref={toast} />
             <div className="col-12">
                 <div className="card">
-                    <h5>Currencies / Devises</h5>
-                    <TabView>
-                        <TabPanel header="Nouveau">
+                    <h5>Devises</h5>
+                    <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+                        <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
                             <CurrencyForm
                                 currency={currency}
                                 handleChange={handleChange}
@@ -195,7 +199,7 @@ const CurrenciesPage = () => {
                                     label={isEditing ? 'Modifier' : 'Enregistrer'}
                                     icon="pi pi-check"
                                     onClick={saveCurrency}
-                                    loading={createLoading || updateLoading}
+                                    loading={loading && (callType === 'create' || callType === 'update')}
                                 />
                                 <Button
                                     label="Annuler"
@@ -205,28 +209,26 @@ const CurrenciesPage = () => {
                                 />
                             </div>
                         </TabPanel>
-                        <TabPanel header="Tous">
+                        <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
                             <DataTable
                                 value={currencies}
-                                lazy
                                 paginator
-                                first={lazyState.first}
-                                rows={lazyState.rows}
-                                totalRecords={totalRecords}
-                                onPage={onPage}
-                                loading={loading || fetchLoading}
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading && callType === 'loadCurrencies'}
                                 globalFilter={globalFilter}
                                 header={header}
                                 emptyMessage="Aucune devise trouvée"
+                                className="p-datatable-sm"
                             >
-                                <Column field="code" header="Code" sortable />
-                                <Column field="name" header="Nom" sortable />
-                                <Column field="nameFr" header="Nom (FR)" sortable />
+                                <Column field="code" header="Code" sortable filter />
+                                <Column field="name" header="Nom" sortable filter />
+                                <Column field="nameFr" header="Nom (FR)" sortable filter />
                                 <Column field="symbol" header="Symbole" />
                                 <Column field="decimalPlaces" header="Décimales" />
                                 <Column header="Par défaut" body={defaultBodyTemplate} />
                                 <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
-                                <Column body={actionBodyTemplate} header="Actions" />
+                                <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
                             </DataTable>
                         </TabPanel>
                     </TabView>
@@ -236,12 +238,12 @@ const CurrenciesPage = () => {
             <Dialog
                 visible={displayDialog}
                 style={{ width: '450px' }}
-                header="Confirmer"
+                header="Confirmer la suppression"
                 modal
                 footer={
                     <>
                         <Button label="Non" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
-                        <Button label="Oui" icon="pi pi-check" onClick={deleteCurrencyConfirmed} autoFocus loading={deleteLoading} />
+                        <Button label="Oui" icon="pi pi-check" onClick={deleteCurrencyConfirmed} autoFocus loading={loading && callType === 'delete'} />
                     </>
                 }
                 onHide={() => setDisplayDialog(false)}

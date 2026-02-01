@@ -33,12 +33,12 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
   const { processRequest: loadCalculationMethods } = useConsumApi();
 
   const collectionTimeOptions = [
-    { label: "Application / Demande", value: "APPLICATION" },
-    { label: "Approval / Approbation", value: "APPROVAL" },
-    { label: "Disbursement / Décaissement", value: "DISBURSEMENT" },
-    { label: "Monthly / Mensuel", value: "MONTHLY" },
-    { label: "Annually / Annuel", value: "ANNUALLY" },
-    { label: "Closure / Clôture", value: "CLOSURE" },
+    { label: "Demande", value: "APPLICATION" },
+    { label: "Approbation", value: "APPROVAL" },
+    { label: "Décaissement", value: "DISBURSEMENT" },
+    { label: "Mensuel", value: "MONTHLY" },
+    { label: "Annuel", value: "ANNUALLY" },
+    { label: "Clôture", value: "CLOSURE" },
   ];
 
   useEffect(() => {
@@ -64,7 +64,7 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
           method: "GET",
         }),
         loadCalculationMethods({
-          route: "/api/financial-products/reference/calculation-methods/findall",
+          route: "/api/financial-products/reference/fee-calculation-methods/findall",
           method: "GET",
         }),
       ]);
@@ -72,7 +72,7 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
       if (ftResponse?.data) setFeeTypes(ftResponse.data);
       if (cmResponse?.data) setCalculationMethods(cmResponse.data);
     } catch (error) {
-      console.error("Error loading reference data:", error);
+      console.error("Erreur lors du chargement des données de référence:", error);
     }
   };
 
@@ -94,13 +94,13 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
     return (
       <div>
         <Button
-          label="Cancel / Annuler"
+          label="Annuler"
           icon="pi pi-times"
           className="p-button-text"
           onClick={onHide}
         />
         <Button
-          label="Save / Enregistrer"
+          label="Enregistrer"
           icon="pi pi-check"
           onClick={handleSubmit}
         />
@@ -114,8 +114,8 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
       style={{ width: "50vw" }}
       header={
         loanProductFee?.id
-          ? "Edit Loan Product Fee / Modifier Frais de Produit"
-          : "New Loan Product Fee / Nouveau Frais de Produit"
+          ? "Modifier Frais de Produit"
+          : "Nouveau Frais de Produit"
       }
       modal
       className="p-fluid"
@@ -123,14 +123,14 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
       onHide={onHide}
     >
       <div className="p-fluid">
-        {/* Section 1: Fee Configuration */}
+        {/* Section 1: Configuration des Frais */}
         <Divider>
-          <span className="p-tag">Fee Configuration / Configuration des Frais</span>
+          <span className="p-tag">Configuration des Frais</span>
         </Divider>
 
         <div className="field grid">
           <label htmlFor="feeTypeId" className="col-12 mb-2 md:col-3 md:mb-0">
-            Fee Type / Type de Frais *
+            Type de Frais *
           </label>
           <div className="col-12 md:col-9">
             <Dropdown
@@ -138,20 +138,20 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
               value={formData.feeTypeId}
               options={feeTypes}
               onChange={(e) => handleChange("feeTypeId", e.value)}
-              optionLabel="typeName"
+              optionLabel="nameFr"
               optionValue="id"
-              placeholder="Select / Sélectionner"
+              placeholder="Sélectionner"
               className={submitted && !formData.feeTypeId ? "p-invalid" : ""}
             />
             {submitted && !formData.feeTypeId && (
-              <small className="p-error">Fee type is required / Type de frais requis</small>
+              <small className="p-error">Type de frais requis</small>
             )}
           </div>
         </div>
 
         <div className="field grid">
           <label htmlFor="calculationMethodId" className="col-12 mb-2 md:col-3 md:mb-0">
-            Calculation Method / Méthode de Calcul *
+            Méthode de Calcul *
           </label>
           <div className="col-12 md:col-9">
             <Dropdown
@@ -159,27 +159,25 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
               value={formData.calculationMethodId}
               options={calculationMethods}
               onChange={(e) => handleChange("calculationMethodId", e.value)}
-              optionLabel="methodName"
+              optionLabel="nameFr"
               optionValue="id"
-              placeholder="Select / Sélectionner"
+              placeholder="Sélectionner"
               className={submitted && !formData.calculationMethodId ? "p-invalid" : ""}
             />
             {submitted && !formData.calculationMethodId && (
-              <small className="p-error">
-                Calculation method is required / Méthode de calcul requise
-              </small>
+              <small className="p-error">Méthode de calcul requise</small>
             )}
           </div>
         </div>
 
-        {/* Section 2: Amount Configuration */}
+        {/* Section 2: Configuration du Montant */}
         <Divider>
-          <span className="p-tag">Amount Configuration / Configuration du Montant</span>
+          <span className="p-tag">Configuration du Montant</span>
         </Divider>
 
         <div className="field grid">
           <label htmlFor="fixedAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Fixed Amount / Montant Fixe
+            Montant Fixe
           </label>
           <div className="col-12 md:col-9">
             <InputNumber
@@ -195,7 +193,7 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
 
         <div className="field grid">
           <label htmlFor="percentageRate" className="col-12 mb-2 md:col-3 md:mb-0">
-            Percentage Rate / Taux de Pourcentage
+            Taux de Pourcentage
           </label>
           <div className="col-12 md:col-9">
             <InputNumber
@@ -211,7 +209,7 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
 
         <div className="field grid">
           <label htmlFor="minAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Minimum Amount / Montant Minimum
+            Montant Minimum
           </label>
           <div className="col-12 md:col-9">
             <InputNumber
@@ -227,7 +225,7 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
 
         <div className="field grid">
           <label htmlFor="maxAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Maximum Amount / Montant Maximum
+            Montant Maximum
           </label>
           <div className="col-12 md:col-9">
             <InputNumber
@@ -241,14 +239,14 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
           </div>
         </div>
 
-        {/* Section 3: Collection Configuration */}
+        {/* Section 3: Configuration de Collecte */}
         <Divider>
-          <span className="p-tag">Collection Configuration / Configuration de Collecte</span>
+          <span className="p-tag">Configuration de Collecte</span>
         </Divider>
 
         <div className="field grid">
           <label htmlFor="collectionTime" className="col-12 mb-2 md:col-3 md:mb-0">
-            Collection Time / Moment de Collecte *
+            Moment de Collecte *
           </label>
           <div className="col-12 md:col-9">
             <Dropdown
@@ -256,14 +254,14 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
               value={formData.collectionTime}
               options={collectionTimeOptions}
               onChange={(e) => handleChange("collectionTime", e.value)}
-              placeholder="Select / Sélectionner"
+              placeholder="Sélectionner"
             />
           </div>
         </div>
 
         <div className="field grid">
           <label className="col-12 mb-2 md:col-3 md:mb-0">
-            Is Active / Est Actif
+            Actif
           </label>
           <div className="col-12 md:col-9">
             <Checkbox

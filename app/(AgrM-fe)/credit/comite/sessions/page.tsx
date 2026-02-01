@@ -93,7 +93,7 @@ export default function ComiteSessionsPage() {
     };
 
     const loadBranches = () => {
-        fetchData(null, 'GET', buildApiUrl('/api/branches/findall'), 'loadBranches');
+        fetchData(null, 'GET', buildApiUrl('/api/reference-data/branches/findall'), 'loadBranches');
     };
 
     const showToast = (severity: 'success' | 'error' | 'info' | 'warn', summary: string, detail: string) => {

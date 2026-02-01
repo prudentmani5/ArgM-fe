@@ -8,59 +8,77 @@ import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 import { PaymentFrequency } from './PaymentFrequency';
 import PaymentFrequencyForm from './PaymentFrequencyForm';
+
+const BASE_URL = buildApiUrl('/api/financial-products/reference/payment-frequencies');
 
 const PaymentFrequenciesPage = () => {
     const [paymentFrequencies, setPaymentFrequencies] = useState<PaymentFrequency[]>([]);
     const [paymentFrequency, setPaymentFrequency] = useState<PaymentFrequency>(new PaymentFrequency());
     const [selectedPaymentFrequency, setSelectedPaymentFrequency] = useState<PaymentFrequency | null>(null);
     const [globalFilter, setGlobalFilter] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [totalRecords, setTotalRecords] = useState(0);
-    const [lazyState, setLazyState] = useState({ first: 0, rows: 10, page: 0 });
+    const [activeIndex, setActiveIndex] = useState(0);
     const [displayDialog, setDisplayDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
     const toast = useRef<Toast>(null);
-    const { data: fetchData, loading: fetchLoading, error: fetchError } = useConsumApi('/api/financial-products/reference/payment-frequencies/findall');
-    const { data: createData, loading: createLoading, error: createError, postData } = useConsumApi('/api/financial-products/reference/payment-frequencies/new');
-    const { data: updateData, loading: updateLoading, error: updateError, putData } = useConsumApi('');
-    const { data: deleteData, loading: deleteLoading, error: deleteError, deleteData: deleteRecord } = useConsumApi('');
+    const { data, loading, error, fetchData, callType } = useConsumApi('');
+
+    // Get connected user from cookies
+    const getConnectedUser = (): string => {
+        const appUserCookie = Cookies.get('appUser');
+        if (appUserCookie) {
+            try {
+                const appUser = JSON.parse(appUserCookie);
+                return appUser.email || `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || 'Unknown';
+            } catch {
+                return 'Unknown';
+            }
+        }
+        return 'Unknown';
+    };
 
     useEffect(() => {
-        if (fetchData) {
-            setPaymentFrequencies(fetchData);
-            setTotalRecords(fetchData.length);
-        }
-    }, [fetchData]);
+        loadPaymentFrequencies();
+    }, []);
 
     useEffect(() => {
-        if (createData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Fréquence de paiement créé avec succès' });
-            resetForm();
+        if (data) {
+            switch (callType) {
+                case 'loadPaymentFrequencies':
+                    const items = Array.isArray(data) ? data : data.content || [];
+                    setPaymentFrequencies(items);
+                    break;
+                case 'create':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Fréquence de paiement créée avec succès' });
+                    loadPaymentFrequencies();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'update':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Fréquence de paiement modifiée avec succès' });
+                    loadPaymentFrequencies();
+                    resetForm();
+                    setActiveIndex(1);
+                    break;
+                case 'delete':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Fréquence de paiement supprimée avec succès' });
+                    loadPaymentFrequencies();
+                    break;
+            }
         }
-    }, [createData]);
+        if (error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue' });
+        }
+    }, [data, error, callType]);
 
-    useEffect(() => {
-        if (updateData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Fréquence de paiement modifié avec succès' });
-            resetForm();
-        }
-    }, [updateData]);
-
-    useEffect(() => {
-        if (deleteData) {
-            toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Fréquence de paiement supprimé avec succès' });
-        }
-    }, [deleteData]);
-
-    useEffect(() => {
-        if (createError || updateError || deleteError || fetchError) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: createError || updateError || deleteError || fetchError });
-        }
-    }, [createError, updateError, deleteError, fetchError]);
+    const loadPaymentFrequencies = () => {
+        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadPaymentFrequencies');
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -75,22 +93,25 @@ const PaymentFrequenciesPage = () => {
         setPaymentFrequency(prev => ({ ...prev, [name]: checked }));
     };
 
-    const savePaymentFrequency = async () => {
+    const savePaymentFrequency = () => {
         if (!paymentFrequency.code || !paymentFrequency.name || !paymentFrequency.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Veuillez remplir les champs obligatoires' });
             return;
         }
 
+        const paymentFrequencyToSave = { ...paymentFrequency, userAction: getConnectedUser() };
+
         if (isEditing && paymentFrequency.id) {
-            await putData(`/api/financial-products/reference/payment-frequencies/update/${paymentFrequency.id}`, paymentFrequency);
+            fetchData(paymentFrequencyToSave, 'PUT', `${BASE_URL}/update/${paymentFrequency.id}`, 'update');
         } else {
-            await postData(paymentFrequency);
+            fetchData(paymentFrequencyToSave, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
     const editPaymentFrequency = (rowData: PaymentFrequency) => {
         setPaymentFrequency({ ...rowData });
         setIsEditing(true);
+        setActiveIndex(0);
     };
 
     const confirmDelete = (rowData: PaymentFrequency) => {
@@ -98,9 +119,9 @@ const PaymentFrequenciesPage = () => {
         setDisplayDialog(true);
     };
 
-    const deletePaymentFrequencyConfirmed = async () => {
+    const deletePaymentFrequencyConfirmed = () => {
         if (selectedPaymentFrequency?.id) {
-            await deleteRecord(`/api/financial-products/reference/payment-frequencies/delete/${selectedPaymentFrequency.id}`);
+            fetchData(null, 'DELETE', `${BASE_URL}/delete/${selectedPaymentFrequency.id}`, 'delete');
             setDisplayDialog(false);
             setSelectedPaymentFrequency(null);
         }
@@ -111,15 +132,11 @@ const PaymentFrequenciesPage = () => {
         setIsEditing(false);
     };
 
-    const onPage = (event: any) => {
-        setLazyState(event);
-    };
-
     const actionBodyTemplate = (rowData: PaymentFrequency) => {
         return (
             <div className="flex gap-2">
-                <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editPaymentFrequency(rowData)} />
-                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} />
+                <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editPaymentFrequency(rowData)} tooltip="Modifier" />
+                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} tooltip="Supprimer" />
             </div>
         );
     };
@@ -143,9 +160,9 @@ const PaymentFrequenciesPage = () => {
             <Toast ref={toast} />
             <div className="col-12">
                 <div className="card">
-                    <h5>Payment Frequencies / Fréquences de Paiement</h5>
-                    <TabView>
-                        <TabPanel header="Nouveau">
+                    <h5>Fréquences de Paiement</h5>
+                    <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+                        <TabPanel header="Nouveau" leftIcon="pi pi-plus mr-2">
                             <PaymentFrequencyForm
                                 paymentFrequency={paymentFrequency}
                                 handleChange={handleChange}
@@ -153,30 +170,28 @@ const PaymentFrequenciesPage = () => {
                                 handleCheckboxChange={handleCheckboxChange}
                             />
                             <div className="flex gap-2 mt-4">
-                                <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={savePaymentFrequency} loading={createLoading || updateLoading} />
+                                <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={savePaymentFrequency} loading={loading && (callType === 'create' || callType === 'update')} />
                                 <Button label="Annuler" icon="pi pi-times" severity="secondary" onClick={resetForm} />
                             </div>
                         </TabPanel>
-                        <TabPanel header="Tous">
+                        <TabPanel header="Tous" leftIcon="pi pi-list mr-2">
                             <DataTable
                                 value={paymentFrequencies}
-                                lazy
                                 paginator
-                                first={lazyState.first}
-                                rows={lazyState.rows}
-                                totalRecords={totalRecords}
-                                onPage={onPage}
-                                loading={loading || fetchLoading}
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading && callType === 'loadPaymentFrequencies'}
                                 globalFilter={globalFilter}
                                 header={header}
-                                emptyMessage="Aucun(e) fréquences de paiement trouvé(e)"
+                                emptyMessage="Aucune fréquence de paiement trouvée"
+                                className="p-datatable-sm"
                             >
-                                <Column field="code" header="Code" sortable />
-                                <Column field="name" header="Nom" sortable />
-                                <Column field="nameFr" header="Nom (FR)" sortable />
+                                <Column field="code" header="Code" sortable filter />
+                                <Column field="name" header="Nom" sortable filter />
+                                <Column field="nameFr" header="Nom (FR)" sortable filter />
                                 <Column field="paymentsPerYear" header="Paiements/An" sortable />
                                 <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
-                                <Column body={actionBodyTemplate} header="Actions" />
+                                <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
                             </DataTable>
                         </TabPanel>
                     </TabView>
@@ -186,12 +201,12 @@ const PaymentFrequenciesPage = () => {
             <Dialog
                 visible={displayDialog}
                 style={{ width: '450px' }}
-                header="Confirmer"
+                header="Confirmer la suppression"
                 modal
                 footer={
                     <>
                         <Button label="Non" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
-                        <Button label="Oui" icon="pi pi-check" onClick={deletePaymentFrequencyConfirmed} autoFocus loading={deleteLoading} />
+                        <Button label="Oui" icon="pi pi-check" onClick={deletePaymentFrequencyConfirmed} autoFocus loading={loading && callType === 'delete'} />
                     </>
                 }
                 onHide={() => setDisplayDialog(false)}

@@ -67,7 +67,7 @@ export default function DecisionsComitePage() {
     }, [data, error, callType]);
 
     const loadDecisions = () => {
-        fetchData(null, 'GET', `${BASE_URL}/types/findall`, 'loadDecisions');
+        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDecisions');
     };
 
     const showToast = (severity: 'success' | 'error' | 'info' | 'warn', summary: string, detail: string) => {
@@ -104,9 +104,9 @@ export default function DecisionsComitePage() {
         if (!validateForm()) return;
 
         if (decision.id) {
-            fetchData(decision, 'PUT', `${BASE_URL}/types/update/${decision.id}`, 'update');
+            fetchData(decision, 'PUT', `${BASE_URL}/update/${decision.id}`, 'update');
         } else {
-            fetchData(decision, 'POST', `${BASE_URL}/types/new`, 'create');
+            fetchData(decision, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
@@ -130,7 +130,7 @@ export default function DecisionsComitePage() {
             acceptLabel: 'Oui',
             rejectLabel: 'Non',
             accept: () => {
-                fetchData(null, 'DELETE', `${BASE_URL}/types/delete/${rowData.id}`, 'delete');
+                fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
             }
         });
     };

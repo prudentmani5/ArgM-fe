@@ -162,6 +162,58 @@ const AppMenu = () => {
 
         },
 
+
+
+        {
+            label: ' MODULE PRODUITS FINANCIERS',
+            icon: 'pi pi-money-bill',
+            items: [
+                
+                 {
+                            label: ' Devises',
+                            icon: 'pi pi-dollar',
+                            to: '/financialProducts/reference-data/currencies'
+                        },
+                        {
+                            label: 'Product Types',
+                            icon: 'pi pi-briefcase',
+                            to: '/financialProducts/reference-data/loan-product-types'
+                        },
+                      
+                    
+                        {
+                            label: 'Types de Frais',
+                            icon: 'pi pi-money-bill',
+                            to: '/financialProducts/reference-data/fee-types'
+                        },
+                        {
+                            label: 'Frequences de Payment ',
+                            icon: 'pi pi-calendar',
+                            to: '/financialProducts/reference-data/payment-frequencies'
+                        },
+
+                         {
+                            label: 'Interest Calculation Methods',
+                            icon: 'pi pi-percentage',
+                            to: '/financialProducts/reference-data/interest-calculation-methods'
+                        },
+                         {
+                            label: 'Tous les Produits',
+                            icon: 'pi pi-list',
+                            to: '/financialProducts/loan-products'
+                        },
+                         {
+                            label: 'New Application / Nouvelle Demande',
+                            icon: 'pi pi-plus-circle',
+                            to: '/financialProducts/loan-applications'
+                        }
+                       
+                        
+                       
+                    ]
+                },
+            
+
        /* {
             label: ' PRODUITS FINANCIERS',
             icon: 'pi pi-money-bill',
@@ -436,11 +488,11 @@ const AppMenu = () => {
                             icon: 'pi pi-arrow-up',
                             to: '/epargne/rapports/retraits'
                         },
-                       /* {
-                            label: 'Rapport des DAT',
+                       {
+                            label: 'Consulter historique',
                             icon: 'pi pi-lock',
-                            to: '/epargne/rapports/dat'
-                        },
+                            to: '/epargne/rapports/historique-operations'
+                        }, /*
                         {
                             label: 'Rapport Tontine',
                             icon: 'pi pi-users',
@@ -608,7 +660,7 @@ const AppMenu = () => {
                         }
                     ]
                 },
-                {
+               /* {
                     label: 'Visites Terrain',
                     icon: 'pi pi-map-marker',
                     items: [
@@ -639,7 +691,7 @@ const AppMenu = () => {
                             to: '/credit/comite/demandes'
                         }
                     ]
-                },
+                },*/
                 {
                     label: 'Décaissements',
                     icon: 'pi pi-money-bill',

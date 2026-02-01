@@ -10,11 +10,14 @@ import { InputText } from 'primereact/inputtext';
 import { useRouter } from 'next/navigation';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import Cookies from 'js-cookie';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
+const SAVINGS_ACCOUNTS_URL = buildApiUrl('/api/epargne/comptes');
 
 export default function AnalysesListPage() {
     const [demandes, setDemandes] = useState<any[]>([]);
+    const [savingsAccounts, setSavingsAccounts] = useState<any[]>([]);
     const [globalFilter, setGlobalFilter] = useState('');
     const toast = useRef<Toast>(null);
     const router = useRouter();
@@ -23,17 +26,48 @@ export default function AnalysesListPage() {
 
     useEffect(() => {
         loadDemandes();
+        loadSavingsAccounts();
     }, []);
+
+    // Load savings accounts to map account numbers
+    const loadSavingsAccounts = async () => {
+        try {
+            const token = Cookies.get('token');
+            const response = await fetch(`${SAVINGS_ACCOUNTS_URL}/findallactive`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const accountsData = await response.json();
+                setSavingsAccounts(Array.isArray(accountsData) ? accountsData : accountsData?.content || []);
+            }
+        } catch (err) {
+            console.error('Error loading savings accounts:', err);
+        }
+    };
 
     useEffect(() => {
         if (data && callType === 'loadDemandes') {
             const list = Array.isArray(data) ? data : data.content || [];
-            // Filter only demandes that need or have analysis
+            // Filter only demandes that need or have analysis (statuses after document reception)
+            const analysisStatuses = [
+                'DOCS_RECEIVED',
+                'UNDER_ANALYSIS',
+                'FIELD_VISIT',
+                'VISIT_COMPLETED',
+                'PENDING_COMMITTEE',
+                'APPROVED',
+                'APPROVED_CONDITIONS',
+                'APPROUVE_MONTANT_REDUIT',
+                'AJOURNE',
+                'RENVOI_ANALYSE'
+            ];
             setDemandes(list.filter((d: any) =>
-                d.statusCode === 'EN_ANALYSE' ||
-                d.statusCode === 'SOUMISE' ||
-                d.statusCode === 'EN_VISITE' ||
-                d.statusCode === 'EN_COMITE'
+                analysisStatuses.includes(d.status?.code)
             ));
         }
         if (error) {
@@ -43,6 +77,13 @@ export default function AnalysesListPage() {
 
     const loadDemandes = () => {
         fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+    };
+
+    // Get account number from savingsAccountId
+    const getAccountNumber = (savingsAccountId: number) => {
+        if (!savingsAccountId) return '-';
+        const account = savingsAccounts.find(a => a.id === savingsAccountId);
+        return account?.accountNumber || '-';
     };
 
     const goToAnalysis = (rowData: any) => {
@@ -62,18 +103,31 @@ export default function AnalysesListPage() {
         return new Date(dateString).toLocaleDateString('fr-FR');
     };
 
+    const clientBodyTemplate = (rowData: any) => {
+        const client = rowData.client;
+        return client ? `${client.firstName} ${client.lastName}` : '-';
+    };
+
+    const accountNumberBodyTemplate = (rowData: any) => {
+        return getAccountNumber(rowData.savingsAccountId);
+    };
+
+    const userActionBodyTemplate = (rowData: any) => {
+        return rowData.userAction || '-';
+    };
+
     const statusBodyTemplate = (rowData: any) => {
-        const statusColors: Record<string, string> = {
-            'SOUMISE': 'info',
-            'EN_ANALYSE': 'warning',
-            'EN_VISITE': 'warning',
-            'EN_COMITE': 'info'
-        };
-        return <Tag value={rowData.statusName || rowData.statusCode} severity={statusColors[rowData.statusCode] as any || 'secondary'} />;
+        const status = rowData.status;
+        return status ? (
+            <Tag value={status.nameFr || status.name} style={{ backgroundColor: status.color || '#6c757d' }} />
+        ) : (
+            <Tag value="-" severity="info" />
+        );
     };
 
     const analysisStatusTemplate = (rowData: any) => {
-        if (rowData.hasFinancialAnalysis) {
+        // Check if capacity analysis exists
+        if (rowData.repaymentCapacity || rowData.totalMonthlyIncome) {
             return <Tag value="Complétée" severity="success" icon="pi pi-check" />;
         }
         return <Tag value="En attente" severity="warning" icon="pi pi-clock" />;
@@ -125,13 +179,14 @@ export default function AnalysesListPage() {
                 className="p-datatable-sm"
             >
                 <Column field="applicationNumber" header="N° Dossier" sortable filter />
-                <Column field="clientName" header="Client" sortable filter />
+                <Column header="Client" body={clientBodyTemplate} sortable filter />
+                <Column header="N° Compte" body={accountNumberBodyTemplate} sortable filter />
                 <Column field="amountRequested" header="Montant Demandé" body={(row) => formatCurrency(row.amountRequested)} sortable />
                 <Column field="applicationDate" header="Date Dépôt" body={(row) => formatDate(row.applicationDate)} sortable />
                 <Column header="Statut Demande" body={statusBodyTemplate} />
                 <Column header="Analyse" body={analysisStatusTemplate} />
-                <Column field="creditOfficerName" header="Agent de Crédit" sortable filter />
-                <Column header="Actions" body={actionsBodyTemplate} style={{ width: '100px' }} />
+                <Column header="Agent de Crédit" body={userActionBodyTemplate} sortable filter />
+                {/*<Column header="Actions" body={actionsBodyTemplate} style={{ width: '100px' }} />*/}
             </DataTable>
         </div>
     );

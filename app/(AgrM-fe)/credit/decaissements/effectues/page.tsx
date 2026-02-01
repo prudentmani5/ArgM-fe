@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
@@ -64,7 +63,10 @@ export default function DecaissementsEffectuesPage() {
             'CHEQUE': 'warning',
             'MOBILE_MONEY': 'help'
         };
-        return <Tag value={modeLabels[rowData.disbursementMode] || rowData.disbursementMode} severity={modeColors[rowData.disbursementMode] as any || 'info'} />;
+        // Get mode code from either the code field or the entity's code
+        const modeCode = rowData.disbursementModeCode || rowData.disbursementMode?.code || rowData.disbursementMode;
+        const modeName = rowData.disbursementMode?.nameFr || rowData.disbursementMode?.name || modeLabels[modeCode] || modeCode;
+        return <Tag value={modeName || '-'} severity={modeColors[modeCode] as any || 'info'} />;
     };
 
     const header = (
@@ -155,12 +157,12 @@ export default function DecaissementsEffectuesPage() {
             >
                 <Column field="applicationNumber" header="N° Dossier" sortable filter />
                 <Column field="clientName" header="Client" sortable filter />
+                <Column field="disbursementNumber" header="N° Décaissement" sortable filter />
                 <Column field="amount" header="Montant" body={(row) => formatCurrency(row.amount)} sortable />
                 <Column field="disbursementDate" header="Date Décaissement" body={(row) => formatDate(row.disbursementDate)} sortable />
                 <Column header="Mode" body={modeBodyTemplate} />
                 <Column field="reference" header="Référence" sortable filter />
-                <Column field="branchName" header="Agence" sortable filter />
-                <Column field="disbursedByName" header="Effectué par" sortable filter />
+                <Column header="Effectué par" body={(row) => row.disbursedByName || row.userAction || '-'} sortable filter />
             </DataTable>
         </div>
     );

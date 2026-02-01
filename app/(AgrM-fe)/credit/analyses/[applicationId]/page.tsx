@@ -16,7 +16,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { ProgressBar } from 'primereact/progressbar';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { buildApiUrl } from '@/utils/apiConfig';
-import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import { AnalyseRevenu, AnalyseRevenuClass, AnalyseDepense, AnalyseDepenseClass, AnalyseCapacite, AnalyseCapaciteClass, TypesContrat, EvaluationsRisque } from '../../types/AnalyseFinanciere';
 
 const INCOME_URL = buildApiUrl('/api/credit/income-analysis');
@@ -25,6 +25,7 @@ const CAPACITY_URL = buildApiUrl('/api/credit/capacity-analysis');
 const INCOME_TYPES_URL = buildApiUrl('/api/credit/income-types');
 const EXPENSE_TYPES_URL = buildApiUrl('/api/credit/expense-types');
 const APP_URL = buildApiUrl('/api/credit/applications');
+const SAVINGS_ACCOUNTS_URL = buildApiUrl('/api/epargne/comptes');
 
 export default function AnalyseFinancierePage() {
     const params = useParams();
@@ -32,6 +33,7 @@ export default function AnalyseFinancierePage() {
 
     // State for application info
     const [application, setApplication] = useState<any>(null);
+    const [savingsAccount, setSavingsAccount] = useState<any>(null);
 
     // State for income analysis
     const [revenu, setRevenu] = useState<AnalyseRevenu>(new AnalyseRevenuClass());
@@ -49,28 +51,75 @@ export default function AnalyseFinancierePage() {
     const toast = useRef<Toast>(null);
     const { data, loading, error, fetchData, callType } = useConsumApi('');
 
+    // Load dropdown data directly on mount (separate from the shared hook to avoid race conditions)
+    useEffect(() => {
+        const loadDropdownData = async () => {
+            try {
+                // Load income types
+                const incomeTypesResponse = await fetch(`${INCOME_TYPES_URL}/findall/active`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                if (incomeTypesResponse.ok) {
+                    const incomeTypesData = await incomeTypesResponse.json();
+                    setTypesRevenus(Array.isArray(incomeTypesData) ? incomeTypesData : incomeTypesData.content || []);
+                }
+
+                // Load expense types
+                const expenseTypesResponse = await fetch(`${EXPENSE_TYPES_URL}/findall/active`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                if (expenseTypesResponse.ok) {
+                    const expenseTypesData = await expenseTypesResponse.json();
+                    setTypesDepenses(Array.isArray(expenseTypesData) ? expenseTypesData : expenseTypesData.content || []);
+                }
+            } catch (err) {
+                console.error('Error loading dropdown data:', err);
+            }
+        };
+
+        loadDropdownData();
+    }, []);
+
     useEffect(() => {
         if (applicationId) {
             loadApplication();
-            loadTypesRevenus();
-            loadTypesDepenses();
             loadRevenus();
             loadDepenses();
             loadCapacite();
         }
     }, [applicationId]);
 
+    // Load savings account when application is loaded
+    const loadSavingsAccount = async (savingsAccountId: number) => {
+        if (!savingsAccountId) return;
+        try {
+            const response = await fetch(`${SAVINGS_ACCOUNTS_URL}/findbyid/${savingsAccountId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const accountData = await response.json();
+                setSavingsAccount(accountData);
+            }
+        } catch (err) {
+            console.error('Error loading savings account:', err);
+        }
+    };
+
     useEffect(() => {
         if (data) {
             switch (callType) {
                 case 'loadApplication':
                     setApplication(data);
-                    break;
-                case 'loadTypesRevenus':
-                    setTypesRevenus(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadTypesDepenses':
-                    setTypesDepenses(Array.isArray(data) ? data : data.content || []);
+                    // Load savings account if savingsAccountId exists
+                    if (data.savingsAccountId) {
+                        loadSavingsAccount(data.savingsAccountId);
+                    }
                     break;
                 case 'loadRevenus':
                     setRevenus(Array.isArray(data) ? data : data.content || []);
@@ -113,8 +162,6 @@ export default function AnalyseFinancierePage() {
     }, [data, error, callType]);
 
     const loadApplication = () => fetchData(null, 'GET', `${APP_URL}/findbyid/${applicationId}`, 'loadApplication');
-    const loadTypesRevenus = () => fetchData(null, 'GET', `${INCOME_TYPES_URL}/findall/active`, 'loadTypesRevenus');
-    const loadTypesDepenses = () => fetchData(null, 'GET', `${EXPENSE_TYPES_URL}/findall/active`, 'loadTypesDepenses');
     const loadRevenus = () => fetchData(null, 'GET', `${INCOME_URL}/findbyapplication/${applicationId}`, 'loadRevenus');
     const loadDepenses = () => fetchData(null, 'GET', `${EXPENSE_URL}/findbyapplication/${applicationId}`, 'loadDepenses');
     const loadCapacite = () => fetchData(null, 'GET', `${CAPACITY_URL}/findbyapplication/${applicationId}`, 'loadCapacite');
@@ -135,7 +182,7 @@ export default function AnalyseFinancierePage() {
 
     // Revenue CRUD
     const handleSaveRevenu = () => {
-        const revenuToSave = { ...revenu, applicationId };
+        const revenuToSave = { ...revenu, applicationId, userAction: getUserAction() };
         if (revenu.id) {
             fetchData(revenuToSave, 'PUT', `${INCOME_URL}/update/${revenu.id}`, 'updateRevenu');
         } else {
@@ -157,7 +204,7 @@ export default function AnalyseFinancierePage() {
 
     // Expense CRUD
     const handleSaveDepense = () => {
-        const depenseToSave = { ...depense, applicationId };
+        const depenseToSave = { ...depense, applicationId, userAction: getUserAction() };
         if (depense.id) {
             fetchData(depenseToSave, 'PUT', `${EXPENSE_URL}/update/${depense.id}`, 'updateDepense');
         } else {
@@ -203,6 +250,56 @@ export default function AnalyseFinancierePage() {
                     onClick={() => window.location.href = '/credit/demandes'}
                 />
             </div>
+
+            {/* Dossier Details Section */}
+            {application && (
+                <div className="surface-100 p-3 border-round mb-4">
+                    <h5 className="mb-3">
+                        <i className="pi pi-folder mr-2"></i>
+                        Informations du Dossier
+                    </h5>
+                    <div className="grid">
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">N° Dossier</div>
+                            <div className="font-semibold">{application.applicationNumber || '-'}</div>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">Client</div>
+                            <div className="font-semibold">
+                                {application.client ? `${application.client.firstName} ${application.client.lastName}` : application.clientName || '-'}
+                            </div>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">N° Compte</div>
+                            <div className="font-semibold">{savingsAccount?.accountNumber || '-'}</div>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">Montant Demandé</div>
+                            <div className="font-semibold text-primary">{formatCurrency(application.amountRequested)}</div>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">Durée (mois)</div>
+                            <div className="font-semibold">{application.durationMonths || '-'} mois</div>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">Objet du Crédit</div>
+                            <div className="font-semibold">{application.creditPurpose?.nameFr || application.creditPurpose?.name || '-'}</div>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">Statut</div>
+                            <div>
+                                {application.status ? (
+                                    <Tag value={application.status.nameFr || application.status.name} style={{ backgroundColor: application.status.color || '#6c757d' }} />
+                                ) : '-'}
+                            </div>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <div className="text-500 text-sm">Agent</div>
+                            <div className="font-semibold">{application.userAction || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div className="grid mb-4">

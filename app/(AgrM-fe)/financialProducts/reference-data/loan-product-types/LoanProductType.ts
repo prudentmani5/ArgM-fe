@@ -5,9 +5,8 @@ export class LoanProductType {
     nameFr: string;
     description?: string;
     descriptionFr?: string;
-    is
-
-Active: boolean;
+    isActive: boolean;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 

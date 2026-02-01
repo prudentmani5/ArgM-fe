@@ -6,6 +6,8 @@ export interface DemandeCredit {
     applicationNumber: string;
     clientId?: number;
     client?: any; // Client entity
+    savingsAccountId?: number;
+    savingsAccount?: any; // Savings account entity
     branchId?: number;
     branch?: any;
     creditOfficerId?: number;
@@ -30,6 +32,9 @@ export interface DemandeCredit {
     statusChangedById?: number;
     statusChangedBy?: any;
 
+    // User Action (connected user who performed the action)
+    userAction?: string;
+
     // Timestamps
     createdAt?: string;
     updatedAt?: string;
@@ -39,6 +44,7 @@ export class DemandeCreditClass implements DemandeCredit {
     id?: number;
     applicationNumber: string = '';
     clientId?: number;
+    savingsAccountId?: number;
     branchId?: number;
     creditOfficerId?: number;
     loanProductId?: number;
@@ -52,6 +58,7 @@ export class DemandeCreditClass implements DemandeCredit {
     repaymentPlanClient?: string = '';
     statusDate?: string;
     statusChangedById?: number;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 
