@@ -12,7 +12,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
 import { Divider } from 'primereact/divider';
 
-import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
+import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 
 import PaiementForm from './PaiementForm';
@@ -33,28 +33,102 @@ const PaiementsPage = () => {
     const [showReceiptDialog, setShowReceiptDialog] = useState(false);
     const [selectedPaiement, setSelectedPaiement] = useState<PaiementCredit | null>(null);
 
+    // Disbursement selection
+    const [showLoanSelectionDialog, setShowLoanSelectionDialog] = useState(false);
+    const [disbursements, setDisbursements] = useState<any[]>([]);
+    const [filteredDisbursements, setFilteredDisbursements] = useState<any[]>([]);
+    const [disbursementFilter, setDisbursementFilter] = useState('');
+    const [loadingDisbursements, setLoadingDisbursements] = useState(false);
+    const [selectedLoan, setSelectedLoan] = useState<any>(null);
+
     const toast = useRef<Toast>(null);
-    const { data, loading, error, fetchData, callType } = useConsumApi('');
+    // Use separate hooks for different API calls to avoid race conditions
+    const { data: paiementsData, loading: loadingPaiements, error: paiementsError, fetchData: fetchPaiements } = useConsumApi('');
+    const { data: modesData, loading: loadingModes, error: modesError, fetchData: fetchModes } = useConsumApi('');
+    const { data: actionData, loading: loadingAction, error: actionError, fetchData: fetchAction, callType } = useConsumApi('');
+
     const BASE_URL = buildApiUrl('/api/remboursement/payments');
     const MODES_URL = buildApiUrl('/api/remboursement/repayment-modes');
+    const DISBURSEMENTS_URL = buildApiUrl('/api/credit/disbursements');
+    const SCHEDULES_URL = buildApiUrl('/api/remboursement/schedules');
 
+    // Store loan IDs that are fully paid (all schedules are PAID)
+    const [fullyPaidLoanIds, setFullyPaidLoanIds] = useState<number[]>([]);
+
+    // Track receipt number validation
+    const [isReceiptValid, setIsReceiptValid] = useState(true);
+
+    // Load paiements on mount
     useEffect(() => {
         loadPaiements();
         loadModesRemboursement();
     }, []);
 
+    // Handle paiements data
     useEffect(() => {
-        if (data) {
+        if (paiementsData) {
+            const paymentsArray = Array.isArray(paiementsData) ? paiementsData : paiementsData.content || [];
+            console.log('[DEBUG] Paiements loaded:', paymentsArray.length, 'records');
+            setPaiements(paymentsArray);
+        }
+        if (paiementsError) {
+            console.error('[DEBUG] Paiements Error:', paiementsError);
+            showToast('error', 'Erreur', paiementsError.message || 'Erreur de chargement des paiements');
+        }
+    }, [paiementsData, paiementsError]);
+
+    // Handle modes data
+    useEffect(() => {
+        if (modesData) {
+            setModesRemboursement(Array.isArray(modesData) ? modesData : modesData.content || []);
+        }
+    }, [modesData]);
+
+    // Handle action responses (process, create, update, delete, disbursements)
+    useEffect(() => {
+        if (actionData) {
+            console.log('[DEBUG] Action completed - callType:', callType, 'data:', actionData);
             switch (callType) {
-                case 'loadPaiements':
-                    setPaiements(Array.isArray(data) ? data : data.content || []);
+                case 'loadDisbursements':
+                    const disb = Array.isArray(actionData) ? actionData : actionData.content || [];
+                    const completedDisb = disb.filter((d: any) => d.status === 'COMPLETED');
+                    // Filter out disbursements that are fully paid
+                    const eligibleDisb = completedDisb.filter((d: any) => {
+                        const loanId = d.id;
+                        return !fullyPaidLoanIds.includes(loanId);
+                    });
+                    setDisbursements(eligibleDisb);
+                    setFilteredDisbursements(eligibleDisb);
+                    setLoadingDisbursements(false);
                     break;
-                case 'loadModes':
-                    setModesRemboursement(Array.isArray(data) ? data : data.content || []);
+                case 'loadSchedulesForFilter':
+                    const allSchedules = Array.isArray(actionData) ? actionData : actionData.content || [];
+                    // Group schedules by loanId and check if all are PAID
+                    const loanScheduleMap = new Map<number, boolean>();
+
+                    allSchedules.forEach((s: any) => {
+                        const loanId = s.loanId;
+                        if (!loanScheduleMap.has(loanId)) {
+                            loanScheduleMap.set(loanId, true);
+                        }
+                        if (s.status !== 'PAID') {
+                            loanScheduleMap.set(loanId, false);
+                        }
+                    });
+
+                    const paidLoanIds: number[] = [];
+                    loanScheduleMap.forEach((allPaid, loanId) => {
+                        if (allPaid) {
+                            paidLoanIds.push(loanId);
+                        }
+                    });
+
+                    setFullyPaidLoanIds(paidLoanIds);
+                    fetchAction(null, 'GET', `${DISBURSEMENTS_URL}/findbystatus/COMPLETED/paginated?page=0&size=100&sortBy=disbursementDate&sortDir=desc`, 'loadDisbursements');
                     break;
                 case 'process':
                     showToast('success', 'Succès', 'Paiement traité avec succès. Allocation automatique effectuée.');
-                    setSelectedPaiement(data);
+                    setSelectedPaiement(actionData);
                     setShowReceiptDialog(true);
                     resetForm();
                     loadPaiements();
@@ -72,17 +146,19 @@ const PaiementsPage = () => {
                     break;
             }
         }
-        if (error) {
-            showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
+        if (actionError) {
+            console.error('[DEBUG] Action Error:', actionError);
+            showToast('error', 'Erreur', actionError.message || 'Une erreur est survenue');
         }
-    }, [data, error, callType]);
+    }, [actionData, actionError, callType]);
 
     const loadPaiements = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadPaiements');
+        console.log('[DEBUG] loadPaiements - URL:', `${BASE_URL}/findall`);
+        fetchPaiements(null, 'GET', `${BASE_URL}/findall`, 'loadPaiements');
     };
 
     const loadModesRemboursement = () => {
-        fetchData(null, 'GET', `${MODES_URL}/findallactive`, 'loadModes');
+        fetchModes(null, 'GET', `${MODES_URL}/findallactive`, 'loadModes');
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -91,7 +167,9 @@ const PaiementsPage = () => {
 
     const resetForm = () => {
         setPaiement(new PaiementCreditClass());
+        setSelectedLoan(null);
         setIsViewMode(false);
+        setIsReceiptValid(true);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -121,8 +199,76 @@ const PaiementsPage = () => {
             return;
         }
 
+        // Check if it's "Paiement en agence" mode (no other mode selected)
+        const isAgencyMode = !paiement.isAutoDebit && !paiement.isHomeCollection && !paiement.isMobileMoney && !paiement.isBankTransfer;
+
+        // For agency mode, receipt number is required and must be valid
+        if (isAgencyMode) {
+            if (!paiement.receiptNumber || paiement.receiptNumber.trim() === '') {
+                showToast('error', 'Erreur', 'Le numéro de reçu (bordereau de dépôt) est obligatoire pour un paiement en agence');
+                return;
+            }
+            if (!isReceiptValid) {
+                showToast('error', 'Erreur', 'Le numéro de reçu est invalide. Vérifiez qu\'il existe dans les bordereaux de dépôt et n\'est pas déjà utilisé.');
+                return;
+            }
+        }
+
+        // Add user action
+        const dataToSend = {
+            ...paiement,
+            userAction: getUserAction()
+        };
+
         // Traiter le paiement avec allocation automatique
-        fetchData(paiement, 'POST', `${BASE_URL}/process`, 'process');
+        fetchAction(dataToSend, 'POST', `${BASE_URL}/process`, 'process');
+    };
+
+    const loadDisbursements = () => {
+        setLoadingDisbursements(true);
+        // First load all schedules to determine which loans are fully paid
+        fetchAction(null, 'GET', `${SCHEDULES_URL}/findall`, 'loadSchedulesForFilter');
+    };
+
+    const handleLoadFromDisbursement = () => {
+        loadDisbursements();
+        setShowLoanSelectionDialog(true);
+    };
+
+    const handleDisbursementSelect = (disbursement: any) => {
+        setSelectedLoan(disbursement);
+
+        // Update payment with selected loan info - include credit details
+        setPaiement(prev => ({
+            ...prev,
+            loanId: disbursement.loanId || disbursement.loan?.id || disbursement.id,
+            applicationNumber: disbursement.applicationNumber || '',
+            disbursementNumber: disbursement.disbursementNumber || '',
+            clientName: disbursement.clientName || '',
+            paymentDate: new Date().toISOString().split('T')[0]
+        }));
+
+        setShowLoanSelectionDialog(false);
+        showToast('info', 'Crédit Sélectionné',
+            `${disbursement.applicationNumber} - ${disbursement.clientName} - Montant: ${disbursement.amount?.toLocaleString()} FBU`);
+    };
+
+    const handleDisbursementFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.toLowerCase();
+        setDisbursementFilter(value);
+
+        if (!value) {
+            setFilteredDisbursements(disbursements);
+            return;
+        }
+
+        const filtered = disbursements.filter((d: any) =>
+            (d.disbursementNumber || '').toLowerCase().includes(value) ||
+            (d.applicationNumber || '').toLowerCase().includes(value) ||
+            (d.clientName || '').toLowerCase().includes(value)
+        );
+
+        setFilteredDisbursements(filtered);
     };
 
     const handleView = (rowData: PaiementCredit) => {
@@ -146,7 +292,7 @@ const PaiementsPage = () => {
             acceptLabel: 'Oui, supprimer',
             rejectLabel: 'Non, annuler',
             accept: () => {
-                fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
+                fetchAction(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
             }
         });
     };
@@ -239,6 +385,51 @@ const PaiementsPage = () => {
 
             <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
                 <TabPanel header="Nouveau Paiement" leftIcon="pi pi-plus mr-2">
+                    {/* Loan Selection Section */}
+                    <div className="mb-3 p-3 surface-border border-round border-1">
+                        <div className="flex align-items-center justify-content-between mb-3">
+                            <h5 className="m-0">
+                                <i className="pi pi-file mr-2"></i>
+                                Sélection du Crédit
+                            </h5>
+                            <Button
+                                label="Sélectionner un Crédit"
+                                icon="pi pi-search"
+                                onClick={handleLoadFromDisbursement}
+                                outlined
+                                size="small"
+                            />
+                        </div>
+                        {selectedLoan && (
+                            <div className="grid">
+                                <div className="col-12 md:col-3">
+                                    <small className="text-600">N° Dossier</small>
+                                    <p className="mt-1 mb-0 font-semibold">{selectedLoan.applicationNumber}</p>
+                                </div>
+                                <div className="col-12 md:col-3">
+                                    <small className="text-600">N° Décaissement</small>
+                                    <p className="mt-1 mb-0 font-semibold">{selectedLoan.disbursementNumber}</p>
+                                </div>
+                                <div className="col-12 md:col-3">
+                                    <small className="text-600">Client</small>
+                                    <p className="mt-1 mb-0 font-semibold">{selectedLoan.clientName}</p>
+                                </div>
+                                <div className="col-12 md:col-3">
+                                    <small className="text-600">Montant Décaissé</small>
+                                    <p className="mt-1 mb-0 font-semibold text-primary">
+                                        {selectedLoan.amount?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        {!selectedLoan && (
+                            <p className="text-500 m-0">
+                                <i className="pi pi-info-circle mr-2"></i>
+                                Veuillez sélectionner un crédit pour effectuer le paiement
+                            </p>
+                        )}
+                    </div>
+
                     <div className="mb-3 p-3 surface-100 border-round">
                         <h5 className="m-0 text-primary">
                             <i className="pi pi-info-circle mr-2"></i>
@@ -261,7 +452,13 @@ const PaiementsPage = () => {
                         handleDateChange={handleDateChange}
                         handleCheckboxChange={handleCheckboxChange}
                         modesRemboursement={modesRemboursement}
+                        selectedLoan={selectedLoan}
                         isViewMode={isViewMode}
+                        onReceiptValidation={setIsReceiptValid}
+                        onAmountAutoFill={(amount) => {
+                            handleNumberChange('amountReceived', amount);
+                            showToast('info', 'Montant Auto-Rempli', `Montant du bordereau: ${amount.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}`);
+                        }}
                     />
 
                     <div className="flex justify-content-end gap-2 mt-4">
@@ -276,19 +473,23 @@ const PaiementsPage = () => {
                                 label="Traiter le Paiement"
                                 icon="pi pi-check"
                                 onClick={handleSubmit}
-                                loading={loading}
+                                loading={loadingAction}
                             />
                         )}
                     </div>
                 </TabPanel>
 
                 <TabPanel header="Historique des Paiements" leftIcon="pi pi-list mr-2">
+                    <div className="mb-2 text-sm text-500">
+                        <i className="pi pi-info-circle mr-1"></i>
+                        Total paiements chargés: {paiements.length}
+                    </div>
                     <DataTable
                         value={paiements}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25, 50]}
-                        loading={loading}
+                        loading={loadingPaiements}
                         globalFilter={globalFilter}
                         header={header}
                         emptyMessage="Aucun paiement trouvé"
@@ -296,49 +497,55 @@ const PaiementsPage = () => {
                         sortField="paymentDate"
                         sortOrder={-1}
                     >
-                        <Column field="paymentNumber" header="N° Paiement" sortable filter style={{ width: '12%' }} />
-                        <Column field="loanId" header="ID Crédit" sortable filter style={{ width: '8%' }} />
+                        <Column field="paymentNumber" header="N° Paiement" sortable filter style={{ width: '10%' }} />
+                        <Column field="applicationNumber" header="N° Dossier" sortable filter style={{ width: '12%' }} />
+                        <Column field="disbursementNumber" header="N° Décaissement" sortable filter style={{ width: '12%' }} />
+                        <Column field="clientName" header="Client" sortable filter style={{ width: '12%' }} />
                         <Column
                             field="paymentDate"
                             header="Date"
                             body={(rowData) => dateBodyTemplate(rowData.paymentDate)}
                             sortable
-                            style={{ width: '10%' }}
+                            style={{ width: '8%' }}
                         />
                         <Column
                             field="amountReceived"
                             header="Montant Reçu"
                             body={(rowData) => currencyBodyTemplate(rowData.amountReceived)}
                             sortable
-                            style={{ width: '12%' }}
+                            style={{ width: '10%' }}
                         />
                         <Column
                             header="Mode"
                             body={paymentModeBodyTemplate}
-                            style={{ width: '12%' }}
-                        />
-                        <Column
-                            field="allocatedToPrincipal"
-                            header="→ Capital"
-                            body={(rowData) => currencyBodyTemplate(rowData.allocatedToPrincipal)}
-                            style={{ width: '10%' }}
-                        />
-                        <Column
-                            field="allocatedToInterest"
-                            header="→ Intérêts"
-                            body={(rowData) => currencyBodyTemplate(rowData.allocatedToInterest)}
                             style={{ width: '10%' }}
                         />
                         <Column
                             field="allocatedToPenalty"
                             header="→ Pénalités"
-                            body={(rowData) => currencyBodyTemplate(rowData.allocatedToPenalty)}
-                            style={{ width: '10%' }}
+                            body={(rowData) => (
+                                <span className={rowData.allocatedToPenalty > 0 ? 'text-orange-600 font-semibold' : ''}>
+                                    {currencyBodyTemplate(rowData.allocatedToPenalty)}
+                                </span>
+                            )}
+                            style={{ width: '8%' }}
+                        />
+                        <Column
+                            field="allocatedToPrincipal"
+                            header="→ Capital"
+                            body={(rowData) => currencyBodyTemplate(rowData.allocatedToPrincipal)}
+                            style={{ width: '8%' }}
+                        />
+                        <Column
+                            field="allocatedToInterest"
+                            header="→ Intérêts"
+                            body={(rowData) => currencyBodyTemplate(rowData.allocatedToInterest)}
+                            style={{ width: '8%' }}
                         />
                         <Column
                             header="Actions"
                             body={actionsBodyTemplate}
-                            style={{ width: '12%' }}
+                            style={{ width: '10%' }}
                         />
                     </DataTable>
                 </TabPanel>
@@ -379,7 +586,9 @@ const PaiementsPage = () => {
                         <div className="grid">
                             <div className="col-6">
                                 <p><strong>Date:</strong> {dateBodyTemplate(selectedPaiement.paymentDate)}</p>
-                                <p><strong>N° Crédit:</strong> {selectedPaiement.loanId}</p>
+                                <p><strong>N° Dossier:</strong> {selectedPaiement.applicationNumber || '-'}</p>
+                                <p><strong>N° Décaissement:</strong> {selectedPaiement.disbursementNumber || '-'}</p>
+                                <p><strong>Client:</strong> {selectedPaiement.clientName || '-'}</p>
                                 <p><strong>N° Reçu:</strong> {selectedPaiement.receiptNumber || '-'}</p>
                             </div>
                             <div className="col-6 text-right">
@@ -417,6 +626,83 @@ const PaiementsPage = () => {
                         </div>
                     </div>
                 )}
+            </Dialog>
+
+            {/* Dialog Sélection Crédit Décaissé */}
+            <Dialog
+                visible={showLoanSelectionDialog}
+                onHide={() => {
+                    setShowLoanSelectionDialog(false);
+                    setDisbursementFilter('');
+                    setFilteredDisbursements(disbursements);
+                }}
+                header="Sélectionner un Crédit Décaissé"
+                style={{ width: '65vw' }}
+                modal
+            >
+                <div className="mb-3">
+                    <span className="p-input-icon-left w-full">
+                        <i className="pi pi-search" />
+                        <InputText
+                            placeholder="Rechercher par N° décaissement, N° dossier ou client..."
+                            className="w-full"
+                            onChange={handleDisbursementFilterChange}
+                        />
+                    </span>
+                </div>
+                <DataTable
+                    value={filteredDisbursements}
+                    loading={loadingDisbursements}
+                    paginator
+                    rows={10}
+                    rowsPerPageOptions={[5, 10, 20, 50]}
+                    emptyMessage="Aucun crédit décaissé trouvé"
+                    selectionMode="single"
+                    onRowSelect={(e) => handleDisbursementSelect(e.data)}
+                    className="p-datatable-sm"
+                    sortField="disbursementDate"
+                    sortOrder={-1}
+                >
+                    <Column
+                        field="disbursementNumber"
+                        header="N° Décaissement"
+                        sortable
+                        style={{ width: '20%' }}
+                    />
+                    <Column
+                        field="applicationNumber"
+                        header="N° Dossier"
+                        sortable
+                        style={{ width: '20%' }}
+                    />
+                    <Column
+                        field="clientName"
+                        header="Client"
+                        sortable
+                        style={{ width: '25%' }}
+                    />
+                    <Column
+                        field="amount"
+                        header="Montant"
+                        body={(row) => row.amount?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                        sortable
+                        style={{ width: '20%' }}
+                    />
+                    <Column
+                        field="disbursementDate"
+                        header="Date Décaissement"
+                        body={(row) => row.disbursementDate ? new Date(row.disbursementDate).toLocaleDateString('fr-FR') : '-'}
+                        sortable
+                        style={{ width: '15%' }}
+                    />
+                </DataTable>
+                <div className="mt-3 p-3 surface-100 border-round">
+                    <p className="text-sm text-color-secondary m-0">
+                        <i className="pi pi-info-circle mr-2"></i>
+                        Utilisez la barre de recherche pour filtrer les dossiers. Cliquez sur une ligne pour sélectionner
+                        un crédit et commencer le processus de paiement.
+                    </p>
+                </div>
             </Dialog>
         </div>
     );

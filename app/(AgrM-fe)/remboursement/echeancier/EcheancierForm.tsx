@@ -36,16 +36,28 @@ export default function EcheancierForm({
 
                     <div className="formgrid grid">
                         <div className="field col-12 md:col-3">
-                            <label htmlFor="loanId" className="font-semibold">
-                                ID Crédit *
+                            <label htmlFor="applicationNumber" className="font-semibold">
+                                N° Dossier Crédit *
                             </label>
-                            <InputNumber
-                                id="loanId"
-                                value={echeancier.loanId || null}
-                                onValueChange={(e) => handleNumberChange('loanId', e.value ?? null)}
+                            <InputText
+                                id="applicationNumber"
+                                value={echeancier.applicationNumber || ''}
                                 className="w-full"
-                                disabled={isViewMode}
-                                placeholder="ID du crédit"
+                                disabled={true}
+                                placeholder="Ex: CRD-20260131-0149"
+                            />
+                        </div>
+
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="disbursementNumber" className="font-semibold">
+                                N° Décaissement
+                            </label>
+                            <InputText
+                                id="disbursementNumber"
+                                value={echeancier.disbursementNumber || ''}
+                                className="w-full"
+                                disabled={true}
+                                placeholder="Ex: DEC-20260201-9241"
                             />
                         </div>
 
@@ -175,14 +187,18 @@ export default function EcheancierForm({
                             </label>
                             <InputNumber
                                 id="totalDue"
-                                value={echeancier.totalDue || null}
-                                onValueChange={(e) => handleNumberChange('totalDue', e.value ?? null)}
+                                value={(echeancier.totalDue || 0) + (echeancier.penaltyAccrued || 0)}
                                 className="w-full font-bold"
-                                disabled={isViewMode}
+                                disabled={true}
                                 mode="currency"
                                 currency="BIF"
                                 locale="fr-BI"
                             />
+                            {(echeancier.penaltyAccrued || 0) > 0 && (
+                                <small className="text-orange-500">
+                                    Dont {(echeancier.penaltyAccrued || 0).toLocaleString()} FBU de pénalités
+                                </small>
+                            )}
                         </div>
 
                         <div className="field col-12 md:col-3">

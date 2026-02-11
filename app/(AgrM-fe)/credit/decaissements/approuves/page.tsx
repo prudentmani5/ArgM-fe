@@ -20,10 +20,11 @@ const DISBURSEMENT_URL = buildApiUrl('/api/credit/disbursements');
 const SAVINGS_ACCOUNTS_URL = buildApiUrl('/api/savings-accounts');
 
 const ModesDecaissement = [
-    { code: 'CASH', label: 'Espèces' },
+    { code: 'ESPECES', label: 'Espèces' },
     { code: 'VIREMENT', label: 'Virement Bancaire' },
     { code: 'CHEQUE', label: 'Chèque' },
-    { code: 'MOBILE_MONEY', label: 'Mobile Money' }
+    { code: 'MOBILE_MONEY', label: 'Mobile Money' },
+    { code: 'COMPTE_EPARGNE', label: 'Versement sur Compte Épargne' }
 ];
 
 export default function DecaissementsApprouvesPage() {
@@ -137,7 +138,8 @@ export default function DecaissementsApprouvesPage() {
         setDisbursement({
             applicationId: rowData.id,
             disbursementDate: new Date().toISOString(),
-            amount: rowData.amountApproved || rowData.amountRequested
+            amount: rowData.amountApproved || rowData.amountRequested,
+            targetSavingsAccountId: rowData.savingsAccountId || null
         });
         setDisbursementDialog(true);
     };
@@ -145,6 +147,12 @@ export default function DecaissementsApprouvesPage() {
     const submitDisbursement = async () => {
         if (!disbursement.disbursementMode) {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Veuillez sélectionner un mode de décaissement', life: 3000 });
+            return;
+        }
+
+        // Validate that the application has a linked savings account for COMPTE_EPARGNE mode
+        if (disbursement.disbursementMode === 'COMPTE_EPARGNE' && !selectedDemande?.savingsAccountId) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Ce client n\'a pas de compte épargne lié à cette demande', life: 3000 });
             return;
         }
 
@@ -165,6 +173,7 @@ export default function DecaissementsApprouvesPage() {
                     disbursementModeCode: disbursement.disbursementMode,
                     reference: disbursement.reference,
                     notes: disbursement.notes,
+                    targetSavingsAccountId: disbursement.disbursementMode === 'COMPTE_EPARGNE' ? disbursement.targetSavingsAccountId : null,
                     userAction: getUserAction()
                 })
             });
@@ -254,6 +263,8 @@ export default function DecaissementsApprouvesPage() {
                 header={header}
                 emptyMessage="Aucune demande approuvée en attente"
                 className="p-datatable-sm"
+                sortField="applicationDate"
+                sortOrder={-1}
             >
                 <Column field="applicationNumber" header="N° Dossier" sortable filter />
                 <Column header="Client" body={clientBodyTemplate} sortable filter />
@@ -314,13 +325,40 @@ export default function DecaissementsApprouvesPage() {
                                 id="disbursementMode"
                                 value={disbursement.disbursementMode}
                                 options={ModesDecaissement}
-                                onChange={(e) => setDisbursement({ ...disbursement, disbursementMode: e.value })}
+                                onChange={(e) => setDisbursement({ ...disbursement, disbursementMode: e.value, targetSavingsAccountId: e.value === 'COMPTE_EPARGNE' ? (selectedDemande?.savingsAccountId || null) : null })}
                                 optionLabel="label"
                                 optionValue="code"
                                 placeholder="Sélectionner un mode"
                                 className="w-full"
                             />
                         </div>
+
+                        {disbursement.disbursementMode === 'COMPTE_EPARGNE' && (
+                            <div className="field">
+                                <label className="font-semibold">Compte Épargne Destinataire</label>
+                                {selectedDemande?.savingsAccountId ? (
+                                    <div className="surface-100 p-3 border-round">
+                                        <div className="flex justify-content-between align-items-center">
+                                            <div>
+                                                <i className="pi pi-wallet mr-2 text-primary"></i>
+                                                <span className="font-semibold">
+                                                    {savingsAccounts.find(a => a.id === selectedDemande.savingsAccountId)?.accountNumber || `Compte #${selectedDemande.savingsAccountId}`}
+                                                </span>
+                                            </div>
+                                            <Tag value="Compte lié" severity="success" />
+                                        </div>
+                                        <small className="text-500 block mt-2">
+                                            Le montant sera versé automatiquement sur ce compte épargne
+                                        </small>
+                                    </div>
+                                ) : (
+                                    <div className="surface-100 p-3 border-round border-1 border-red-300">
+                                        <i className="pi pi-exclamation-triangle text-red-500 mr-2"></i>
+                                        <span className="text-red-600">Ce client n'a pas de compte épargne lié à cette demande</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="field">
                             <label htmlFor="reference" className="font-semibold">Référence de Paiement</label>

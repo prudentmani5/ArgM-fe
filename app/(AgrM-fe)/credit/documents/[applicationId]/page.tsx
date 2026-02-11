@@ -507,7 +507,39 @@ export default function DocumentsCreditPage() {
                 rows={10}
             >
                 <Column field="documentType.nameFr" header="Type de Document" sortable />
-                <Column field="documentName" header="Nom du Fichier" />
+                <Column
+                    field="documentName"
+                    header="Nom du Fichier"
+                    body={(row: ApplicationDocument) => {
+                        if (!row.filePath) {
+                            return <span className="text-500">{row.documentName || 'Aucun fichier'}</span>;
+                        }
+                        return (
+                            <a
+                                href={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(row.filePath)}`)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline cursor-pointer flex align-items-center gap-2"
+                                onClick={(e) => {
+                                    // For PDFs and images, open in new tab; for others, download
+                                    const isPdfOrImage = row.mimeType?.startsWith('image/') ||
+                                                        row.mimeType === 'application/pdf' ||
+                                                        row.filePath?.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp|pdf)$/);
+                                    if (!isPdfOrImage) {
+                                        e.preventDefault();
+                                        const link = document.createElement('a');
+                                        link.href = buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(row.filePath!)}`);
+                                        link.download = row.documentName || 'document';
+                                        link.click();
+                                    }
+                                }}
+                            >
+                                <i className="pi pi-file-pdf text-red-500"></i>
+                                {row.documentName || 'Fichier'}
+                            </a>
+                        );
+                    }}
+                />
                 <Column header="Fichier" body={fileTemplate} style={{ width: '100px' }} />
                 <Column header="Statut" body={statusTemplate} sortable />
                 <Column

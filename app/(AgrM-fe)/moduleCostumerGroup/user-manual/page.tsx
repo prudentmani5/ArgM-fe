@@ -1368,7 +1368,40 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">7.10 Conseils et Bonnes Pratiques</h5>
+                        <h5 className="text-primary">7.10 Clôture Journalière Épargne</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                La clôture journalière du module Épargne permet de vérifier et valider toutes les opérations
+                                d'épargne (dépôts et retraits) effectuées durant la journée avant leur comptabilisation.
+                            </p>
+
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Module Épargne" /> → <Tag value="Clôture Journalière" severity="info" /></li>
+                                <li>Sélectionner la date de clôture avec le calendrier</li>
+                                <li>Cliquer sur <Tag value="Charger" severity="success" /> pour afficher les opérations du jour</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Aperçu des opérations :</strong> Affiche tous les dépôts et retraits de la date sélectionnée avec les détails (client, montant, compte, référence)</li>
+                                <li><strong>Vérification individuelle :</strong> Chaque opération peut être vérifiée (<i className="pi pi-check text-green-500"></i>) ou annulée individuellement</li>
+                                <li><strong>Vérification en masse :</strong> Boutons <Tag value="Vérifier Tout" severity="success" /> et <Tag value="Annuler Tout" severity="danger" /> pour traiter toutes les opérations en une fois</li>
+                                <li><strong>Statuts :</strong> <Tag value="VERIFIED" severity="success" /> pour les opérations validées, <Tag value="PENDING" severity="warning" /> pour celles en attente</li>
+                                <li><strong>Statistiques :</strong> Nombre total d'opérations, montant total, nombre vérifiées vs en attente</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Règles Importantes</h6>
+                            <div className="border-left-3 border-orange-500 pl-3">
+                                <ul className="line-height-3">
+                                    <li><i className="pi pi-lock text-red-500 mr-2"></i>Si la clôture comptable est complétée pour cette date, l'annulation des vérifications est <strong>interdite</strong>. Un bandeau rouge s'affiche pour l'indiquer.</li>
+                                    <li><i className="pi pi-info-circle text-blue-500 mr-2"></i>Les opérations doivent être vérifiées ici avant de pouvoir être comptabilisées dans le module Comptabilité</li>
+                                    <li><i className="pi pi-exclamation-triangle text-orange-500 mr-2"></i>Vérifier les montants affichés avec les bordereaux physiques avant validation</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">7.11 Conseils et Bonnes Pratiques</h5>
                         <div className="surface-100 p-3 border-round">
                             <h6 className="text-blue-600">Gestion des Livrets</h6>
                             <ul className="line-height-3">
@@ -1914,7 +1947,40 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">8.10 Conseils et Bonnes Pratiques</h5>
+                        <h5 className="text-primary">8.10 Clôture Journalière Crédit</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                La clôture journalière du module Crédit permet de vérifier et valider tous les décaissements
+                                de crédits effectués durant la journée avant leur comptabilisation.
+                            </p>
+
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Module Crédit" /> → <Tag value="Clôture Journalière" severity="info" /></li>
+                                <li>Sélectionner la date de clôture avec le calendrier</li>
+                                <li>Cliquer sur <Tag value="Charger" severity="success" /> pour afficher les décaissements du jour</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Aperçu des décaissements :</strong> Affiche tous les décaissements approuvés pour la date sélectionnée avec les détails (client, montant, produit de crédit)</li>
+                                <li><strong>Vérification individuelle :</strong> Chaque décaissement peut être vérifié (<i className="pi pi-check text-green-500"></i>) ou annulé</li>
+                                <li><strong>Vérification en masse :</strong> Boutons <Tag value="Vérifier Tout" severity="success" /> et <Tag value="Annuler Tout" severity="danger" /> disponibles</li>
+                                <li><strong>Statuts :</strong> <Tag value="VERIFIED" severity="success" /> pour les décaissements validés, <Tag value="PENDING" severity="warning" /> pour ceux en attente</li>
+                                <li><strong>Statistiques :</strong> Nombre total de décaissements, montant total décaissé, progression de la vérification</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Règles Importantes</h6>
+                            <div className="border-left-3 border-orange-500 pl-3">
+                                <ul className="line-height-3">
+                                    <li><i className="pi pi-lock text-red-500 mr-2"></i>Si la clôture comptable est complétée pour cette date, l'annulation des vérifications est <strong>interdite</strong>. Un bandeau rouge s'affiche pour l'indiquer.</li>
+                                    <li><i className="pi pi-info-circle text-blue-500 mr-2"></i>Les décaissements doivent être vérifiés ici avant de pouvoir être comptabilisés</li>
+                                    <li><i className="pi pi-exclamation-triangle text-orange-500 mr-2"></i>S'assurer que chaque décaissement correspond à un dossier de crédit approuvé</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">8.11 Conseils et Bonnes Pratiques</h5>
                         <div className="surface-100 p-3 border-round">
                             <h6 className="text-blue-600">Enregistrement des Demandes</h6>
                             <ul className="line-height-3">
@@ -2074,12 +2140,17 @@ function UserManualComponent() {
                                 depuis la génération des échéanciers jusqu'au recouvrement et contentieux.
                             </p>
                             <ul className="line-height-3">
-                                <li><strong>Échéanciers :</strong> Génération et suivi des tableaux d'amortissement</li>
-                                <li><strong>Paiements :</strong> Enregistrement avec allocation automatique (Pénalités → Intérêts → Capital)</li>
-                                <li><strong>Recouvrement :</strong> Gestion en 3 phases (Amiable, Relance, Contentieux)</li>
-                                <li><strong>Pénalités :</strong> Calcul automatique selon les jours de retard (0,5% à 2% par jour)</li>
-                                <li><strong>Restructuration :</strong> Réaménagement des crédits en difficulté</li>
-                                <li><strong>Contentieux :</strong> Gestion des dossiers juridiques avec approbation DG</li>
+                                <li><strong>Échéanciers :</strong> Génération et suivi des tableaux d'amortissement avec capital, intérêts, assurance et frais</li>
+                                <li><strong>Paiements :</strong> Enregistrement multi-canaux (Espèces, Mobile Money, Virement, Prélèvement auto) avec allocation automatique (Pénalités → Intérêts → Assurance → Frais → Capital)</li>
+                                <li><strong>Calcul Automatique des Pénalités :</strong> Planificateur configurable pour le calcul quotidien des pénalités de retard avec exécution manuelle ou automatique et historique complet</li>
+                                <li><strong>Recouvrement :</strong> Gestion en 3 phases (Amiable, Relance, Contentieux) avec suivi d'actions et promesses de paiement</li>
+                                <li><strong>Pénalités :</strong> Calcul automatique selon les jours de retard (0,5% à 2% par jour) avec possibilité d'exonération</li>
+                                <li><strong>Remboursement Anticipé :</strong> Gestion des demandes de remboursement total ou partiel avec calcul automatique du montant de règlement</li>
+                                <li><strong>Prélèvement Automatique :</strong> Traitement par lot des débits automatiques sur comptes épargne pour le paiement des échéances expirées</li>
+                                <li><strong>Restructuration :</strong> Réaménagement des crédits en difficulté avec frais de 2% à 5% et extension maximale de 50%</li>
+                                <li><strong>Contentieux :</strong> Gestion des dossiers juridiques avec workflow d'approbation DG et seuils contentieux configurables</li>
+                                <li><strong>Rappels Automatiques :</strong> Système de notifications SMS/Email configurables avant et après échéance</li>
+                                <li><strong>Collecte Mobile :</strong> Enregistrement de paiements à domicile avec géolocalisation de l'agent</li>
                             </ul>
                         </div>
 
@@ -2089,11 +2160,12 @@ function UserManualComponent() {
                                 <Card className="h-full">
                                     <h6 className="mt-0"><i className="pi pi-credit-card mr-2"></i>Modes de Remboursement</h6>
                                     <ul className="text-sm">
-                                        <li><strong>Espèces (CASH) :</strong> Paiement en liquide au guichet</li>
-                                        <li><strong>Virement Bancaire :</strong> Transfert depuis un compte bancaire</li>
-                                        <li><strong>Mobile Money :</strong> Paiement via Lumicash, Ecocash, etc.</li>
-                                        <li><strong>Chèque :</strong> Paiement par chèque certifié</li>
-                                        <li><strong>Prélèvement Épargne :</strong> Débit du compte épargne</li>
+                                        <li><strong>Espèces (CASH) :</strong> Paiement en liquide au guichet avec reçu obligatoire</li>
+                                        <li><strong>Virement Bancaire :</strong> Transfert depuis un compte bancaire (référence de transaction requise)</li>
+                                        <li><strong>Mobile Money :</strong> Paiement via Lumicash, Ecocash, etc. (numéro mobile et référence requis)</li>
+                                        <li><strong>Chèque :</strong> Paiement par chèque certifié (numéro de chèque et référence bancaire)</li>
+                                        <li><strong>Prélèvement Automatique :</strong> Débit automatique du compte épargne du client</li>
+                                        <li><strong>Collecte à Domicile :</strong> Paiement collecté par agent avec localisation GPS</li>
                                     </ul>
                                 </Card>
                             </div>
@@ -2150,6 +2222,18 @@ function UserManualComponent() {
                                         <li><strong>Frais :</strong> 2% à 5% du capital restant dû</li>
                                         <li><strong>Extension durée :</strong> Maximum 50% de la durée initiale</li>
                                         <li><strong>Condition :</strong> Minimum 30 jours de retard</li>
+                                    </ul>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-6 lg:col-4">
+                                <Card className="h-full">
+                                    <h6 className="mt-0"><i className="pi pi-shield mr-2"></i>Seuils Contentieux</h6>
+                                    <ul className="text-sm">
+                                        <li><strong>Montant minimum :</strong> Seuil d'impayé pour ouverture de contentieux</li>
+                                        <li><strong>Jours minimum de retard :</strong> Nombre de jours avant éligibilité</li>
+                                        <li><strong>Approbation DG :</strong> Requise au-delà d'un certain montant</li>
+                                        <li><strong>Taux de provision :</strong> Pourcentage de provision comptable</li>
+                                        <li><strong>Taux de recouvrement attendu :</strong> Estimation min/max de récupération</li>
                                     </ul>
                                 </Card>
                             </div>
@@ -2225,7 +2309,129 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">9.5 Remboursement Anticipé</h5>
+                        <h5 className="text-primary">9.5 Exonération de Pénalités</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le système permet l'exonération totale ou partielle des pénalités de retard selon les politiques de l'institution.</p>
+
+                            <p className="mt-3"><strong>Procédure d'Exonération :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder au dossier de crédit concerné</li>
+                                <li>Consulter le montant des pénalités accumulées</li>
+                                <li>Cliquer sur <Tag value="Demander Exonération" severity="warning" /></li>
+                                <li>Remplir le formulaire :
+                                    <ul>
+                                        <li><strong>Montant à exonérer :</strong> Total ou partiel des pénalités</li>
+                                        <li><strong>Motif :</strong> Justification détaillée (force majeure, bon historique, etc.)</li>
+                                        <li><strong>Documents justificatifs :</strong> Si nécessaire</li>
+                                    </ul>
+                                </li>
+                                <li>Soumettre pour approbation hiérarchique</li>
+                                <li>Une fois approuvée, l'exonération est appliquée et tracée dans l'historique</li>
+                            </ol>
+
+                            <div className="border-left-3 border-orange-500 pl-3 mt-3">
+                                <p className="text-orange-600 font-bold"><i className="pi pi-info-circle mr-2"></i>Niveaux d'Autorisation</p>
+                                <ul className="text-sm">
+                                    <li><strong>Agent de crédit :</strong> Jusqu'à 10 000 FBU</li>
+                                    <li><strong>Chef d'agence :</strong> Jusqu'à 50 000 FBU</li>
+                                    <li><strong>Chef de crédit :</strong> Jusqu'à 200 000 FBU</li>
+                                    <li><strong>Directeur Général :</strong> Au-delà de 200 000 FBU</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">9.6 Calcul Automatique des Pénalités</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le module de Calcul Automatique des Pénalités permet de configurer et exécuter le calcul
+                                des pénalités de retard sur les échéances impayées, soit manuellement, soit via un planificateur automatique.
+                            </p>
+
+                            <div className="grid mt-3">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-blue-500">
+                                        <h6 className="mt-0 text-blue-600">
+                                            <i className="pi pi-cog mr-2"></i>
+                                            Onglet Configuration
+                                        </h6>
+                                        <p className="text-sm">Paramétrage du calcul des pénalités :</p>
+                                        <ul className="text-sm line-height-3">
+                                            <li><strong>Taux journalier :</strong> Pourcentage appliqué par jour de retard</li>
+                                            <li><strong>Plafond maximum :</strong> Pourcentage max du capital restant dû</li>
+                                            <li><strong>Base de calcul :</strong> Capital impayé, intérêts impayés, ou les deux combinés</li>
+                                            <li><strong>Activation du planificateur :</strong> Activer/désactiver le calcul automatique quotidien</li>
+                                            <li><strong>Heure d'exécution :</strong> Configurer l'heure et la minute d'exécution automatique</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-green-500">
+                                        <h6 className="mt-0 text-green-600">
+                                            <i className="pi pi-history mr-2"></i>
+                                            Onglet Historique
+                                        </h6>
+                                        <p className="text-sm">Suivi des exécutions :</p>
+                                        <ul className="text-sm line-height-3">
+                                            <li><strong>Liste des exécutions :</strong> Date, statut, durée, échéances traitées</li>
+                                            <li><strong>Montants calculés :</strong> Total des pénalités par exécution</li>
+                                            <li><strong>Journal détaillé :</strong> Logs d'exécution avec messages de succès ou d'erreur</li>
+                                            <li><strong>Performances :</strong> Durée d'exécution et nombre d'échéances traitées</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+
+                            <div className="border-left-3 border-blue-500 pl-3 mt-3">
+                                <p className="text-blue-600 font-bold"><i className="pi pi-calculator mr-2"></i>Formule de Calcul des Pénalités</p>
+                                <p className="text-sm">
+                                    <strong>Pénalité = (Capital impayé + Intérêts impayés + Pénalités non payées) × Taux Journalier</strong>
+                                </p>
+                                <p className="text-sm">
+                                    Le plafond maximum empêche les pénalités de dépasser un pourcentage défini du capital restant dû,
+                                    protégeant ainsi les emprunteurs contre des pénalités excessives.
+                                </p>
+                            </div>
+
+                            <p className="mt-3"><strong>Procédure de Configuration :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Module Remboursement" /> → <Tag value="Calcul Pénalités" severity="info" /></li>
+                                <li>Dans l'onglet <Tag value="Configuration" severity="info" />, définir :
+                                    <ul>
+                                        <li>Le taux journalier de pénalité (ex: 0,1%)</li>
+                                        <li>Le plafond maximum (ex: 10% du capital restant)</li>
+                                        <li>La base de calcul (montant en retard ou capital + intérêts)</li>
+                                    </ul>
+                                </li>
+                                <li>Activer le planificateur automatique si souhaité</li>
+                                <li>Configurer l'heure d'exécution automatique</li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /></li>
+                            </ol>
+
+                            <p className="mt-3"><strong>Exécution Manuelle :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Cliquer sur <Tag value="Exécuter Maintenant" severity="warning" /> pour lancer le calcul manuellement</li>
+                                <li>Le système calcule les pénalités pour toutes les échéances en retard</li>
+                                <li>Un résumé s'affiche avec le nombre d'échéances traitées et le montant total calculé</li>
+                                <li>Consulter l'onglet <Tag value="Historique" severity="info" /> pour voir les détails</li>
+                            </ol>
+
+                            <p className="mt-3"><strong>Consultation des Échéances en Retard :</strong></p>
+                            <p className="text-sm">
+                                L'onglet <Tag value="Échéances en Retard" severity="warning" /> affiche la liste de toutes les échéances
+                                actuellement en retard susceptibles d'être soumises au calcul de pénalités, avec les détails du crédit,
+                                du client, des montants dus et du nombre de jours de retard.
+                            </p>
+
+                            <p className="mt-3"><strong>Statuts d'Exécution :</strong></p>
+                            <div className="flex flex-wrap gap-2">
+                                <Tag value="COMPLETED" severity="success" />
+                                <Tag value="RUNNING" severity="info" />
+                                <Tag value="FAILED" severity="danger" />
+                                <Tag value="PENDING" severity="warning" />
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">9.7 Remboursement Anticipé</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p><strong>Procédure de Remboursement Anticipé :</strong></p>
                             <ol className="line-height-3">
@@ -2250,7 +2456,7 @@ function UserManualComponent() {
                             </ol>
                         </div>
 
-                        <h5 className="text-primary">9.6 Gestion du Recouvrement</h5>
+                        <h5 className="text-primary">9.8 Gestion du Recouvrement</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p><strong>Les 3 Phases du Recouvrement :</strong></p>
 
@@ -2309,13 +2515,71 @@ function UserManualComponent() {
                                 <li>Accéder au menu <Tag value="Recouvrement" /> → <Tag value="Dossiers de Recouvrement" severity="info" /></li>
                                 <li>Le système liste automatiquement tous les crédits en retard</li>
                                 <li>Cliquer sur <Tag value="Ouvrir Dossier" severity="warning" /> pour créer un dossier de suivi</li>
+                                <li>Définir la priorité du dossier :
+                                    <ul>
+                                        <li><Tag value="Faible" severity="success" /> : Retard mineur, client coopératif</li>
+                                        <li><Tag value="Normale" severity="info" /> : Cas standard de recouvrement</li>
+                                        <li><Tag value="Haute" severity="warning" /> : Montant élevé ou retard prolongé</li>
+                                        <li><Tag value="Critique" severity="danger" /> : Risque de perte majeure, action urgente requise</li>
+                                    </ul>
+                                </li>
                                 <li>Assigner un agent de recouvrement</li>
                                 <li>Planifier les actions selon la phase</li>
                                 <li>Documenter chaque action entreprise</li>
                             </ol>
+
+                            <p className="mt-3"><strong>Suivi des Actions de Recouvrement :</strong></p>
+                            <div className="grid mt-2">
+                                <div className="col-12 md:col-6">
+                                    <p className="font-semibold text-sm mb-2">Types d'Actions Disponibles :</p>
+                                    <ul className="text-sm">
+                                        <li><strong>Appel téléphonique :</strong> Contact direct avec le client</li>
+                                        <li><strong>SMS envoyé :</strong> Rappel par message texte</li>
+                                        <li><strong>Visite à domicile :</strong> Déplacement chez le client</li>
+                                        <li><strong>Lettre de rappel :</strong> Correspondance officielle</li>
+                                        <li><strong>Mise en demeure :</strong> Avertissement formel</li>
+                                        <li><strong>Médiation :</strong> Recherche de solution amiable</li>
+                                        <li><strong>Réunion en agence :</strong> Convocation du client</li>
+                                        <li><strong>Contact caution :</strong> Sollicitation des garants</li>
+                                    </ul>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <p className="font-semibold text-sm mb-2">Informations à Documenter :</p>
+                                    <ul className="text-sm">
+                                        <li>Date et heure de l'action</li>
+                                        <li>Personne contactée (nom et téléphone)</li>
+                                        <li>Résultat de l'action (Contacté, Injoignable, Refus, etc.)</li>
+                                        <li>Promesse de paiement si applicable (date et montant)</li>
+                                        <li>Prochaine action planifiée</li>
+                                        <li>Notes et observations</li>
+                                        <li>Documents générés (références)</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div className="border-left-3 border-blue-500 pl-3 mt-3">
+                                <p className="text-blue-600 font-bold"><i className="pi pi-info-circle mr-2"></i>Suivi des Promesses de Paiement</p>
+                                <p className="text-sm">Lorsqu'un client s'engage à payer à une date précise :</p>
+                                <ol className="text-sm">
+                                    <li>Enregistrer la <strong>date de promesse</strong> et le <strong>montant promis</strong> dans le dossier</li>
+                                    <li>Le système génère automatiquement un rappel J-1 avant la date promise</li>
+                                    <li>Si le paiement n'est pas honoré, le dossier est automatiquement escaladé en priorité</li>
+                                    <li>L'historique des promesses non tenues est tracé pour évaluation du comportement client</li>
+                                </ol>
+                            </div>
+
+                            <p className="mt-3"><strong>Escalade d'un Dossier :</strong></p>
+                            <p className="text-sm">Un dossier peut être escaladé au niveau supérieur lorsque :</p>
+                            <ul className="text-sm line-height-3">
+                                <li>Les actions de recouvrement standard échouent</li>
+                                <li>Le client devient injoignable ou refuse de coopérer</li>
+                                <li>Le montant impayé dépasse un seuil critique (configurable)</li>
+                                <li>Plusieurs promesses de paiement ne sont pas honorées</li>
+                            </ul>
+                            <p className="text-sm mt-2">L'escalade notifie automatiquement le superviseur ou chef de crédit qui reprend le dossier avec des actions plus fermes.</p>
                         </div>
 
-                        <h5 className="text-primary">9.7 Gestion des Dossiers Contentieux</h5>
+                        <h5 className="text-primary">9.9 Gestion des Dossiers Contentieux</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <div className="border-left-3 border-red-500 pl-3 mb-3">
                                 <p className="text-red-600 font-bold">
@@ -2332,20 +2596,76 @@ function UserManualComponent() {
                                 <li>Sélectionner le crédit en défaut (doit être en phase Contentieux)</li>
                                 <li>Remplir les informations :
                                     <ul>
-                                        <li>Motif de la mise en contentieux</li>
-                                        <li>Avocat assigné (si applicable)</li>
-                                        <li>Tribunal compétent</li>
-                                        <li>Documents justificatifs</li>
+                                        <li><strong>Motif de la mise en contentieux :</strong> Justification détaillée de l'échec du recouvrement amiable</li>
+                                        <li><strong>Montant litigieux :</strong> Montant total réclamé (capital + intérêts + pénalités)</li>
+                                        <li><strong>Avocat assigné :</strong> Nom et coordonnées du conseiller juridique</li>
+                                        <li><strong>Tribunal compétent :</strong> Nom et localisation du tribunal de ressort</li>
+                                        <li><strong>Estimation des frais :</strong>
+                                            <ul>
+                                                <li>Frais d'avocat</li>
+                                                <li>Frais d'huissier</li>
+                                                <li>Autres frais juridiques</li>
+                                            </ul>
+                                        </li>
+                                        <li><strong>Documents justificatifs :</strong> Contrat de prêt, échéancier, preuves de relance, etc.</li>
                                     </ul>
                                 </li>
                                 <li>Si le montant &gt; 500 000 FBU :
                                     <ul>
-                                        <li>Le statut passe à <Tag value="En attente Approbation DG" severity="warning" /></li>
-                                        <li>Le DG reçoit une notification</li>
-                                        <li>Aucune action n'est possible avant approbation</li>
+                                        <li>Le statut passe automatiquement à <Tag value="En attente Approbation DG" severity="warning" /></li>
+                                        <li>Le DG reçoit une notification par email et dans son tableau de bord</li>
+                                        <li>Aucune action judiciaire n'est possible avant approbation</li>
+                                        <li>Le dossier reste bloqué avec un cadenas <i className="pi pi-lock"></i></li>
                                     </ul>
                                 </li>
-                                <li>Après approbation, suivre les étapes judiciaires</li>
+                                <li>Si le montant ≤ 500 000 FBU, le chef de crédit peut approuver directement</li>
+                            </ol>
+
+                            <p className="mt-3"><strong>Workflow d'Approbation DG :</strong></p>
+                            <div className="grid mt-2">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-blue-600">Côté Demandeur</h6>
+                                        <ul className="text-sm">
+                                            <li>Soumettre le dossier avec justifications complètes</li>
+                                            <li>Attendre la notification de décision (généralement 24-48h)</li>
+                                            <li>Consulter le statut dans le menu <Tag value="Mes Demandes" size="small" /></li>
+                                            <li>Si approuvé : Poursuivre les actions judiciaires</li>
+                                            <li>Si rejeté : Consulter le motif et reprendre le recouvrement amiable</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-green-600">Côté DG</h6>
+                                        <ul className="text-sm">
+                                            <li>Accéder au menu <Tag value="Approbations DG" size="small" severity="warning" /></li>
+                                            <li>Examiner les dossiers en attente</li>
+                                            <li>Consulter l'historique complet du dossier</li>
+                                            <li>Valider l'estimation des frais juridiques</li>
+                                            <li>Approuver ou rejeter avec commentaires</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+
+                            <p className="mt-3"><strong>Suivi de la Procédure Judiciaire :</strong></p>
+                            <ol className="line-height-3">
+                                <li><strong>Dépôt du dossier :</strong> Enregistrer la date de dépôt et le numéro de dossier tribunal</li>
+                                <li><strong>Convocation à l'audience :</strong> Saisir la date d'audience programmée</li>
+                                <li><strong>Suivi des audiences :</strong> Documenter chaque comparution et décision intermédiaire</li>
+                                <li><strong>Jugement :</strong> Enregistrer la date et le résultat :
+                                    <ul>
+                                        <li><Tag value="Favorable" severity="success" size="small" /> : Gain total</li>
+                                        <li><Tag value="Partiellement favorable" severity="info" size="small" /> : Gain partiel</li>
+                                        <li><Tag value="Défavorable" severity="danger" size="small" /> : Perte</li>
+                                        <li><Tag value="Arrangement" severity="warning" size="small" /> : Accord à l'amiable</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Montant accordé :</strong> Saisir le montant alloué par le tribunal</li>
+                                <li><strong>Phase d'exécution :</strong> Si jugement favorable, suivre la saisie et le recouvrement effectif</li>
+                                <li><strong>Montant recouvré :</strong> Enregistrer les montants effectivement récupérés</li>
+                                <li><strong>Clôture :</strong> Fermer le dossier avec le motif (Recouvré totalement, Partiellement, Irrécupérable, etc.)</li>
                             </ol>
 
                             <p className="mt-3"><strong>Statuts des Dossiers Contentieux :</strong></p>
@@ -2354,19 +2674,35 @@ function UserManualComponent() {
                                 <i className="pi pi-arrow-right text-500"></i>
                                 <Tag value="En attente Approbation DG" severity="warning" icon="pi pi-lock" />
                                 <i className="pi pi-arrow-right text-500"></i>
-                                <Tag value="Déposé" severity="info" />
+                                <Tag value="Approuvé par DG" severity="success" />
                                 <i className="pi pi-arrow-right text-500"></i>
-                                <Tag value="En cours" severity="warning" />
+                                <Tag value="Déposé au tribunal" severity="info" />
                                 <i className="pi pi-arrow-right text-500"></i>
-                                <Tag value="Jugement" severity="info" />
+                                <Tag value="Audience programmée" severity="info" />
                                 <i className="pi pi-arrow-right text-500"></i>
-                                <Tag value="Exécution" severity="warning" />
+                                <Tag value="En attente jugement" severity="warning" />
+                                <i className="pi pi-arrow-right text-500"></i>
+                                <Tag value="Jugement rendu" severity="info" />
+                                <i className="pi pi-arrow-right text-500"></i>
+                                <Tag value="En exécution" severity="warning" />
                                 <i className="pi pi-arrow-right text-500"></i>
                                 <Tag value="Clôturé" severity="success" />
                             </div>
+
+                            <div className="border-left-3 border-orange-500 pl-3 mt-3">
+                                <p className="text-orange-600 font-bold"><i className="pi pi-info-circle mr-2"></i>Gestion des Frais Juridiques</p>
+                                <p className="text-sm">Le système permet de suivre tous les frais engagés dans la procédure :</p>
+                                <ul className="text-sm">
+                                    <li><strong>Frais d'avocat :</strong> Honoraires du conseil juridique</li>
+                                    <li><strong>Frais d'huissier :</strong> Coûts de signification et d'exécution</li>
+                                    <li><strong>Autres frais :</strong> Timbres, déplacements, experts, etc.</li>
+                                    <li><strong>Total des coûts :</strong> Calculé automatiquement pour évaluer la rentabilité de l'action</li>
+                                </ul>
+                                <p className="text-sm mt-2">Ces coûts sont comparés au montant recouvré pour déterminer le résultat net de l'action contentieuse.</p>
+                            </div>
                         </div>
 
-                        <h5 className="text-primary">9.8 Restructuration de Crédit</h5>
+                        <h5 className="text-primary">9.10 Restructuration de Crédit</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p><strong>Conditions de Restructuration :</strong></p>
                             <ul className="line-height-3">
@@ -2400,39 +2736,71 @@ function UserManualComponent() {
                             </ol>
                         </div>
 
-                        <h5 className="text-primary">9.9 Rapports du Module Remboursement</h5>
+                        <h5 className="text-primary">9.11 Rapports du Module Remboursement</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le module Remboursement offre une suite complète de rapports pour le suivi et l'analyse des performances de recouvrement.</p>
+
+                            <p className="mt-3"><strong>Accès aux Rapports :</strong></p>
+                            <ol className="text-sm line-height-3">
+                                <li>Accéder au menu <Tag value="Module Remboursement" /> → <Tag value="Rapports" severity="info" /></li>
+                                <li>Sélectionner le type de rapport souhaité</li>
+                                <li>Définir les filtres (période, agence, agent, statut, etc.)</li>
+                                <li>Cliquer sur <Tag value="Générer" severity="success" size="small" /></li>
+                                <li>Visualiser les résultats à l'écran</li>
+                                <li>Exporter en <Tag value="PDF" severity="danger" size="small" icon="pi pi-file-pdf" /> ou <Tag value="Excel" severity="success" size="small" icon="pi pi-file-excel" /></li>
+                            </ol>
+                        </div>
+
                         <div className="grid mb-3">
                             <div className="col-12 md:col-6">
                                 <Card className="h-full">
                                     <h6 className="mt-0"><i className="pi pi-money-bill mr-2"></i>Rapport des Paiements</h6>
                                     <ul className="text-sm">
-                                        <li>Liste des paiements par période</li>
-                                        <li>Filtrage par mode de paiement</li>
-                                        <li>Totaux par catégorie (Capital, Intérêts, Pénalités)</li>
-                                        <li>Export Excel et PDF</li>
+                                        <li>Liste détaillée des paiements par période</li>
+                                        <li>Filtrage par mode de paiement (Espèces, Mobile Money, etc.)</li>
+                                        <li>Totaux par catégorie (Capital, Intérêts, Pénalités, Assurance, Frais)</li>
+                                        <li>Ventilation par agent de collecte</li>
+                                        <li>Recherche par numéro de reçu ou référence</li>
+                                        <li>Export Excel et PDF avec graphiques</li>
                                     </ul>
+                                    <div className="mt-2 p-2 surface-100 border-round">
+                                        <p className="text-xs font-semibold mb-1">Utilisation recommandée :</p>
+                                        <p className="text-xs">Rapprochement de caisse quotidien, validation des encaissements, suivi des performances de collecte</p>
+                                    </div>
                                 </Card>
                             </div>
                             <div className="col-12 md:col-6">
                                 <Card className="h-full">
                                     <h6 className="mt-0"><i className="pi pi-exclamation-triangle mr-2"></i>Rapport des Retards</h6>
                                     <ul className="text-sm">
-                                        <li>Liste des crédits en retard</li>
-                                        <li>Classification par jours de retard</li>
-                                        <li>Montants impayés et pénalités</li>
-                                        <li>Coordonnées clients pour relance</li>
+                                        <li>Liste complète des crédits en retard</li>
+                                        <li>Classification par jours de retard (1-30, 31-60, 61-90, 90+)</li>
+                                        <li>Montants impayés détaillés (capital, intérêts, pénalités)</li>
+                                        <li>Coordonnées clients pour relance (téléphone, adresse)</li>
+                                        <li>Historique des derniers contacts</li>
+                                        <li>Taux de provisionnement recommandé</li>
                                     </ul>
+                                    <div className="mt-2 p-2 surface-100 border-round">
+                                        <p className="text-xs font-semibold mb-1">Utilisation recommandée :</p>
+                                        <p className="text-xs">Planning quotidien des relances, distribution des dossiers aux agents de recouvrement, analyse du portefeuille à risque</p>
+                                    </div>
                                 </Card>
                             </div>
                             <div className="col-12 md:col-6">
                                 <Card className="h-full">
                                     <h6 className="mt-0"><i className="pi pi-users mr-2"></i>Rapport Recouvrement</h6>
                                     <ul className="text-sm">
-                                        <li>Dossiers par phase de recouvrement</li>
+                                        <li>Dossiers par phase de recouvrement (Amiable, Relance, Contentieux)</li>
                                         <li>Taux de recouvrement par agent</li>
-                                        <li>Actions effectuées et résultats</li>
-                                        <li>Performance globale</li>
+                                        <li>Actions effectuées et résultats obtenus</li>
+                                        <li>Promesses de paiement en attente</li>
+                                        <li>Comparaison des performances entre agents</li>
+                                        <li>Efficacité des différentes actions (appels, visites, lettres)</li>
                                     </ul>
+                                    <div className="mt-2 p-2 surface-100 border-round">
+                                        <p className="text-xs font-semibold mb-1">Utilisation recommandée :</p>
+                                        <p className="text-xs">Évaluation des agents de recouvrement, optimisation des stratégies de relance, identification des meilleures pratiques</p>
+                                    </div>
                                 </Card>
                             </div>
                             <div className="col-12 md:col-6">
@@ -2440,53 +2808,229 @@ function UserManualComponent() {
                                     <h6 className="mt-0"><i className="pi pi-briefcase mr-2"></i>Rapport Contentieux</h6>
                                     <ul className="text-sm">
                                         <li>Dossiers par statut juridique</li>
-                                        <li>Montants en contentieux</li>
-                                        <li>Dossiers en attente approbation DG</li>
-                                        <li>Résultats des procédures</li>
+                                        <li>Montants en contentieux par agence</li>
+                                        <li>Dossiers en attente approbation DG avec montants</li>
+                                        <li>Résultats des procédures (favorable, défavorable, arrangement)</li>
+                                        <li>Frais juridiques engagés vs montants récupérés</li>
+                                        <li>Rentabilité des actions contentieuses</li>
                                     </ul>
+                                    <div className="mt-2 p-2 surface-100 border-round">
+                                        <p className="text-xs font-semibold mb-1">Utilisation recommandée :</p>
+                                        <p className="text-xs">Suivi des procédures judiciaires, analyse coût-bénéfice du contentieux, reporting à la direction générale</p>
+                                    </div>
                                 </Card>
                             </div>
                             <div className="col-12">
                                 <Card>
                                     <h6 className="mt-0"><i className="pi pi-chart-pie mr-2"></i>Synthèse Remboursement</h6>
-                                    <p className="text-sm">Tableau de bord complet avec :</p>
+                                    <p className="text-sm">Tableau de bord complet avec indicateurs clés de performance (KPI) :</p>
                                     <div className="grid">
                                         <div className="col-12 md:col-3">
                                             <ul className="text-sm">
-                                                <li>Nombre de crédits actifs</li>
-                                                <li>Encours total</li>
+                                                <li><strong>Crédits Actifs :</strong> Nombre et encours total</li>
+                                                <li><strong>Échéances du jour :</strong> Montant attendu</li>
                                             </ul>
                                         </div>
                                         <div className="col-12 md:col-3">
                                             <ul className="text-sm">
-                                                <li>Montant collecté</li>
-                                                <li>Taux de recouvrement</li>
+                                                <li><strong>Montant collecté :</strong> Aujourd'hui, mois, année</li>
+                                                <li><strong>Taux de recouvrement :</strong> % des échéances honorées</li>
                                             </ul>
                                         </div>
                                         <div className="col-12 md:col-3">
                                             <ul className="text-sm">
-                                                <li>Crédits en retard</li>
-                                                <li>Montant impayé</li>
+                                                <li><strong>Crédits en retard :</strong> Par classification</li>
+                                                <li><strong>Montant impayé :</strong> Total et par phase</li>
                                             </ul>
                                         </div>
                                         <div className="col-12 md:col-3">
                                             <ul className="text-sm">
-                                                <li>Graphiques de tendance</li>
-                                                <li>Top 10 impayés</li>
+                                                <li><strong>Graphiques de tendance :</strong> Évolution mensuelle</li>
+                                                <li><strong>Top 10 impayés :</strong> Clients à risque critique</li>
                                             </ul>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 p-3 surface-100 border-round">
+                                        <p className="text-sm font-semibold mb-2"><i className="pi pi-chart-bar mr-2"></i>Indicateurs Visuels :</p>
+                                        <div className="grid">
+                                            <div className="col-12 md:col-4">
+                                                <p className="text-xs"><strong>Graphique à barres :</strong> Collecte mensuelle comparée aux objectifs</p>
+                                            </div>
+                                            <div className="col-12 md:col-4">
+                                                <p className="text-xs"><strong>Graphique circulaire :</strong> Répartition des retards par classification</p>
+                                            </div>
+                                            <div className="col-12 md:col-4">
+                                                <p className="text-xs"><strong>Courbe de tendance :</strong> Évolution du PAR (Portfolio At Risk) sur 12 mois</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </Card>
                             </div>
                         </div>
 
-                        <h5 className="text-primary">9.10 Questions Fréquentes - Remboursement</h5>
+                        <div className="border-left-3 border-green-500 pl-3 mb-3">
+                            <p className="text-green-600 font-bold"><i className="pi pi-file-pdf mr-2"></i>Export PDF des Rapports</p>
+                            <p className="text-sm">Tous les rapports peuvent être exportés au format PDF avec :</p>
+                            <ul className="text-sm">
+                                <li>En-tête personnalisé avec logo de l'institution</li>
+                                <li>Informations de génération (date, heure, utilisateur)</li>
+                                <li>Filtres appliqués clairement indiqués</li>
+                                <li>Tableaux de données formatés et lisibles</li>
+                                <li>Graphiques et visualisations intégrés</li>
+                                <li>Totaux et sous-totaux mis en évidence</li>
+                                <li>Pied de page avec pagination et mentions légales</li>
+                            </ul>
+                            <p className="text-sm mt-2">Les exports PDF sont optimisés pour l'impression et l'archivage réglementaire.</p>
+                        </div>
+
+                        <h5 className="text-primary">9.12 Clôture Journalière Remboursement</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                La clôture journalière du module Remboursement permet de vérifier et valider tous les paiements
+                                de remboursement et les remboursements anticipés effectués durant la journée.
+                            </p>
+
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Module Remboursement" /> → <Tag value="Clôture Journalière" severity="info" /></li>
+                                <li>Sélectionner la date de clôture avec le calendrier</li>
+                                <li>Cliquer sur <Tag value="Charger" severity="success" /> pour afficher les opérations du jour</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Paiements de remboursement :</strong> Liste de tous les paiements d'échéances effectués pour la date (client, montant, échéance concernée)</li>
+                                <li><strong>Remboursements anticipés :</strong> Liste séparée des remboursements anticipés avec le montant total et les pénalités éventuelles</li>
+                                <li><strong>Vérification individuelle :</strong> Chaque paiement peut être vérifié ou annulé séparément</li>
+                                <li><strong>Vérification en masse :</strong> Boutons <Tag value="Vérifier Tout" severity="success" /> et <Tag value="Annuler Tout" severity="danger" /> pour les deux types</li>
+                                <li><strong>Statuts :</strong> <Tag value="VERIFIED" severity="success" /> / <Tag value="PENDING" severity="warning" /> pour chaque opération</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Règles Importantes</h6>
+                            <div className="border-left-3 border-orange-500 pl-3">
+                                <ul className="line-height-3">
+                                    <li><i className="pi pi-lock text-red-500 mr-2"></i>Si la clôture comptable est complétée pour cette date, l'annulation des vérifications est <strong>interdite</strong>. Un bandeau rouge s'affiche pour l'indiquer.</li>
+                                    <li><i className="pi pi-info-circle text-blue-500 mr-2"></i>Les paiements doivent être vérifiés ici avant la comptabilisation dans le module Comptabilité</li>
+                                    <li><i className="pi pi-exclamation-triangle text-orange-500 mr-2"></i>Vérifier la concordance entre le montant enregistré et le montant effectivement reçu</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">9.13 Meilleures Pratiques & Conseils</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p className="font-bold text-primary mb-2"><i className="pi pi-lightbulb mr-2"></i>Recommandations pour une Gestion Efficace du Remboursement</p>
+
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-green-600"><i className="pi pi-check-circle mr-2"></i>À FAIRE</h6>
+                                        <ul className="text-sm line-height-3">
+                                            <li><strong>Enregistrer les paiements immédiatement :</strong> Ne pas attendre la fin de journée pour éviter les oublis</li>
+                                            <li><strong>Vérifier systématiquement les références :</strong> Pour Mobile Money et virements, toujours saisir la référence de transaction</li>
+                                            <li><strong>Documenter chaque action de recouvrement :</strong> Plus l'historique est détaillé, meilleure est la défense en contentieux</li>
+                                            <li><strong>Prioriser les retards J+1 à J+7 :</strong> L'intervention précoce donne les meilleurs taux de récupération</li>
+                                            <li><strong>Suivre les promesses de paiement :</strong> Rappeler les clients la veille de leur engagement</li>
+                                            <li><strong>Consulter les rapports quotidiennement :</strong> Anticiper les problèmes avant qu'ils ne s'aggravent</li>
+                                            <li><strong>Utiliser le prélèvement automatique :</strong> Encourager les clients à opter pour ce mode sécurisé</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-red-600"><i className="pi pi-times-circle mr-2"></i>À ÉVITER</h6>
+                                        <ul className="text-sm line-height-3">
+                                            <li><strong>Ne jamais annuler un paiement sans approbation :</strong> Toute modification doit être justifiée et tracée</li>
+                                            <li><strong>Ne pas exonérer de pénalités sans motif valable :</strong> Respecter les niveaux d'autorisation</li>
+                                            <li><strong>Éviter les promesses verbales non documentées :</strong> Tout engagement doit être enregistré dans le système</li>
+                                            <li><strong>Ne pas retarder l'escalade des dossiers critiques :</strong> Passer au niveau supérieur dès que nécessaire</li>
+                                            <li><strong>Ne pas négliger les petits montants :</strong> Les petits impayés cumulés deviennent des grosses pertes</li>
+                                            <li><strong>Éviter les restructurations précipitées :</strong> Bien analyser la capacité réelle du client avant</li>
+                                            <li><strong>Ne pas oublier de contacter les garants :</strong> C'est souvent la clé du recouvrement</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 p-3 border-left-3 border-blue-500">
+                                <h6 className="text-blue-600 mt-0"><i className="pi pi-chart-line mr-2"></i>Indicateurs de Performance Clés (KPI) à Suivre</h6>
+                                <div className="grid">
+                                    <div className="col-12 md:col-4">
+                                        <p className="text-sm font-semibold">Taux de Recouvrement</p>
+                                        <p className="text-xs">Objectif : <strong>&gt; 95%</strong></p>
+                                        <p className="text-xs">Montant collecté / Montant attendu × 100</p>
+                                    </div>
+                                    <div className="col-12 md:col-4">
+                                        <p className="text-sm font-semibold">PAR 30 (Portfolio At Risk)</p>
+                                        <p className="text-xs">Objectif : <strong>&lt; 5%</strong></p>
+                                        <p className="text-xs">Encours avec retard &gt; 30 jours / Encours total</p>
+                                    </div>
+                                    <div className="col-12 md:col-4">
+                                        <p className="text-sm font-semibold">Délai Moyen de Recouvrement</p>
+                                        <p className="text-xs">Objectif : <strong>&lt; 15 jours</strong></p>
+                                        <p className="text-xs">Temps moyen entre retard et paiement effectif</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 p-3 border-left-3 border-orange-500">
+                                <h6 className="text-orange-600 mt-0"><i className="pi pi-calendar mr-2"></i>Routine Quotidienne Recommandée</h6>
+                                <ol className="text-sm line-height-3">
+                                    <li><strong>Matin (8h-9h) :</strong>
+                                        <ul>
+                                            <li>Consulter le rapport des échéances du jour</li>
+                                            <li>Envoyer les SMS de rappel aux clients dont l'échéance est aujourd'hui</li>
+                                            <li>Prioriser les dossiers de recouvrement à traiter</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Journée (9h-17h) :</strong>
+                                        <ul>
+                                            <li>Enregistrer les paiements reçus en temps réel</li>
+                                            <li>Effectuer les appels de relance pour retards J+1 à J+7</li>
+                                            <li>Documenter toutes les actions de recouvrement</li>
+                                            <li>Suivre les promesses de paiement à échoir aujourd'hui</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Fin de journée (17h-18h) :</strong>
+                                        <ul>
+                                            <li>Vérifier le rapprochement caisse vs système</li>
+                                            <li>Consulter le rapport de collecte du jour</li>
+                                            <li>Planifier les visites terrain du lendemain</li>
+                                            <li>Escalader les dossiers problématiques au superviseur</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                            </div>
+
+                            <div className="mt-3 p-3 border-left-3 border-green-500">
+                                <h6 className="text-green-600 mt-0"><i className="pi pi-trophy mr-2"></i>Stratégies Gagnantes de Recouvrement</h6>
+                                <ul className="text-sm line-height-3">
+                                    <li><strong>Personnalisation du contact :</strong> Adapter le ton et l'approche selon le profil du client (âge, éducation, historique)</li>
+                                    <li><strong>Meilleur moment d'appel :</strong> Entre 9h-11h et 14h-16h, éviter l'heure du déjeuner et après 18h</li>
+                                    <li><strong>Technique du rappel progressif :</strong> SMS J+1, Appel J+3, Visite J+7 - respecter cette escalade</li>
+                                    <li><strong>Proposition de solution :</strong> Offrir des alternatives (paiement partiel, report d'échéance) plutôt que juste réclamer</li>
+                                    <li><strong>Activation des garants tôt :</strong> Informer les cautions dès J+15, ne pas attendre J+30</li>
+                                    <li><strong>Utilisation des groupes solidaires :</strong> Solliciter la pression positive du groupe pour inciter au paiement</li>
+                                    <li><strong>Maintien du contact :</strong> Même sans paiement, garder le lien avec le client (visite sociale, appel courtois)</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">9.13 Questions Fréquentes - Remboursement</h5>
                         <Accordion>
                             <AccordionTab header="Comment le système calcule-t-il les pénalités de retard ?">
                                 <p>Les pénalités sont calculées selon la formule : <strong>Pénalité = Montant en retard × Taux journalier × Nombre de jours de retard</strong>. Le taux journalier est configuré dans les données de référence (généralement 0,5% à 2%). Un plafond maximum de 10% du capital restant dû est appliqué pour éviter des pénalités excessives.</p>
                             </AccordionTab>
                             <AccordionTab header="Pourquoi mon paiement n'a-t-il pas réduit le capital ?">
-                                <p>Le système applique l'ordre d'allocation automatique : <strong>Pénalités → Intérêts → Capital</strong>. Si le paiement n'a pas réduit le capital, c'est qu'il a d'abord servi à couvrir les pénalités et intérêts dus. Consultez le détail de la ventilation dans le reçu de paiement.</p>
+                                <p>Le système applique l'ordre d'allocation automatique : <strong>Pénalités → Intérêts → Assurance → Frais → Capital</strong>. Si le paiement n'a pas réduit le capital, c'est qu'il a d'abord servi à couvrir les pénalités, intérêts, assurance et frais dus. Consultez le détail de la ventilation dans le reçu de paiement pour voir exactement comment le montant a été alloué.</p>
+                            </AccordionTab>
+                            <AccordionTab header="Comment enregistrer un paiement Mobile Money ?">
+                                <p>Lors de la saisie du paiement, sélectionnez le mode "Mobile Money", puis remplissez les champs obligatoires : <strong>numéro de téléphone mobile</strong> du client (ex: +25779123456) et la <strong>référence de transaction</strong> fournie par l'opérateur (Lumicash, Ecocash, etc.). Le système validera la présence de ces informations avant d'enregistrer le paiement.</p>
+                            </AccordionTab>
+                            <AccordionTab header="Peut-on exonérer des pénalités de retard ?">
+                                <p>Oui, le système permet l'exonération totale ou partielle des pénalités selon un workflow d'approbation. Les niveaux d'autorisation sont : Agent (jusqu'à 10 000 FBU), Chef d'agence (jusqu'à 50 000 FBU), Chef de crédit (jusqu'à 200 000 FBU), et DG (au-delà de 200 000 FBU). L'exonération doit être justifiée (force majeure, bon historique client, etc.) et reste tracée dans l'historique du crédit.</p>
+                            </AccordionTab>
+                            <AccordionTab header="Comment fonctionne la collecte de paiement à domicile ?">
+                                <p>Pour la collecte à domicile, sélectionnez le mode "Collecte à Domicile" lors de l'enregistrement du paiement. Vous devrez alors indiquer : l'<strong>agent collecteur</strong> (votre nom ou un collègue), le <strong>lieu de collecte</strong> (adresse), et idéalement capturer la <strong>localisation GPS</strong> via le bouton dédié. Ceci permet la traçabilité complète des collectes terrain et la vérification des déplacements des agents.</p>
                             </AccordionTab>
                             <AccordionTab header="Quand un crédit passe-t-il en contentieux ?">
                                 <p>Un crédit passe automatiquement en phase Contentieux lorsque le retard dépasse 90 jours. À ce stade, les actions de recouvrement classiques ont échoué et des procédures juridiques peuvent être envisagées, sous réserve de l'approbation du DG pour les montants supérieurs à 500 000 FBU.</p>
@@ -2495,12 +3039,530 @@ function UserManualComponent() {
                                 <p>Non, la politique de l'institution limite à <strong>une seule restructuration par crédit</strong>. Cette règle vise à éviter les restructurations en cascade et à encourager une discipline de remboursement. En cas de difficulté persistante après restructuration, le dossier doit être orienté vers le contentieux.</p>
                             </AccordionTab>
                             <AccordionTab header="Comment obtenir l'approbation du DG pour un dossier contentieux ?">
-                                <p>Lorsque vous créez un dossier contentieux pour un montant supérieur à 500 000 FBU, le système envoie automatiquement une demande d'approbation au Directeur Général. Le DG reçoit une notification et peut approuver ou rejeter via le menu dédié. Vous serez notifié de la décision et pourrez alors poursuivre les actions.</p>
+                                <p>Lorsque vous créez un dossier contentieux pour un montant supérieur à 500 000 FBU, le système envoie automatiquement une demande d'approbation au Directeur Général. Le DG reçoit une notification par email et dans son tableau de bord. Il peut consulter le dossier complet et approuver ou rejeter avec commentaires via le menu "Approbations DG". Vous serez notifié de la décision et pourrez alors poursuivre les actions si approuvé.</p>
                             </AccordionTab>
                             <AccordionTab header="Comment effectuer un remboursement anticipé partiel ?">
                                 <p>Dans le menu "Remboursement Anticipé", après avoir sélectionné le crédit, choisissez l'option "Remboursement Partiel". Saisissez le montant que le client souhaite rembourser en plus de l'échéance courante. Le système recalculera automatiquement les échéances futures avec le nouveau capital restant.</p>
                             </AccordionTab>
+                            <AccordionTab header="Comment suivre les promesses de paiement des clients ?">
+                                <p>Lors d'une action de recouvrement (appel, visite, etc.), si le client promet de payer à une date précise, enregistrez la <strong>date de promesse</strong> et le <strong>montant promis</strong> dans le formulaire d'action. Le système génère automatiquement un rappel J-1 avant la date promise. Si le paiement n'est pas honoré, le dossier est automatiquement escaladé en priorité et l'historique des promesses non tenues est tracé pour évaluation du comportement client.</p>
+                            </AccordionTab>
+                            <AccordionTab header="Quelle est la différence entre Date de Paiement et Date de Valeur ?">
+                                <p>La <strong>Date de Paiement</strong> est la date à laquelle le client remet physiquement l'argent (aujourd'hui généralement). La <strong>Date de Valeur</strong> est la date à laquelle le paiement est effectivement comptabilisé et appliqué au crédit. Elles sont souvent identiques, mais peuvent différer en cas de chèque (date de compensation) ou de transfert bancaire (date de réception effective des fonds).</p>
+                            </AccordionTab>
+                            <AccordionTab header="Comment prioriser les dossiers de recouvrement ?">
+                                <p>Lors de l'ouverture d'un dossier de recouvrement, assignez une priorité selon ces critères : <strong>Faible</strong> (retard mineur, client coopératif), <strong>Normale</strong> (cas standard), <strong>Haute</strong> (montant élevé ou retard prolongé), <strong>Critique</strong> (risque de perte majeure, action urgente). Les dossiers prioritaires apparaissent en tête de liste et génèrent des alertes pour les superviseurs. Utilisez la priorité "Critique" avec parcimonie pour les situations vraiment urgentes.</p>
+                            </AccordionTab>
                         </Accordion>
+
+                        <h5 className="text-primary mt-4">9.14 Prélèvement Automatique</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le Prélèvement Automatique permet de débiter automatiquement les comptes épargne des clients
+                                pour le paiement de leurs échéances de crédit. Ce module traite uniquement les échéances
+                                <strong> expirées</strong> (dont la date d'échéance est passée) et utilise les montants exacts
+                                définis dans l'échéancier.
+                            </p>
+                            <ul className="line-height-3">
+                                <li><strong>Traitement par lot :</strong> Exécution groupée de tous les prélèvements pour une date donnée</li>
+                                <li><strong>Prévisualisation :</strong> Aperçu des paiements avant exécution réelle</li>
+                                <li><strong>Gestion des échéances multiples :</strong> Traite toutes les échéances impayées d'un crédit en une seule opération</li>
+                                <li><strong>Historique complet :</strong> Traçabilité de tous les lots exécutés avec détails par client</li>
+                                <li><strong>Recherche avancée :</strong> Filtrage par N° crédit, compte épargne, date et statut</li>
+                            </ul>
+                        </div>
+
+                        <div className="grid mb-3">
+                            <div className="col-12 md:col-6">
+                                <Card className="h-full border-left-3 border-blue-500">
+                                    <h6 className="mt-0 text-blue-600">
+                                        <i className="pi pi-eye mr-2"></i>
+                                        Onglet Exécution
+                                    </h6>
+                                    <p className="text-sm">Fonctionnalités principales :</p>
+                                    <ul className="text-sm line-height-3">
+                                        <li><strong>Sélection de date :</strong> Choisir la date de traitement (échéances expirées jusqu'à cette date)</li>
+                                        <li><strong>Prévisualisation :</strong> Voir les crédits à traiter avec montants et soldes disponibles</li>
+                                        <li><strong>Statistiques :</strong> Nombre de crédits, échéances, montant total, succès/échecs prévisionnels</li>
+                                        <li><strong>Exécution :</strong> Lancement du traitement avec confirmation</li>
+                                        <li><strong>Résultats détaillés :</strong> Affichage des paiements réussis, solde insuffisant et échecs</li>
+                                    </ul>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-6">
+                                <Card className="h-full border-left-3 border-green-500">
+                                    <h6 className="mt-0 text-green-600">
+                                        <i className="pi pi-history mr-2"></i>
+                                        Onglet Historique
+                                    </h6>
+                                    <p className="text-sm">Consultation et recherche :</p>
+                                    <ul className="text-sm line-height-3">
+                                        <li><strong>Liste des lots :</strong> Tous les traitements exécutés avec N° batch, date, statut</li>
+                                        <li><strong>Recherche multi-critères :</strong> N° batch, N° crédit, N° compte épargne, dates, statut</li>
+                                        <li><strong>Détails par lot :</strong> Vue détaillée avec résumé et liste des paiements individuels</li>
+                                        <li><strong>Traçabilité utilisateur :</strong> Identification de l'utilisateur ayant exécuté chaque lot</li>
+                                        <li><strong>Statistiques par lot :</strong> Succès, solde insuffisant, échecs avec montants</li>
+                                    </ul>
+                                </Card>
+                            </div>
+                        </div>
+
+                        <p className="font-bold text-primary"><i className="pi pi-cog mr-2"></i>Procédure d'Exécution du Prélèvement Automatique</p>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Module Remboursement" /> → <Tag value="Paiements" severity="info" /> → <Tag value="Prélèvement Automatique" severity="success" /></li>
+                                <li>Dans l'onglet <Tag value="Exécution" severity="info" /> :
+                                    <ul>
+                                        <li>Sélectionner la <strong>date de traitement</strong> (le système traitera les échéances expirées jusqu'à cette date)</li>
+                                        <li>Cliquer sur <Tag value="Prévisualiser" severity="secondary" /> pour voir l'aperçu</li>
+                                    </ul>
+                                </li>
+                                <li>Analyser la prévisualisation :
+                                    <ul>
+                                        <li><strong>Statistiques générales :</strong> Nombre de crédits, échéances totales, montant à prélever</li>
+                                        <li><strong>Liste des crédits :</strong> Détail par crédit avec client, échéances, montant et solde disponible</li>
+                                        <li><strong>Code couleur :</strong>
+                                            <ul>
+                                                <li><Tag value="Suffisant" severity="success" /> - Solde suffisant pour le prélèvement complet</li>
+                                                <li><Tag value="Insuffisant" severity="warning" /> - Solde partiel ou insuffisant</li>
+                                                <li><Tag value="Pas de compte" severity="danger" /> - Client sans compte épargne lié</li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li>Si l'aperçu est satisfaisant, cliquer sur <Tag value="Exécuter le Prélèvement" severity="success" /></li>
+                                <li>Confirmer l'opération dans la boîte de dialogue de confirmation</li>
+                                <li>Consulter le résultat détaillé :
+                                    <ul>
+                                        <li><strong>Paiements réussis :</strong> Liste des prélèvements effectués avec N° paiement généré</li>
+                                        <li><strong>Solde insuffisant :</strong> Crédits où le prélèvement n'a pas pu être effectué intégralement</li>
+                                        <li><strong>Échecs :</strong> Erreurs techniques rencontrées</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+
+                        <p className="font-bold text-primary"><i className="pi pi-search mr-2"></i>Consultation de l'Historique</p>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <ol className="line-height-3">
+                                <li>Cliquer sur l'onglet <Tag value="Historique" severity="info" /></li>
+                                <li>Utiliser les filtres de recherche :
+                                    <ul>
+                                        <li><strong>N° Batch :</strong> Recherche par numéro de lot</li>
+                                        <li><strong>N° Crédit :</strong> Trouver les lots contenant un crédit spécifique</li>
+                                        <li><strong>N° Compte Épargne :</strong> Filtrer par compte source</li>
+                                        <li><strong>Date Début / Date Fin :</strong> Période de recherche</li>
+                                        <li><strong>Statut :</strong> Complété, Partiel, Échec</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Rechercher" severity="primary" /> pour appliquer les filtres</li>
+                                <li>Cliquer sur l'icone <i className="pi pi-eye text-blue-500"></i> pour voir les détails d'un lot</li>
+                            </ol>
+
+                            <p className="mt-3 font-semibold">Détails d'un Lot :</p>
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <ul className="text-sm">
+                                        <li><strong>Résumé :</strong> Statut, date, montant traité, utilisateur</li>
+                                        <li><strong>Compteurs :</strong> Succès, solde insuffisant, échecs</li>
+                                    </ul>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <ul className="text-sm">
+                                        <li><strong>Détails par paiement :</strong> Client, crédit, compte, montants</li>
+                                        <li><strong>Filtres dans les détails :</strong> Recherche par N° crédit, N° paiement, compte, statut</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid">
+                            <div className="col-12 md:col-6">
+                                <div className="border-left-3 border-green-500 pl-3">
+                                    <p className="text-green-600 font-bold"><i className="pi pi-check-circle mr-2"></i>Bonnes Pratiques</p>
+                                    <ul className="text-sm line-height-3">
+                                        <li>Toujours prévisualiser avant d'exécuter</li>
+                                        <li>Vérifier les soldes insuffisants et contacter les clients concernés</li>
+                                        <li>Exécuter le prélèvement en début de journée pour les échéances du jour</li>
+                                        <li>Consulter régulièrement l'historique pour détecter les patterns d'échecs</li>
+                                        <li>Encourager les clients à maintenir un solde suffisant sur leur compte épargne</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div className="col-12 md:col-6">
+                                <div className="border-left-3 border-orange-500 pl-3">
+                                    <p className="text-orange-600 font-bold"><i className="pi pi-exclamation-triangle mr-2"></i>Points d'Attention</p>
+                                    <ul className="text-sm line-height-3">
+                                        <li>Le prélèvement ne traite que les échéances <strong>expirées</strong> (date passée)</li>
+                                        <li>Un crédit peut avoir plusieurs échéances traitées si plusieurs sont en retard</li>
+                                        <li>Le solde insuffisant n'empêche pas le prélèvement partiel si la configuration le permet</li>
+                                        <li>Chaque exécution génère un lot avec un numéro unique pour la traçabilité</li>
+                                        <li>L'utilisateur connecté est automatiquement enregistré comme exécutant</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 p-3 surface-100 border-round">
+                            <h6 className="mt-0"><i className="pi pi-info-circle mr-2 text-blue-500"></i>Statuts des Lots</h6>
+                            <div className="flex flex-wrap gap-2">
+                                <div><Tag value="COMPLETED" severity="success" /> Tous les prélèvements réussis</div>
+                                <div><Tag value="PARTIAL" severity="warning" /> Certains prélèvements ont échoué (solde insuffisant)</div>
+                                <div><Tag value="FAILED" severity="danger" /> Erreur majeure lors du traitement</div>
+                            </div>
+                        </div>
+                    </div>
+                </AccordionTab>
+
+                {/* Module Comptabilité */}
+                <AccordionTab
+                    header={
+                        <span className="flex align-items-center gap-2">
+                            <i className="pi pi-calculator"></i>
+                            <span className="font-bold">10. Module Comptabilité</span>
+                        </span>
+                    }
+                >
+                    <div className="p-3">
+                        <h5 className="text-primary">10.1 Vue d'Ensemble</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le module Comptabilité gère l'ensemble de la comptabilité générale de l'institution selon le référentiel
+                                <strong> SYSCOHADA</strong>. Il centralise les écritures comptables générées par les modules opérationnels
+                                (Épargne, Crédit, Remboursement) et permet la production des états financiers réglementaires.
+                            </p>
+                            <div className="grid mt-3">
+                                <div className="col-12 md:col-4">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-blue-600"><i className="pi pi-sitemap mr-2"></i>Paramétrage</h6>
+                                        <ul className="text-sm">
+                                            <li>Plan Comptable (Comptes)</li>
+                                            <li>Journaux Comptables</li>
+                                            <li>Exercices Comptables</li>
+                                            <li>Taux de Change</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-green-600"><i className="pi pi-pencil mr-2"></i>Saisie & Traitement</h6>
+                                        <ul className="text-sm">
+                                            <li>Écritures Comptables</li>
+                                            <li>Brouillards</li>
+                                            <li>Clôture Journalière</li>
+                                            <li>Contrôle Comptable</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-purple-600"><i className="pi pi-chart-bar mr-2"></i>États Financiers</h6>
+                                        <ul className="text-sm">
+                                            <li>Balance Générale</li>
+                                            <li>Bilan</li>
+                                            <li>Compte de Résultat</li>
+                                            <li>Flux de Trésorerie</li>
+                                            <li>Variation des Capitaux</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">10.2 Plan Comptable (Comptes)</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le plan comptable définit la structure des comptes selon la norme SYSCOHADA.</p>
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Plan Comptable" severity="info" /></li>
+                            </ol>
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Liste des comptes :</strong> Tableau avec numéro de compte, libellé, classe, type (Actif/Passif/Charge/Produit)</li>
+                                <li><strong>Création :</strong> Ajouter un nouveau compte avec numéro, libellé, classe et type</li>
+                                <li><strong>Modification :</strong> Modifier le libellé et les propriétés d'un compte existant</li>
+                                <li><strong>Recherche :</strong> Filtrer par numéro de compte, libellé ou classe</li>
+                                <li><strong>Import/Export :</strong> Possibilité d'importer un plan comptable standard</li>
+                            </ul>
+                            <div className="border-left-3 border-blue-500 pl-3 mt-3">
+                                <p className="text-sm"><i className="pi pi-info-circle text-blue-500 mr-2"></i>
+                                    Les classes de comptes suivent le SYSCOHADA : Classe 1 (Capitaux), Classe 2 (Immobilisations),
+                                    Classe 3 (Stocks), Classe 4 (Tiers), Classe 5 (Trésorerie), Classe 6 (Charges), Classe 7 (Produits).
+                                </p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">10.3 Journaux Comptables</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Les journaux comptables organisent les écritures par nature d'opération.</p>
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Journaux" severity="info" /></li>
+                            </ol>
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Gestion des journaux :</strong> Créer, modifier et consulter les journaux (Journal des Achats, Ventes, Banque, Caisse, Opérations Diverses)</li>
+                                <li><strong>Code et libellé :</strong> Chaque journal a un code unique et un libellé descriptif</li>
+                                <li><strong>Association aux exercices :</strong> Les journaux sont liés à l'exercice comptable actif</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">10.4 Exercices Comptables</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>L'exercice comptable définit la période de comptabilisation (généralement du 1er janvier au 31 décembre).</p>
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Exercices" severity="info" /></li>
+                            </ol>
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Création d'exercice :</strong> Définir la date de début, date de fin et le libellé</li>
+                                <li><strong>Statuts :</strong> <Tag value="OUVERT" severity="success" /> (exercice actif), <Tag value="CLOTURE" severity="danger" /> (exercice fermé)</li>
+                                <li><strong>Exercice actif :</strong> Un seul exercice peut être actif à la fois, sélectionné via le cookie de session</li>
+                                <li><strong>Clôture d'exercice :</strong> Génération automatique des à-nouveaux pour le nouvel exercice</li>
+                            </ul>
+                            <div className="border-left-3 border-orange-500 pl-3 mt-3">
+                                <p className="text-sm"><i className="pi pi-exclamation-triangle text-orange-500 mr-2"></i>
+                                    La clôture d'un exercice est <strong>irréversible</strong>. S'assurer que toutes les écritures sont validées avant de procéder.
+                                </p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">10.5 Brouillards</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Les brouillards sont des écritures provisoires qui peuvent être modifiées avant validation définitive.</p>
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Brouillards" severity="info" /></li>
+                            </ol>
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Saisie de brouillard :</strong> Créer des écritures provisoires avec date, journal, libellé, comptes débit/crédit et montants</li>
+                                <li><strong>Validation :</strong> Transformer un brouillard en écriture définitive après vérification</li>
+                                <li><strong>Suppression :</strong> Les brouillards non validés peuvent être supprimés</li>
+                                <li><strong>Équilibre :</strong> Le système vérifie que le total débit = total crédit</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">10.6 Écritures Comptables</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Les écritures comptables enregistrent définitivement les mouvements financiers dans les comptes.</p>
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Écritures" severity="info" /></li>
+                            </ol>
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Consultation :</strong> Afficher les écritures avec filtres par période, journal, compte</li>
+                                <li><strong>Détail :</strong> Pour chaque écriture : date, numéro de pièce, journal, libellé, comptes mouvementés, montants débit/crédit</li>
+                                <li><strong>Source :</strong> Identification de l'origine (manuelle, clôture journalière automatique)</li>
+                                <li><strong>Lettrage :</strong> Rapprochement des écritures sur un même compte de tiers</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">10.7 États Financiers</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Les états financiers sont les documents comptables obligatoires produits à partir des écritures.</p>
+
+                            <div className="grid mt-3">
+                                <div className="col-12 md:col-6">
+                                    <Card className="mb-3">
+                                        <h6 className="mt-0 text-blue-600"><i className="pi pi-table mr-2"></i>Balance Générale</h6>
+                                        <p className="text-sm">Récapitule pour chaque compte les totaux débit/crédit et le solde.</p>
+                                        <ul className="text-sm">
+                                            <li>Accès : <Tag value="Comptabilité" /> → <Tag value="Balance" severity="info" /></li>
+                                            <li>Filtres par période et classe de comptes</li>
+                                            <li>Totaux et contrôle d'équilibre automatique</li>
+                                            <li>Export PDF disponible</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="mb-3">
+                                        <h6 className="mt-0 text-green-600"><i className="pi pi-chart-bar mr-2"></i>Bilan</h6>
+                                        <p className="text-sm">Présente la situation patrimoniale : Actif (emplois) et Passif (ressources).</p>
+                                        <ul className="text-sm">
+                                            <li>Accès : <Tag value="Comptabilité" /> → <Tag value="Bilan" severity="info" /></li>
+                                            <li>Format SYSCOHADA réglementaire</li>
+                                            <li>Actif = Passif (contrôle automatique)</li>
+                                            <li>Export PDF disponible</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="mb-3">
+                                        <h6 className="mt-0 text-purple-600"><i className="pi pi-chart-line mr-2"></i>Compte de Résultat</h6>
+                                        <p className="text-sm">Détermine le résultat de l'exercice : Produits - Charges = Bénéfice ou Perte.</p>
+                                        <ul className="text-sm">
+                                            <li>Accès : <Tag value="Comptabilité" /> → <Tag value="Compte de Résultat" severity="info" /></li>
+                                            <li>Charges d'exploitation, financières et exceptionnelles</li>
+                                            <li>Produits d'exploitation, financiers et exceptionnels</li>
+                                            <li>Calcul automatique du résultat net</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="mb-3">
+                                        <h6 className="mt-0 text-orange-600"><i className="pi pi-arrows-h mr-2"></i>Flux de Trésorerie</h6>
+                                        <p className="text-sm">Retrace les mouvements de trésorerie par catégorie d'activité.</p>
+                                        <ul className="text-sm">
+                                            <li>Accès : <Tag value="Comptabilité" /> → <Tag value="Flux de Trésorerie" severity="info" /></li>
+                                            <li>Flux d'exploitation, d'investissement et de financement</li>
+                                            <li>Variation nette de trésorerie</li>
+                                            <li>Export PDF disponible</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="mb-3">
+                                        <h6 className="mt-0 text-teal-600"><i className="pi pi-sort-alt mr-2"></i>Variation des Capitaux Propres</h6>
+                                        <p className="text-sm">Montre l'évolution des capitaux propres entre deux exercices.</p>
+                                        <ul className="text-sm">
+                                            <li>Accès : <Tag value="Comptabilité" /> → <Tag value="Variation des Capitaux" severity="info" /></li>
+                                            <li>Capital, réserves, résultat et report à nouveau</li>
+                                            <li>Comparaison N et N-1</li>
+                                            <li>Export PDF disponible</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">10.8 Éditions et Rapports</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Les éditions permettent de consulter et imprimer les détails des opérations comptables.</p>
+                            <ul className="line-height-3">
+                                <li><strong>Grand Livre :</strong> Détail de tous les mouvements par compte, avec solde progressif. Accès : <Tag value="Comptabilité" /> → <Tag value="Grand Livre" severity="info" /></li>
+                                <li><strong>Édition Journal :</strong> Impression des écritures par journal et par période. Accès : <Tag value="Comptabilité" /> → <Tag value="Édition Journal" severity="info" /></li>
+                                <li><strong>Rapport par Compte :</strong> Analyse détaillée d'un compte spécifique avec graphiques. Accès : <Tag value="Comptabilité" /> → <Tag value="Rapport Compte" severity="info" /></li>
+                            </ul>
+                            <div className="border-left-3 border-green-500 pl-3 mt-3">
+                                <p className="text-sm"><i className="pi pi-file-pdf text-green-500 mr-2"></i>
+                                    Tous les rapports et éditions sont exportables au format PDF pour l'archivage et la communication aux autorités de tutelle.
+                                </p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">10.9 Contrôle Comptable</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le contrôle comptable permet de vérifier la cohérence et l'intégrité des données comptables.</p>
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Contrôle" severity="info" /></li>
+                            </ol>
+                            <h6 className="text-blue-600 mt-3">Vérifications Effectuées</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Équilibre des écritures :</strong> Vérification que chaque écriture a un total débit = total crédit</li>
+                                <li><strong>Cohérence des comptes :</strong> Validation que les comptes utilisés existent dans le plan comptable</li>
+                                <li><strong>Continuité des numéros :</strong> Vérification de la séquence des numéros de pièces</li>
+                                <li><strong>Rapprochement inter-modules :</strong> Concordance entre les opérations des modules et les écritures comptables</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">10.10 Taux de Change</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Gestion des taux de change pour les opérations en devises étrangères.</p>
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Paramètres" /> → <Tag value="Taux de Change" severity="info" /></li>
+                            </ol>
+                            <h6 className="text-blue-600 mt-3">Fonctionnalités</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Saisie des taux :</strong> Enregistrer le taux de change par devise et par date</li>
+                                <li><strong>Historique :</strong> Consulter l'évolution des taux de change</li>
+                                <li><strong>Conversion automatique :</strong> Les montants en devises sont convertis en FBU selon le taux du jour</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">10.11 Clôture Journalière Comptable</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                La clôture journalière comptable est l'étape finale qui génère les écritures comptables à partir des opérations
+                                vérifiées dans les modules Épargne, Crédit et Remboursement.
+                            </p>
+
+                            <h6 className="text-blue-600 mt-3">Accès</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Comptabilité" /> → <Tag value="Clôture Journalière" severity="info" /></li>
+                                <li>Sélectionner la date de clôture</li>
+                                <li>Cliquer sur <Tag value="Aperçu" severity="info" /> pour voir les opérations à comptabiliser</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Processus</h6>
+                            <div className="grid">
+                                <div className="col-12">
+                                    <div className="flex align-items-center gap-2 flex-wrap">
+                                        <Tag value="1. Aperçu" severity="info" className="text-lg" />
+                                        <i className="pi pi-arrow-right"></i>
+                                        <Tag value="2. Vérification" severity="warning" className="text-lg" />
+                                        <i className="pi pi-arrow-right"></i>
+                                        <Tag value="3. Exécution" severity="success" className="text-lg" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3">Onglets par Type d'Opération</h6>
+                            <ul className="line-height-3">
+                                <li><strong>Dépôts :</strong> Écritures générées par les dépôts d'épargne vérifiés</li>
+                                <li><strong>Retraits :</strong> Écritures générées par les retraits d'épargne vérifiés</li>
+                                <li><strong>Décaissements :</strong> Écritures générées par les décaissements de crédit vérifiés</li>
+                                <li><strong>Remboursements :</strong> Écritures générées par les paiements de remboursement vérifiés</li>
+                                <li><strong>Remb. Anticipés :</strong> Écritures générées par les remboursements anticipés vérifiés</li>
+                                <li><strong>Trésorerie :</strong> Écritures de régularisation de trésorerie</li>
+                                <li><strong>Toutes :</strong> Vue consolidée de toutes les écritures</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Actions Disponibles</h6>
+                            <ul className="line-height-3">
+                                <li><Tag value="Aperçu" severity="info" /> Charger et visualiser les écritures à générer pour la date sélectionnée</li>
+                                <li><Tag value="Exécuter" severity="success" /> Générer définitivement les écritures comptables (après confirmation)</li>
+                                <li><Tag value="Annuler" severity="danger" /> Inverser une clôture déjà exécutée (génère des contre-écritures)</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Statuts de Clôture</h6>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                <div><Tag value="COMPLETED" severity="success" /> Clôture exécutée avec succès</div>
+                                <div><Tag value="REVERSED" severity="warning" /> Clôture annulée (contre-écritures générées)</div>
+                                <div><Tag value="PENDING" severity="info" /> En attente d'exécution</div>
+                            </div>
+
+                            <h6 className="text-blue-600 mt-3">Règles Importantes</h6>
+                            <div className="border-left-3 border-red-500 pl-3">
+                                <ul className="line-height-3">
+                                    <li><i className="pi pi-exclamation-triangle text-red-500 mr-2"></i>Les opérations des modules Épargne, Crédit et Remboursement doivent être <strong>vérifiées</strong> avant de pouvoir exécuter la clôture comptable</li>
+                                    <li><i className="pi pi-lock text-red-500 mr-2"></i>Une fois la clôture exécutée, les vérifications dans les modules opérationnels sont <strong>verrouillées</strong> (impossibilité d'annuler)</li>
+                                    <li><i className="pi pi-info-circle text-blue-500 mr-2"></i>Chaque écriture générée contient la référence de l'opération source pour la traçabilité</li>
+                                    <li><i className="pi pi-refresh text-orange-500 mr-2"></i>L'annulation génère des contre-écritures et déverrouille les modules opérationnels</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">10.12 Conseils et Bonnes Pratiques</h5>
+                        <div className="surface-100 p-3 border-round">
+                            <h6 className="text-blue-600">Routine Quotidienne</h6>
+                            <ol className="line-height-3">
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Vérifier les opérations du jour dans chaque module (Épargne, Crédit, Remboursement)</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Exécuter la clôture journalière comptable</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Consulter la balance pour vérifier l'équilibre</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Lancer le contrôle comptable en cas de doute</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Gestion des Exercices</h6>
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>S'assurer qu'un seul exercice est actif</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Vérifier tous les états financiers avant la clôture annuelle</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Conserver les exports PDF des états financiers pour l'archivage</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Rapprocher les soldes comptables avec les soldes des modules opérationnels</li>
+                            </ul>
+
+                            <h6 className="text-blue-600 mt-3">Sécurité</h6>
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Ne jamais modifier directement les écritures générées automatiquement</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Utiliser les brouillards pour les écritures manuelles avant validation</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Documenter toute annulation de clôture avec un motif clair</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Vérifier les taux de change avant toute opération en devise</li>
+                            </ul>
+                        </div>
                     </div>
                 </AccordionTab>
 
@@ -2509,12 +3571,12 @@ function UserManualComponent() {
                     header={
                         <span className="flex align-items-center gap-2">
                             <i className="pi pi-history"></i>
-                            <span className="font-bold">10. Journal d'Audit (Traçabilité)</span>
+                            <span className="font-bold">11. Journal d'Audit (Traçabilité)</span>
                         </span>
                     }
                 >
                     <div className="p-3">
-                        <h5 className="text-primary">10.1 Vue d'Ensemble</h5>
+                        <h5 className="text-primary">11.1 Vue d'Ensemble</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p>
                                 Le module Journal d'Audit permet de tracer toutes les actions effectuées dans le système.
@@ -2528,7 +3590,7 @@ function UserManualComponent() {
                             </ul>
                         </div>
 
-                        <h5 className="text-primary">10.2 Accès au Journal d'Audit</h5>
+                        <h5 className="text-primary">11.2 Accès au Journal d'Audit</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p><strong>Pour accéder au journal :</strong></p>
                             <ol className="line-height-3">
@@ -2538,7 +3600,7 @@ function UserManualComponent() {
                             </ol>
                         </div>
 
-                        <h5 className="text-primary">10.3 Types d'Actions Enregistrées</h5>
+                        <h5 className="text-primary">11.3 Types d'Actions Enregistrées</h5>
                         <div className="grid mb-3">
                             <div className="col-12 md:col-6 lg:col-4">
                                 <Card className="h-full border-left-3 border-blue-500">
@@ -2584,7 +3646,7 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">10.4 Filtres de Recherche</h5>
+                        <h5 className="text-primary">11.4 Filtres de Recherche</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p>La page d'audit offre plusieurs filtres pour affiner la recherche :</p>
                             <div className="grid">
@@ -2606,7 +3668,7 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">10.5 Informations Enregistrées</h5>
+                        <h5 className="text-primary">11.5 Informations Enregistrées</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p>Chaque entrée d'audit contient les informations suivantes :</p>
                             <div className="grid">
@@ -2661,7 +3723,7 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">10.6 Consultation des Détails</h5>
+                        <h5 className="text-primary">11.6 Consultation des Détails</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p><strong>Pour voir les détails d'une entrée d'audit :</strong></p>
                             <ol className="line-height-3">
@@ -2678,7 +3740,7 @@ function UserManualComponent() {
                             </ol>
                         </div>
 
-                        <h5 className="text-primary">10.7 Statistiques du Tableau de Bord</h5>
+                        <h5 className="text-primary">11.7 Statistiques du Tableau de Bord</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p>Le haut de la page affiche des statistiques sur la période sélectionnée :</p>
                             <div className="grid">
@@ -2713,7 +3775,7 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">10.8 Export des Données</h5>
+                        <h5 className="text-primary">11.8 Export des Données</h5>
                         <div className="surface-100 p-3 border-round mb-3">
                             <p><strong>Pour exporter le journal d'audit :</strong></p>
                             <ol className="line-height-3">
@@ -2724,7 +3786,7 @@ function UserManualComponent() {
                             <p className="mt-2"><strong>Colonnes exportées :</strong> ID, Date, Heure, Utilisateur, Action, Module, Entité, Description, Statut</p>
                         </div>
 
-                        <h5 className="text-primary">10.9 Modules Tracés</h5>
+                        <h5 className="text-primary">11.9 Modules Tracés</h5>
                         <div className="grid mb-3">
                             <div className="col-12 md:col-6 lg:col-3">
                                 <Card className="h-full">
@@ -2768,7 +3830,7 @@ function UserManualComponent() {
                             </div>
                         </div>
 
-                        <h5 className="text-primary">10.10 Bonnes Pratiques</h5>
+                        <h5 className="text-primary">11.10 Bonnes Pratiques</h5>
                         <div className="surface-100 p-3 border-round">
                             <h6 className="text-blue-600">Surveillance</h6>
                             <ul className="line-height-3">
@@ -2792,7 +3854,7 @@ function UserManualComponent() {
                             </ul>
                         </div>
 
-                        <h5 className="text-primary mt-4">10.11 Questions Fréquentes - Journal d'Audit</h5>
+                        <h5 className="text-primary mt-4">11.11 Questions Fréquentes - Journal d'Audit</h5>
                         <Accordion>
                             <AccordionTab header="Qui a accès au journal d'audit ?">
                                 <p>L'accès au journal d'audit est réservé aux administrateurs et aux utilisateurs disposant des autorisations appropriées. Contactez votre administrateur pour obtenir les droits d'accès si nécessaire.</p>
@@ -2821,7 +3883,7 @@ function UserManualComponent() {
                     <i className="pi pi-info-circle mr-2"></i>
                     Pour toute assistance supplémentaire, veuillez contacter l'administrateur système.
                 </p>
-                <p>Version 6.0 - Système AgrM - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Traçabilité</p>
+                <p>Version 7.0 - Système AgrM - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Comptabilité, Traçabilité</p>
             </div>
         </div>
     );

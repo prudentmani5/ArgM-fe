@@ -19,24 +19,30 @@ import { buildApiUrl } from '../../../../../utils/apiConfig';
 
 interface ConfigurationPenalite {
     id?: number;
-    configName?: string;
+    code?: string;
+    name?: string;
+    nameFr?: string;
     dailyRate?: number;
-    maxPenaltyCap?: number;
+    maxCapPercentage?: number;
     calculationBase?: string;
-    gracePeriodDays?: number;
+    appliesToPrincipal?: boolean;
+    appliesToInterest?: boolean;
     description?: string;
-    active?: boolean;
+    isActive?: boolean;
 }
 
 class ConfigurationPenaliteClass implements ConfigurationPenalite {
     id?: number;
-    configName?: string = '';
+    code?: string = '';
+    name?: string = '';
+    nameFr?: string = '';
     dailyRate?: number = 0.5;
-    maxPenaltyCap?: number = 10;
+    maxCapPercentage?: number = 10;
     calculationBase?: string = 'OVERDUE_AMOUNT';
-    gracePeriodDays?: number = 0;
+    appliesToPrincipal?: boolean = true;
+    appliesToInterest?: boolean = true;
     description?: string = '';
-    active?: boolean = true;
+    isActive?: boolean = true;
 }
 
 const BASES_CALCUL = [
@@ -99,7 +105,7 @@ export default function ConfigurationsPenalitesPage() {
     };
 
     const handleSave = () => {
-        if (!configuration.configName || configuration.dailyRate === undefined) {
+        if (!configuration.code || !configuration.name || !configuration.nameFr || configuration.dailyRate === undefined) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir les champs obligatoires', life: 3000 });
             return;
         }
@@ -113,7 +119,7 @@ export default function ConfigurationsPenalitesPage() {
 
     const confirmDelete = (rowData: ConfigurationPenalite) => {
         confirmDialog({
-            message: `Êtes-vous sûr de vouloir supprimer la configuration "${rowData.configName}" ?`,
+            message: `Êtes-vous sûr de vouloir supprimer la configuration "${rowData.nameFr || rowData.name}" ?`,
             header: 'Confirmation de suppression',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Oui',
@@ -153,7 +159,7 @@ export default function ConfigurationsPenalitesPage() {
     };
 
     const activeBodyTemplate = (rowData: ConfigurationPenalite) => {
-        return <Tag value={rowData.active ? 'Actif' : 'Inactif'} severity={rowData.active ? 'success' : 'danger'} />;
+        return <Tag value={rowData.isActive ? 'Actif' : 'Inactif'} severity={rowData.isActive ? 'success' : 'danger'} />;
     };
 
     const rateBodyTemplate = (rowData: ConfigurationPenalite) => {
@@ -161,12 +167,19 @@ export default function ConfigurationsPenalitesPage() {
     };
 
     const maxCapBodyTemplate = (rowData: ConfigurationPenalite) => {
-        return rowData.maxPenaltyCap ? `${rowData.maxPenaltyCap}%` : '-';
+        return rowData.maxCapPercentage ? `${rowData.maxCapPercentage}%` : '-';
     };
 
     const baseCalculBodyTemplate = (rowData: ConfigurationPenalite) => {
         const base = BASES_CALCUL.find(b => b.value === rowData.calculationBase);
         return base ? base.label : rowData.calculationBase;
+    };
+
+    const appliesBodyTemplate = (rowData: ConfigurationPenalite) => {
+        const applies = [];
+        if (rowData.appliesToPrincipal) applies.push('Principal');
+        if (rowData.appliesToInterest) applies.push('Intérêt');
+        return applies.length > 0 ? applies.join(', ') : '-';
     };
 
     const dialogFooter = (
@@ -205,12 +218,14 @@ export default function ConfigurationsPenalitesPage() {
                 emptyMessage="Aucune configuration trouvée"
                 stripedRows
             >
-                <Column field="configName" header="Nom" sortable />
+                <Column field="code" header="Code" sortable />
+                <Column field="nameFr" header="Nom (FR)" sortable />
+                <Column field="name" header="Nom (EN)" sortable />
                 <Column field="dailyRate" header="Taux Journalier" body={rateBodyTemplate} sortable />
-                <Column field="maxPenaltyCap" header="Plafond Max" body={maxCapBodyTemplate} sortable />
+                <Column field="maxCapPercentage" header="Plafond Max" body={maxCapBodyTemplate} sortable />
                 <Column field="calculationBase" header="Base de Calcul" body={baseCalculBodyTemplate} />
-                <Column field="gracePeriodDays" header="Jours de Grâce" sortable />
-                <Column field="active" header="Statut" body={activeBodyTemplate} />
+                <Column header="S'applique à" body={appliesBodyTemplate} />
+                <Column field="isActive" header="Statut" body={activeBodyTemplate} />
                 <Column header="Actions" body={actionBodyTemplate} style={{ width: '10rem' }} />
             </DataTable>
 
@@ -223,13 +238,41 @@ export default function ConfigurationsPenalitesPage() {
                 modal
             >
                 <div className="grid">
-                    <div className="col-12 md:col-6">
+                    <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="configName" className="font-semibold">Nom de la Configuration *</label>
+                            <label htmlFor="code" className="font-semibold">Code *</label>
                             <InputText
-                                id="configName"
-                                name="configName"
-                                value={configuration.configName || ''}
+                                id="code"
+                                name="code"
+                                value={configuration.code || ''}
+                                onChange={handleChange}
+                                className="w-full"
+                                placeholder="Ex: PENALITE_STANDARD"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="name" className="font-semibold">Nom (EN) *</label>
+                            <InputText
+                                id="name"
+                                name="name"
+                                value={configuration.name || ''}
+                                onChange={handleChange}
+                                className="w-full"
+                                placeholder="Ex: Standard Penalty"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="nameFr" className="font-semibold">Nom (FR) *</label>
+                            <InputText
+                                id="nameFr"
+                                name="nameFr"
+                                value={configuration.nameFr || ''}
                                 onChange={handleChange}
                                 className="w-full"
                                 placeholder="Ex: Pénalité Standard"
@@ -238,20 +281,6 @@ export default function ConfigurationsPenalitesPage() {
                     </div>
 
                     <div className="col-12 md:col-6">
-                        <div className="field">
-                            <label htmlFor="calculationBase" className="font-semibold">Base de Calcul</label>
-                            <Dropdown
-                                id="calculationBase"
-                                value={configuration.calculationBase}
-                                options={BASES_CALCUL}
-                                onChange={(e) => handleDropdownChange('calculationBase', e.value)}
-                                className="w-full"
-                                placeholder="Sélectionner..."
-                            />
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-4">
                         <div className="field">
                             <label htmlFor="dailyRate" className="font-semibold">Taux Journalier (%) *</label>
                             <InputNumber
@@ -262,20 +291,20 @@ export default function ConfigurationsPenalitesPage() {
                                 min={0}
                                 max={100}
                                 minFractionDigits={2}
-                                maxFractionDigits={4}
+                                maxFractionDigits={5}
                                 suffix="%"
                             />
                             <small className="text-500">Typiquement entre 0.5% et 2%</small>
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-4">
+                    <div className="col-12 md:col-6">
                         <div className="field">
-                            <label htmlFor="maxPenaltyCap" className="font-semibold">Plafond Maximum (%)</label>
+                            <label htmlFor="maxCapPercentage" className="font-semibold">Plafond Maximum (%)</label>
                             <InputNumber
-                                id="maxPenaltyCap"
-                                value={configuration.maxPenaltyCap || null}
-                                onValueChange={(e) => handleNumberChange('maxPenaltyCap', e.value ?? null)}
+                                id="maxCapPercentage"
+                                value={configuration.maxCapPercentage || null}
+                                onValueChange={(e) => handleNumberChange('maxCapPercentage', e.value ?? null)}
                                 className="w-full"
                                 min={0}
                                 max={100}
@@ -285,18 +314,17 @@ export default function ConfigurationsPenalitesPage() {
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-4">
+                    <div className="col-12">
                         <div className="field">
-                            <label htmlFor="gracePeriodDays" className="font-semibold">Période de Grâce (jours)</label>
-                            <InputNumber
-                                id="gracePeriodDays"
-                                value={configuration.gracePeriodDays || null}
-                                onValueChange={(e) => handleNumberChange('gracePeriodDays', e.value ?? null)}
+                            <label htmlFor="calculationBase" className="font-semibold">Base de Calcul</label>
+                            <Dropdown
+                                id="calculationBase"
+                                value={configuration.calculationBase}
+                                options={BASES_CALCUL}
+                                onChange={(e) => handleDropdownChange('calculationBase', e.value)}
                                 className="w-full"
-                                min={0}
-                                suffix=" jours"
+                                placeholder="Sélectionner..."
                             />
-                            <small className="text-500">Jours sans pénalité après échéance</small>
                         </div>
                     </div>
 
@@ -316,11 +344,33 @@ export default function ConfigurationsPenalitesPage() {
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="active" className="font-semibold block mb-2">Actif</label>
+                            <label htmlFor="appliesToPrincipal" className="font-semibold block mb-2">S'applique au Principal</label>
                             <InputSwitch
-                                id="active"
-                                checked={configuration.active ?? true}
-                                onChange={(e) => setConfiguration(prev => ({ ...prev, active: e.value }))}
+                                id="appliesToPrincipal"
+                                checked={configuration.appliesToPrincipal ?? true}
+                                onChange={(e) => setConfiguration(prev => ({ ...prev, appliesToPrincipal: e.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="appliesToInterest" className="font-semibold block mb-2">S'applique à l'Intérêt</label>
+                            <InputSwitch
+                                id="appliesToInterest"
+                                checked={configuration.appliesToInterest ?? true}
+                                onChange={(e) => setConfiguration(prev => ({ ...prev, appliesToInterest: e.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="isActive" className="font-semibold block mb-2">Actif</label>
+                            <InputSwitch
+                                id="isActive"
+                                checked={configuration.isActive ?? true}
+                                onChange={(e) => setConfiguration(prev => ({ ...prev, isActive: e.value }))}
                             />
                         </div>
                     </div>

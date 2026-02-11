@@ -10,14 +10,25 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
 
 const BASE_URL = buildApiUrl('/api/credit/disbursements');
+
+const disbursementModes = [
+    { code: 'CASH', name: 'Espèces' },
+    { code: 'VIREMENT', name: 'Virement Bancaire' },
+    { code: 'CHEQUE', name: 'Chèque' },
+    { code: 'MOBILE_MONEY', name: 'Mobile Money' }
+];
 
 export default function RapportDecaissementsPage() {
     const [decaissements, setDecaissements] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
-    const [dateRange, setDateRange] = useState<Date[] | null>(null);
-    const [branchFilter, setBranchFilter] = useState<number | null>(null);
+    const [filters, setFilters] = useState<any>({
+        dateRange: null,
+        branchId: null,
+        modeCode: null
+    });
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any[]>>(null);
 
@@ -75,7 +86,43 @@ export default function RapportDecaissementsPage() {
         dt.current?.exportCSV();
     };
 
+    const exportPdf = () => {
+        const getModeLabel = (mode: any): string => {
+            const modeCode = getModeCode(mode);
+            return mode?.nameFr || mode?.name || modeLabels[modeCode] || modeCode || '-';
+        };
+
+        exportToPDF({
+            title: 'Rapport des Décaissements',
+            columns: [
+                { header: 'N° Dossier', dataKey: 'applicationNumber' },
+                { header: 'Client', dataKey: 'clientName' },
+                { header: 'Montant Décaissé', dataKey: 'amountDisbursed', formatter: formatCurrencyPDF },
+                { header: 'Date Décaissement', dataKey: 'disbursementDate', formatter: formatDatePDF },
+                { header: 'Mode', dataKey: 'disbursementMode', formatter: getModeLabel },
+                { header: 'N° Compte', dataKey: 'accountNumber' },
+                { header: 'Agence', dataKey: 'branchName' },
+                { header: 'Responsable', dataKey: 'userAction' }
+            ],
+            data: filteredDecaissements,
+            filename: 'rapport_decaissements.pdf',
+            orientation: 'landscape',
+            statistics: [
+                { label: 'Total Décaissements', value: filteredDecaissements.length },
+                { label: 'Montant Total', value: formatCurrency(totalAmount) }
+            ]
+        });
+    };
+
+    // Get disbursement mode code (handles both object and string)
+    const getModeCode = (mode: any): string => {
+        if (!mode) return '';
+        if (typeof mode === 'string') return mode;
+        return mode.code || '';
+    };
+
     const modeBodyTemplate = (rowData: any) => {
+        const modeCode = getModeCode(rowData.disbursementMode);
         const modeLabels: Record<string, string> = {
             'CASH': 'Espèces',
             'VIREMENT': 'Virement',
@@ -88,20 +135,26 @@ export default function RapportDecaissementsPage() {
             'CHEQUE': 'warning',
             'MOBILE_MONEY': 'help'
         };
-        return <Tag value={modeLabels[rowData.disbursementMode] || rowData.disbursementMode} severity={colors[rowData.disbursementMode] as any || 'info'} />;
+        // Use nameFr from object if available, otherwise use label mapping
+        const label = rowData.disbursementMode?.nameFr || rowData.disbursementMode?.name || modeLabels[modeCode] || modeCode || '-';
+        return <Tag value={label} severity={colors[modeCode] as any || 'info'} />;
     };
 
-    // Filter data
+    // Filter data based on filters
     const filteredDecaissements = decaissements.filter((d: any) => {
         let match = true;
-        if (branchFilter) {
-            match = match && d.branchId === branchFilter;
+        if (filters.branchId) {
+            match = match && (d.branchId === filters.branchId || d.branch?.id === filters.branchId);
         }
-        if (dateRange && dateRange[0]) {
+        if (filters.modeCode) {
+            const modeCode = getModeCode(d.disbursementMode);
+            match = match && modeCode === filters.modeCode;
+        }
+        if (filters.dateRange && filters.dateRange[0]) {
             const disbDate = new Date(d.disbursementDate);
-            match = match && disbDate >= dateRange[0];
-            if (dateRange[1]) {
-                match = match && disbDate <= dateRange[1];
+            match = match && disbDate >= filters.dateRange[0];
+            if (filters.dateRange[1]) {
+                match = match && disbDate <= filters.dateRange[1];
             }
         }
         return match;
@@ -109,8 +162,8 @@ export default function RapportDecaissementsPage() {
 
     // Calculate statistics
     const totalAmount = filteredDecaissements.reduce((sum, d) => sum + (d.amount || 0), 0);
-    const cashCount = filteredDecaissements.filter(d => d.disbursementMode === 'CASH').length;
-    const virementCount = filteredDecaissements.filter(d => d.disbursementMode === 'VIREMENT').length;
+    const cashCount = filteredDecaissements.filter(d => getModeCode(d.disbursementMode) === 'CASH').length;
+    const virementCount = filteredDecaissements.filter(d => getModeCode(d.disbursementMode) === 'VIREMENT').length;
 
     const header = (
         <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
@@ -118,27 +171,9 @@ export default function RapportDecaissementsPage() {
                 <i className="pi pi-money-bill mr-2"></i>
                 Rapport des Décaissements
             </h5>
-            <div className="flex gap-2 align-items-center">
-                <Calendar
-                    value={dateRange}
-                    onChange={(e) => setDateRange(e.value as Date[])}
-                    selectionMode="range"
-                    placeholder="Période"
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    className="w-15rem"
-                />
-                <Dropdown
-                    value={branchFilter}
-                    options={branches}
-                    onChange={(e) => setBranchFilter(e.value)}
-                    optionLabel="name"
-                    optionValue="id"
-                    placeholder="Agence"
-                    className="w-12rem"
-                    showClear
-                />
-                <Button label="Exporter" icon="pi pi-file-excel" severity="success" onClick={exportCSV} />
+            <div className="flex gap-2">
+                <Button label="Exporter CSV" icon="pi pi-file-excel" severity="success" onClick={exportCSV} />
+                <Button label="Exporter PDF" icon="pi pi-file-pdf" severity="danger" onClick={exportPdf} />
             </div>
         </div>
     );
@@ -146,6 +181,54 @@ export default function RapportDecaissementsPage() {
     return (
         <div className="card">
             <Toast ref={toast} />
+
+            {/* Filters */}
+            <div className="surface-100 p-3 border-round mb-4">
+                <h5 className="mb-3"><i className="pi pi-filter mr-2"></i>Filtres</h5>
+                <div className="grid">
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Période</label>
+                        <Calendar
+                            value={filters.dateRange}
+                            onChange={(e) => setFilters({ ...filters, dateRange: e.value })}
+                            selectionMode="range"
+                            readOnlyInput
+                            placeholder="Sélectionner une période"
+                            dateFormat="dd/mm/yy"
+                            showIcon
+                            showButtonBar
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Agence</label>
+                        <Dropdown
+                            value={filters.branchId}
+                            options={branches}
+                            onChange={(e) => setFilters({ ...filters, branchId: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Toutes les agences"
+                            className="w-full"
+                            showClear
+                            filter
+                        />
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Mode de Décaissement</label>
+                        <Dropdown
+                            value={filters.modeCode}
+                            options={disbursementModes}
+                            onChange={(e) => setFilters({ ...filters, modeCode: e.value })}
+                            optionLabel="name"
+                            optionValue="code"
+                            placeholder="Tous les modes"
+                            className="w-full"
+                            showClear
+                        />
+                    </div>
+                </div>
+            </div>
 
             {/* Statistics */}
             <div className="grid mb-4">
@@ -186,6 +269,8 @@ export default function RapportDecaissementsPage() {
                 emptyMessage="Aucun décaissement trouvé"
                 className="p-datatable-sm"
                 exportFilename="rapport_decaissements"
+                sortField="disbursementDate"
+                sortOrder={-1}
             >
                 <Column field="applicationNumber" header="N° Dossier" sortable />
                 <Column field="clientName" header="Client" sortable />
@@ -193,8 +278,8 @@ export default function RapportDecaissementsPage() {
                 <Column field="disbursementDate" header="Date" body={(row) => formatDate(row.disbursementDate)} sortable />
                 <Column header="Mode" body={modeBodyTemplate} />
                 <Column field="reference" header="Référence" sortable />
-                <Column field="branchName" header="Agence" sortable />
-                <Column field="disbursedByName" header="Effectué par" sortable />
+                <Column field="branchName" header="Agence" body={(row) => row.branch?.name || row.branchName || '-'} sortable />
+                <Column field="userAction" header="Responsable" sortable />
             </DataTable>
         </div>
     );

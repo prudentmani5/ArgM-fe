@@ -71,7 +71,7 @@ export default function EtapesRecouvrementPage() {
     };
 
     const handleSave = () => {
-        if (!etape.stageCode || !etape.stageName) {
+        if (!etape.code || !etape.name || !etape.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir les champs obligatoires', life: 3000 });
             return;
         }
@@ -85,7 +85,7 @@ export default function EtapesRecouvrementPage() {
 
     const confirmDelete = (rowData: EtapeRecouvrement) => {
         confirmDialog({
-            message: `Êtes-vous sûr de vouloir supprimer l'étape "${rowData.stageName}" ?`,
+            message: `Êtes-vous sûr de vouloir supprimer l'étape "${rowData.nameFr || rowData.name}" ?`,
             header: 'Confirmation de suppression',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Oui',
@@ -121,11 +121,7 @@ export default function EtapesRecouvrementPage() {
     };
 
     const activeBodyTemplate = (rowData: EtapeRecouvrement) => {
-        return <Tag value={rowData.active ? 'Actif' : 'Inactif'} severity={rowData.active ? 'success' : 'danger'} />;
-    };
-
-    const requiresApprovalBodyTemplate = (rowData: EtapeRecouvrement) => {
-        return <Tag value={rowData.requiresApproval ? 'Oui' : 'Non'} severity={rowData.requiresApproval ? 'warning' : 'secondary'} />;
+        return <Tag value={rowData.isActive ? 'Actif' : 'Inactif'} severity={rowData.isActive ? 'success' : 'danger'} />;
     };
 
     const dialogFooter = (
@@ -155,13 +151,13 @@ export default function EtapesRecouvrementPage() {
                 emptyMessage="Aucune étape trouvée"
                 stripedRows
             >
-                <Column field="stageCode" header="Code" sortable />
-                <Column field="stageName" header="Nom de l'Étape" sortable />
-                <Column field="stageOrder" header="Ordre" sortable />
+                <Column field="code" header="Code" sortable />
+                <Column field="nameFr" header="Nom (FR)" sortable />
+                <Column field="name" header="Nom (EN)" sortable />
                 <Column field="minDaysOverdue" header="Jours Min" sortable />
                 <Column field="maxDaysOverdue" header="Jours Max" sortable />
-                <Column field="requiresApproval" header="Approbation Requise" body={requiresApprovalBodyTemplate} />
-                <Column field="active" header="Statut" body={activeBodyTemplate} />
+                <Column field="sortOrder" header="Ordre" sortable />
+                <Column field="isActive" header="Statut" body={activeBodyTemplate} />
                 <Column header="Actions" body={actionBodyTemplate} style={{ width: '10rem' }} />
             </DataTable>
 
@@ -176,11 +172,11 @@ export default function EtapesRecouvrementPage() {
                 <div className="grid">
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="stageCode" className="font-semibold">Code *</label>
+                            <label htmlFor="code" className="font-semibold">Code *</label>
                             <InputText
-                                id="stageCode"
-                                name="stageCode"
-                                value={etape.stageCode || ''}
+                                id="code"
+                                name="code"
+                                value={etape.code || ''}
                                 onChange={handleChange}
                                 className="w-full"
                                 placeholder="Ex: AMIABLE, PRE_CONTENTIEUX"
@@ -190,31 +186,33 @@ export default function EtapesRecouvrementPage() {
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="stageName" className="font-semibold">Nom de l'Étape *</label>
+                            <label htmlFor="name" className="font-semibold">Nom (EN) *</label>
                             <InputText
-                                id="stageName"
-                                name="stageName"
-                                value={etape.stageName || ''}
+                                id="name"
+                                name="name"
+                                value={etape.name || ''}
                                 onChange={handleChange}
                                 className="w-full"
+                                placeholder="Ex: Amicable Recovery"
                             />
                         </div>
                     </div>
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="stageOrder" className="font-semibold">Ordre</label>
-                            <InputNumber
-                                id="stageOrder"
-                                value={etape.stageOrder || null}
-                                onValueChange={(e) => handleNumberChange('stageOrder', e.value ?? null)}
+                            <label htmlFor="nameFr" className="font-semibold">Nom (FR) *</label>
+                            <InputText
+                                id="nameFr"
+                                name="nameFr"
+                                value={etape.nameFr || ''}
+                                onChange={handleChange}
                                 className="w-full"
-                                min={1}
+                                placeholder="Ex: Recouvrement Amiable"
                             />
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-6">
+                    <div className="col-12 md:col-4">
                         <div className="field">
                             <label htmlFor="minDaysOverdue" className="font-semibold">Jours de Retard Minimum</label>
                             <InputNumber
@@ -228,7 +226,7 @@ export default function EtapesRecouvrementPage() {
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-6">
+                    <div className="col-12 md:col-4">
                         <div className="field">
                             <label htmlFor="maxDaysOverdue" className="font-semibold">Jours de Retard Maximum</label>
                             <InputNumber
@@ -238,6 +236,19 @@ export default function EtapesRecouvrementPage() {
                                 className="w-full"
                                 min={0}
                                 suffix=" jours"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="sortOrder" className="font-semibold">Ordre</label>
+                            <InputNumber
+                                id="sortOrder"
+                                value={etape.sortOrder || null}
+                                onValueChange={(e) => handleNumberChange('sortOrder', e.value ?? null)}
+                                className="w-full"
+                                min={0}
                             />
                         </div>
                     </div>
@@ -256,38 +267,13 @@ export default function EtapesRecouvrementPage() {
                         </div>
                     </div>
 
-                    <div className="col-12">
-                        <div className="field">
-                            <label htmlFor="allowedActions" className="font-semibold">Actions Autorisées</label>
-                            <InputText
-                                id="allowedActions"
-                                name="allowedActions"
-                                value={etape.allowedActions || ''}
-                                onChange={handleChange}
-                                className="w-full"
-                                placeholder="Séparer les actions par des virgules"
-                            />
-                        </div>
-                    </div>
-
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="requiresApproval" className="font-semibold block mb-2">Approbation Requise</label>
+                            <label htmlFor="isActive" className="font-semibold block mb-2">Actif</label>
                             <InputSwitch
-                                id="requiresApproval"
-                                checked={etape.requiresApproval || false}
-                                onChange={(e) => setEtape(prev => ({ ...prev, requiresApproval: e.value }))}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="active" className="font-semibold block mb-2">Actif</label>
-                            <InputSwitch
-                                id="active"
-                                checked={etape.active ?? true}
-                                onChange={(e) => setEtape(prev => ({ ...prev, active: e.value }))}
+                                id="isActive"
+                                checked={etape.isActive ?? true}
+                                onChange={(e) => setEtape(prev => ({ ...prev, isActive: e.value }))}
                             />
                         </div>
                     </div>

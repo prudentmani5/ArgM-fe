@@ -7,34 +7,79 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import { Calendar } from 'primereact/calendar';
+import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
 
-const BASE_URL = buildApiUrl('/api/credit/committee-decisions');
+const BASE_URL = buildApiUrl('/api/credit/applications');
+
+const decisionTypes = [
+    { code: 'APPROUVE', name: 'Approuvé' },
+    { code: 'APPROUVE_SOUS_RESERVE', name: 'Approuvé sous réserve' },
+    { code: 'AJOURNE', name: 'Ajourné' },
+    { code: 'REJETE', name: 'Rejeté' }
+];
 
 export default function RapportDecisionsPage() {
     const [decisions, setDecisions] = useState<any[]>([]);
-    const [dateRange, setDateRange] = useState<Date[] | null>(null);
+    const [branches, setBranches] = useState<any[]>([]);
+    const [filters, setFilters] = useState<any>({
+        dateRange: null,
+        branchId: null,
+        decisionCode: null
+    });
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any[]>>(null);
 
-    const { data, loading, error, fetchData, callType } = useConsumApi('');
+    // Separate hook instances for each data type
+    const decisionsApi = useConsumApi('');
+    const branchesApi = useConsumApi('');
 
     useEffect(() => {
         loadDecisions();
+        loadBranches();
     }, []);
 
+    // Handle decisions data
     useEffect(() => {
-        if (data && callType === 'loadDecisions') {
-            setDecisions(Array.isArray(data) ? data : data.content || []);
+        if (decisionsApi.data) {
+            const rawData = Array.isArray(decisionsApi.data) ? decisionsApi.data : decisionsApi.data.content || [];
+            // Map backend fields to frontend expected fields
+            const mappedData = rawData.map((item: any) => ({
+                ...item,
+                sessionNumber: item.committeeSessionId ? `COM-${item.committeeSessionId}` : '-',
+                applicationNumber: item.applicationNumber || '-',
+                clientName: item.client
+                    ? `${item.client.firstName || ''} ${item.client.lastName || ''}`.trim()
+                    : '-',
+                decisionCode: item.committeeDecision?.code,
+                decisionName: item.committeeDecision?.nameFr || item.committeeDecision?.name,
+                decisionDate: item.committeeDecisionDate,
+                branchId: item.branch?.id,
+                branchName: item.branch?.name || '-',
+                comments: item.approvalConditions || item.rejectionReason || '-'
+            }));
+            setDecisions(mappedData);
         }
-        if (error) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message, life: 3000 });
+        if (decisionsApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: decisionsApi.error.message, life: 3000 });
         }
-    }, [data, error, callType]);
+    }, [decisionsApi.data, decisionsApi.error]);
+
+    // Handle branches data
+    useEffect(() => {
+        if (branchesApi.data) {
+            setBranches(Array.isArray(branchesApi.data) ? branchesApi.data : branchesApi.data.content || []);
+        }
+    }, [branchesApi.data]);
 
     const loadDecisions = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDecisions');
+        decisionsApi.fetchData(null, 'GET', `${BASE_URL}/committee-decisions/findall`, 'loadDecisions');
+    };
+
+    const loadBranches = () => {
+        branchesApi.fetchData(null, 'GET', buildApiUrl('/api/reference-data/branches/findall'), 'loadBranches');
     };
 
     const formatCurrency = (value: number) => {
@@ -54,6 +99,31 @@ export default function RapportDecisionsPage() {
         dt.current?.exportCSV();
     };
 
+    const exportPdf = () => {
+        exportToPDF({
+            title: 'Rapport des Décisions du Comité',
+            columns: [
+                { header: 'N° Session', dataKey: 'sessionNumber' },
+                { header: 'N° Dossier', dataKey: 'applicationNumber' },
+                { header: 'Client', dataKey: 'clientName' },
+                { header: 'Montant Demandé', dataKey: 'amountRequested', formatter: formatCurrencyPDF },
+                { header: 'Montant Approuvé', dataKey: 'amountApproved', formatter: formatCurrencyPDF },
+                { header: 'Décision', dataKey: 'decisionName' },
+                { header: 'Date Décision', dataKey: 'decisionDate', formatter: formatDatePDF },
+                { header: 'Responsable', dataKey: 'userAction' }
+            ],
+            data: filteredDecisions,
+            filename: 'rapport_decisions_comite.pdf',
+            orientation: 'landscape',
+            statistics: [
+                { label: 'Total Décisions', value: filteredDecisions.length },
+                { label: 'Approuvées', value: approved },
+                { label: 'Rejetées', value: rejected },
+                { label: 'Montant Approuvé', value: formatCurrency(totalAmount) }
+            ]
+        });
+    };
+
     const decisionBodyTemplate = (rowData: any) => {
         const colors: Record<string, string> = {
             'APPROUVE': 'success',
@@ -64,14 +134,23 @@ export default function RapportDecisionsPage() {
         return <Tag value={rowData.decisionName || rowData.decisionCode} severity={colors[rowData.decisionCode] as any || 'secondary'} />;
     };
 
-    // Filter by date range
+    // Filter data based on filters
     const filteredDecisions = decisions.filter((d: any) => {
-        if (!dateRange || !dateRange[0]) return true;
-        const decisionDate = new Date(d.decisionDate);
-        if (dateRange[1]) {
-            return decisionDate >= dateRange[0] && decisionDate <= dateRange[1];
+        let match = true;
+        if (filters.branchId) {
+            match = match && (d.branchId === filters.branchId || d.branch?.id === filters.branchId);
         }
-        return decisionDate >= dateRange[0];
+        if (filters.decisionCode) {
+            match = match && d.decisionCode === filters.decisionCode;
+        }
+        if (filters.dateRange && filters.dateRange[0]) {
+            const decisionDate = new Date(d.decisionDate);
+            match = match && decisionDate >= filters.dateRange[0];
+            if (filters.dateRange[1]) {
+                match = match && decisionDate <= filters.dateRange[1];
+            }
+        }
+        return match;
     });
 
     // Calculate statistics
@@ -86,17 +165,9 @@ export default function RapportDecisionsPage() {
                 <i className="pi pi-users mr-2"></i>
                 Rapport des Décisions du Comité
             </h5>
-            <div className="flex gap-2 align-items-center">
-                <Calendar
-                    value={dateRange}
-                    onChange={(e) => setDateRange(e.value as Date[])}
-                    selectionMode="range"
-                    placeholder="Période"
-                    dateFormat="dd/mm/yy"
-                    showIcon
-                    className="w-15rem"
-                />
-                <Button label="Exporter" icon="pi pi-file-excel" severity="success" onClick={exportCSV} />
+            <div className="flex gap-2">
+                <Button label="Exporter CSV" icon="pi pi-file-excel" severity="success" onClick={exportCSV} />
+                <Button label="Exporter PDF" icon="pi pi-file-pdf" severity="danger" onClick={exportPdf} />
             </div>
         </div>
     );
@@ -104,6 +175,54 @@ export default function RapportDecisionsPage() {
     return (
         <div className="card">
             <Toast ref={toast} />
+
+            {/* Filters */}
+            <div className="surface-100 p-3 border-round mb-4">
+                <h5 className="mb-3"><i className="pi pi-filter mr-2"></i>Filtres</h5>
+                <div className="grid">
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Période</label>
+                        <Calendar
+                            value={filters.dateRange}
+                            onChange={(e) => setFilters({ ...filters, dateRange: e.value })}
+                            selectionMode="range"
+                            readOnlyInput
+                            placeholder="Sélectionner une période"
+                            dateFormat="dd/mm/yy"
+                            showIcon
+                            showButtonBar
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Agence</label>
+                        <Dropdown
+                            value={filters.branchId}
+                            options={branches}
+                            onChange={(e) => setFilters({ ...filters, branchId: e.value })}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Toutes les agences"
+                            className="w-full"
+                            showClear
+                            filter
+                        />
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Décision</label>
+                        <Dropdown
+                            value={filters.decisionCode}
+                            options={decisionTypes}
+                            onChange={(e) => setFilters({ ...filters, decisionCode: e.value })}
+                            optionLabel="name"
+                            optionValue="code"
+                            placeholder="Toutes les décisions"
+                            className="w-full"
+                            showClear
+                        />
+                    </div>
+                </div>
+            </div>
 
             {/* Statistics */}
             <div className="grid mb-4">
@@ -139,11 +258,13 @@ export default function RapportDecisionsPage() {
                 paginator
                 rows={10}
                 rowsPerPageOptions={[5, 10, 25, 50]}
-                loading={loading}
+                loading={decisionsApi.loading}
                 header={header}
                 emptyMessage="Aucune décision trouvée"
                 className="p-datatable-sm"
                 exportFilename="rapport_decisions_comite"
+                sortField="decisionDate"
+                sortOrder={-1}
             >
                 <Column field="sessionNumber" header="N° Session" sortable />
                 <Column field="applicationNumber" header="N° Dossier" sortable />
@@ -152,6 +273,7 @@ export default function RapportDecisionsPage() {
                 <Column field="amountApproved" header="Montant Approuvé" body={(row) => formatCurrency(row.amountApproved)} sortable />
                 <Column header="Décision" body={decisionBodyTemplate} />
                 <Column field="decisionDate" header="Date Décision" body={(row) => formatDate(row.decisionDate)} sortable />
+                <Column field="userAction" header="Responsable" sortable />
                 <Column field="comments" header="Commentaires" />
             </DataTable>
         </div>

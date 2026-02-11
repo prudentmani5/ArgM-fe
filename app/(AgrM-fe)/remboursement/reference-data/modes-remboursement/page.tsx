@@ -70,7 +70,7 @@ export default function ModesRemboursementPage() {
     };
 
     const handleSave = () => {
-        if (!mode.code || !mode.label) {
+        if (!mode.code || !mode.name || !mode.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir les champs obligatoires', life: 3000 });
             return;
         }
@@ -84,7 +84,7 @@ export default function ModesRemboursementPage() {
 
     const confirmDelete = (rowData: ModeRemboursement) => {
         confirmDialog({
-            message: `Êtes-vous sûr de vouloir supprimer le mode "${rowData.label}" ?`,
+            message: `Êtes-vous sûr de vouloir supprimer le mode "${rowData.nameFr || rowData.name}" ?`,
             header: 'Confirmation de suppression',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Oui',
@@ -116,15 +116,19 @@ export default function ModesRemboursementPage() {
     };
 
     const activeBodyTemplate = (rowData: ModeRemboursement) => {
-        return <Tag value={rowData.active ? 'Actif' : 'Inactif'} severity={rowData.active ? 'success' : 'danger'} />;
+        return <Tag value={rowData.isActive ? 'Actif' : 'Inactif'} severity={rowData.isActive ? 'success' : 'danger'} />;
     };
 
-    const requiresBankBodyTemplate = (rowData: ModeRemboursement) => {
-        return <Tag value={rowData.requiresBankAccount ? 'Oui' : 'Non'} severity={rowData.requiresBankAccount ? 'info' : 'secondary'} />;
+    const requiresReceiptBodyTemplate = (rowData: ModeRemboursement) => {
+        return <Tag value={rowData.requiresReceipt ? 'Oui' : 'Non'} severity={rowData.requiresReceipt ? 'info' : 'secondary'} />;
     };
 
-    const requiresMobileBodyTemplate = (rowData: ModeRemboursement) => {
-        return <Tag value={rowData.requiresMobileNumber ? 'Oui' : 'Non'} severity={rowData.requiresMobileNumber ? 'info' : 'secondary'} />;
+    const requiresReferenceBodyTemplate = (rowData: ModeRemboursement) => {
+        return <Tag value={rowData.requiresReference ? 'Oui' : 'Non'} severity={rowData.requiresReference ? 'info' : 'secondary'} />;
+    };
+
+    const requiresJustificationBodyTemplate = (rowData: ModeRemboursement) => {
+        return <Tag value={rowData.requiresJustification ? 'Oui' : 'Non'} severity={rowData.requiresJustification ? 'info' : 'secondary'} />;
     };
 
     const dialogFooter = (
@@ -155,11 +159,14 @@ export default function ModesRemboursementPage() {
                 stripedRows
             >
                 <Column field="code" header="Code" sortable />
-                <Column field="label" header="Libellé" sortable />
+                <Column field="nameFr" header="Libellé (FR)" sortable />
+                <Column field="name" header="Libellé (EN)" sortable />
                 <Column field="description" header="Description" />
-                <Column field="requiresBankAccount" header="Compte Bancaire" body={requiresBankBodyTemplate} />
-                <Column field="requiresMobileNumber" header="N° Mobile" body={requiresMobileBodyTemplate} />
-                <Column field="active" header="Statut" body={activeBodyTemplate} />
+                <Column field="requiresReceipt" header="Reçu Requis" body={requiresReceiptBodyTemplate} />
+                <Column field="requiresReference" header="Référence Requise" body={requiresReferenceBodyTemplate} />
+                <Column field="requiresJustification" header="Justification Requise" body={requiresJustificationBodyTemplate} />
+                <Column field="sortOrder" header="Ordre" sortable />
+                <Column field="isActive" header="Statut" body={activeBodyTemplate} />
                 <Column header="Actions" body={actionBodyTemplate} style={{ width: '10rem' }} />
             </DataTable>
 
@@ -172,7 +179,7 @@ export default function ModesRemboursementPage() {
                 modal
             >
                 <div className="grid">
-                    <div className="col-12 md:col-6">
+                    <div className="col-12 md:col-4">
                         <div className="field">
                             <label htmlFor="code" className="font-semibold">Code *</label>
                             <InputText
@@ -186,16 +193,30 @@ export default function ModesRemboursementPage() {
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-6">
+                    <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="label" className="font-semibold">Libellé *</label>
+                            <label htmlFor="name" className="font-semibold">Libellé (EN) *</label>
                             <InputText
-                                id="label"
-                                name="label"
-                                value={mode.label || ''}
+                                id="name"
+                                name="name"
+                                value={mode.name || ''}
                                 onChange={handleChange}
                                 className="w-full"
-                                placeholder="Libellé du mode"
+                                placeholder="Ex: Cash, Mobile Money"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="nameFr" className="font-semibold">Libellé (FR) *</label>
+                            <InputText
+                                id="nameFr"
+                                name="nameFr"
+                                value={mode.nameFr || ''}
+                                onChange={handleChange}
+                                className="w-full"
+                                placeholder="Ex: Espèces, Mobile Money"
                             />
                         </div>
                     </div>
@@ -214,35 +235,60 @@ export default function ModesRemboursementPage() {
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-4">
+                    <div className="col-12 md:col-6">
                         <div className="field">
-                            <label htmlFor="requiresBankAccount" className="font-semibold block mb-2">Compte Bancaire Requis</label>
+                            <label htmlFor="sortOrder" className="font-semibold">Ordre d'affichage</label>
+                            <InputText
+                                id="sortOrder"
+                                name="sortOrder"
+                                value={mode.sortOrder?.toString() || '0'}
+                                onChange={(e) => setMode(prev => ({ ...prev, sortOrder: parseInt(e.target.value) || 0 }))}
+                                className="w-full"
+                                type="number"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-6">
+                        <div className="field">
+                            <label htmlFor="isActive" className="font-semibold block mb-2">Actif</label>
                             <InputSwitch
-                                id="requiresBankAccount"
-                                checked={mode.requiresBankAccount || false}
-                                onChange={(e) => setMode(prev => ({ ...prev, requiresBankAccount: e.value }))}
+                                id="isActive"
+                                checked={mode.isActive ?? true}
+                                onChange={(e) => setMode(prev => ({ ...prev, isActive: e.value }))}
                             />
                         </div>
                     </div>
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="requiresMobileNumber" className="font-semibold block mb-2">N° Mobile Requis</label>
+                            <label htmlFor="requiresReceipt" className="font-semibold block mb-2">Reçu Requis</label>
                             <InputSwitch
-                                id="requiresMobileNumber"
-                                checked={mode.requiresMobileNumber || false}
-                                onChange={(e) => setMode(prev => ({ ...prev, requiresMobileNumber: e.value }))}
+                                id="requiresReceipt"
+                                checked={mode.requiresReceipt || false}
+                                onChange={(e) => setMode(prev => ({ ...prev, requiresReceipt: e.value }))}
                             />
                         </div>
                     </div>
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="active" className="font-semibold block mb-2">Actif</label>
+                            <label htmlFor="requiresReference" className="font-semibold block mb-2">Référence Requise</label>
                             <InputSwitch
-                                id="active"
-                                checked={mode.active ?? true}
-                                onChange={(e) => setMode(prev => ({ ...prev, active: e.value }))}
+                                id="requiresReference"
+                                checked={mode.requiresReference || false}
+                                onChange={(e) => setMode(prev => ({ ...prev, requiresReference: e.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="requiresJustification" className="font-semibold block mb-2">Justification Requise</label>
+                            <InputSwitch
+                                id="requiresJustification"
+                                checked={mode.requiresJustification || false}
+                                onChange={(e) => setMode(prev => ({ ...prev, requiresJustification: e.value }))}
                             />
                         </div>
                     </div>

@@ -261,6 +261,9 @@ export class SeuilContentieuxClass implements SeuilContentieux {
 export interface EcheancierRemboursement {
     id?: number;
     loanId?: number;
+    applicationNumber?: string;
+    disbursementNumber?: string;
+    clientName?: string;
     installmentNumber?: number;
     dueDate?: string;
     principalDue?: number;
@@ -278,6 +281,7 @@ export interface EcheancierRemboursement {
     daysOverdue?: number;
     status?: string;
     lastPaymentDate?: string;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -285,6 +289,9 @@ export interface EcheancierRemboursement {
 export class EcheancierRemboursementClass implements EcheancierRemboursement {
     id?: number;
     loanId?: number;
+    applicationNumber?: string = '';
+    disbursementNumber?: string = '';
+    clientName?: string = '';
     installmentNumber?: number = 1;
     dueDate?: string = '';
     principalDue?: number = 0;
@@ -302,6 +309,7 @@ export class EcheancierRemboursementClass implements EcheancierRemboursement {
     daysOverdue?: number = 0;
     status?: string = 'PENDING';
     lastPaymentDate?: string = '';
+    userAction?: string = '';
 
     constructor(init?: Partial<EcheancierRemboursement>) {
         Object.assign(this, init);
@@ -312,6 +320,9 @@ export class EcheancierRemboursementClass implements EcheancierRemboursement {
 export interface PaiementCredit {
     id?: number;
     loanId?: number;
+    applicationNumber?: string;
+    disbursementNumber?: string;
+    clientName?: string;
     paymentNumber?: string;
     paymentDate?: string;
     valueDate?: string;
@@ -336,6 +347,7 @@ export interface PaiementCredit {
     allocatedToFees?: number;
     allocatedToPenalty?: number;
     notes?: string;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -343,6 +355,9 @@ export interface PaiementCredit {
 export class PaiementCreditClass implements PaiementCredit {
     id?: number;
     loanId?: number;
+    applicationNumber?: string = '';
+    disbursementNumber?: string = '';
+    clientName?: string = '';
     paymentNumber?: string = '';
     paymentDate?: string = new Date().toISOString().split('T')[0];
     valueDate?: string = new Date().toISOString().split('T')[0];
@@ -366,6 +381,7 @@ export class PaiementCreditClass implements PaiementCredit {
     allocatedToFees?: number = 0;
     allocatedToPenalty?: number = 0;
     notes?: string = '';
+    userAction?: string = '';
 
     constructor(init?: Partial<PaiementCredit>) {
         Object.assign(this, init);
@@ -483,12 +499,14 @@ export interface RemboursementAnticipe {
     requestNumber?: string;
     requestDate?: string;
     requestedBy?: number;
+    accountNumber?: string; // Client's account number for this request
     status?: string;
     repaymentType?: string;
     requestedAmount?: number;
     remainingPrincipal?: number;
     accruedInterest?: number;
     accruedPenalties?: number;
+    earlyRepaymentPenaltyRate?: number; // Taux de pénalité en pourcentage (ex: 2 pour 2%)
     penaltyForEarlyRepayment?: number;
     totalSettlementAmount?: number;
     proposedSettlementDate?: string;
@@ -496,7 +514,11 @@ export interface RemboursementAnticipe {
     reason?: string;
     approvedBy?: number;
     approvalDate?: string;
+    paymentId?: number; // Linked payment ID after processing
+    paymentNumber?: string; // Payment number from the created payment
+    processedDate?: string; // Date when the payment was processed
     notes?: string;
+    userAction?: string; // Track user who created/modified the record
     createdAt?: string;
     updatedAt?: string;
 }
@@ -507,12 +529,14 @@ export class RemboursementAnticipeClass implements RemboursementAnticipe {
     requestNumber?: string = '';
     requestDate?: string = new Date().toISOString().split('T')[0];
     requestedBy?: number;
+    accountNumber?: string = '';
     status?: string = 'PENDING';
     repaymentType?: string = 'TOTAL';
     requestedAmount?: number = 0;
     remainingPrincipal?: number = 0;
     accruedInterest?: number = 0;
     accruedPenalties?: number = 0;
+    earlyRepaymentPenaltyRate?: number = 0;
     penaltyForEarlyRepayment?: number = 0;
     totalSettlementAmount?: number = 0;
     proposedSettlementDate?: string = '';
@@ -520,7 +544,11 @@ export class RemboursementAnticipeClass implements RemboursementAnticipe {
     reason?: string = '';
     approvedBy?: number;
     approvalDate?: string = '';
+    paymentId?: number;
+    paymentNumber?: string = '';
+    processedDate?: string = '';
     notes?: string = '';
+    userAction?: string = '';
 
     constructor(init?: Partial<RemboursementAnticipe>) {
         Object.assign(this, init);
@@ -531,15 +559,22 @@ export class RemboursementAnticipeClass implements RemboursementAnticipe {
 export interface DossierRecouvrement {
     id?: number;
     loanId?: number;
+    applicationNumber?: string; // N° Dossier Crédit
     caseNumber?: string;
     openedDate?: string;
+    openedBy?: number;
     status?: string;
-    currentStage?: string;
+    currentStage?: any; // Can be string or RecoveryStage object
+    stageStartDate?: string;
     priority?: string;
-    assignedTo?: number;
-    totalOverdueAmount?: number;
-    totalPenalties?: number;
-    daysOverdue?: number;
+    assignedAgentId?: number;
+    currentTotalOverdue?: number;
+    totalOverdue?: number;
+    principalOverdue?: number;
+    interestOverdue?: number;
+    penaltiesOverdue?: number;
+    currentDaysOverdue?: number;
+    daysOverdueAtOpening?: number;
     lastContactDate?: string;
     nextActionDate?: string;
     nextActionType?: string;
@@ -550,9 +585,11 @@ export interface DossierRecouvrement {
     escalationDate?: string;
     escalationReason?: string;
     closedDate?: string;
-    closureReason?: string;
-    closedBy?: number;
+    closedReason?: string;
+    amountRecovered?: number;
+    accountNumber?: string;
     notes?: string;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -560,15 +597,22 @@ export interface DossierRecouvrement {
 export class DossierRecouvrementClass implements DossierRecouvrement {
     id?: number;
     loanId?: number;
+    applicationNumber?: string = '';
     caseNumber?: string = '';
     openedDate?: string = new Date().toISOString().split('T')[0];
+    openedBy?: number;
     status?: string = 'OPEN';
-    currentStage?: string = 'NEGOTIATION';
+    currentStage?: any;
+    stageStartDate?: string = '';
     priority?: string = 'NORMAL';
-    assignedTo?: number;
-    totalOverdueAmount?: number = 0;
-    totalPenalties?: number = 0;
-    daysOverdue?: number = 0;
+    assignedAgentId?: number;
+    currentTotalOverdue?: number = 0;
+    totalOverdue?: number = 0;
+    principalOverdue?: number = 0;
+    interestOverdue?: number = 0;
+    penaltiesOverdue?: number = 0;
+    currentDaysOverdue?: number = 0;
+    daysOverdueAtOpening?: number = 0;
     lastContactDate?: string = '';
     nextActionDate?: string = '';
     nextActionType?: string = '';
@@ -579,9 +623,11 @@ export class DossierRecouvrementClass implements DossierRecouvrement {
     escalationDate?: string = '';
     escalationReason?: string = '';
     closedDate?: string = '';
-    closureReason?: string = '';
-    closedBy?: number;
+    closedReason?: string = '';
+    amountRecovered?: number = 0;
+    accountNumber?: string = '';
     notes?: string = '';
+    userAction?: string = '';
 
     constructor(init?: Partial<DossierRecouvrement>) {
         Object.assign(this, init);
@@ -595,9 +641,11 @@ export interface ActionRecouvrement {
     loanId?: number;
     actionType?: string;
     actionDescription?: string;
+    description?: string; // backend field name
     actionDate?: string;
     performedBy?: number;
     outcome?: string;
+    result?: string; // backend field name
     nextActionDate?: string;
     nextActionType?: string;
     contactPerson?: string;
@@ -606,6 +654,7 @@ export interface ActionRecouvrement {
     promiseToPayAmount?: number;
     documentReference?: string;
     notes?: string;
+    userAction?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -849,4 +898,130 @@ export const ISSUES_JUGEMENT = [
     { label: 'Partiellement favorable', value: 'PARTIALLY_FAVORABLE' },
     { label: 'Défavorable', value: 'UNFAVORABLE' },
     { label: 'Arrangement', value: 'SETTLEMENT' }
+];
+
+// Configuration du planificateur de pénalités
+export interface PenaltySchedulerConfig {
+    id?: number;
+    code: string;
+    name: string;
+    nameFr: string;
+    dailyRate?: number; // Taux journalier en pourcentage (0.5% à 2%)
+    maxCapPercentage?: number; // Maximum en % du capital restant dû (ex: 10%)
+    appliesToPrincipal?: boolean;
+    appliesToInterest?: boolean;
+    calculationBase?: string; // OVERDUE_AMOUNT ou REMAINING_BALANCE
+    description?: string;
+    isActive?: boolean;
+    schedulerEnabled?: boolean;
+    executionHour?: number; // Heure d'exécution (0-23)
+    executionMinute?: number; // Minute d'exécution (0-59)
+    lastExecutionDate?: string;
+    nextExecutionDate?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export class PenaltySchedulerConfigClass implements PenaltySchedulerConfig {
+    id?: number;
+    code: string = '';
+    name: string = '';
+    nameFr: string = '';
+    dailyRate?: number = 0.5;
+    maxCapPercentage?: number = 10;
+    appliesToPrincipal?: boolean = true;
+    appliesToInterest?: boolean = true;
+    calculationBase?: string = 'OVERDUE_AMOUNT';
+    description?: string = '';
+    isActive?: boolean = true;
+    schedulerEnabled?: boolean = false;
+    executionHour?: number = 6;
+    executionMinute?: number = 0;
+    lastExecutionDate?: string = '';
+    nextExecutionDate?: string = '';
+
+    constructor(init?: Partial<PenaltySchedulerConfig>) {
+        Object.assign(this, init);
+    }
+}
+
+// Historique d'exécution des pénalités
+export interface PenaltyExecutionHistory {
+    id?: number;
+    penaltyConfigId?: number;
+    executionDate?: string;
+    status?: string; // PENDING, RUNNING, COMPLETED, FAILED
+    totalOverdueFound?: number;
+    totalLoansProcessed?: number;
+    processedApplicationNumbers?: string;
+    totalSchedulesProcessed?: number;
+    totalPenaltyCalculated?: number;
+    totalDaysPenaltyAdded?: number;
+    penaltyRateUsed?: number;
+    startTime?: string;
+    endTime?: string;
+    durationMs?: number;
+    errorMessage?: string;
+    executionLog?: string;
+    triggeredBy?: string; // SCHEDULER ou MANUAL
+    userAction?: string;
+    createdAt?: string;
+}
+
+export class PenaltyExecutionHistoryClass implements PenaltyExecutionHistory {
+    id?: number;
+    penaltyConfigId?: number;
+    executionDate?: string = '';
+    status?: string = 'PENDING';
+    totalOverdueFound?: number = 0;
+    totalLoansProcessed?: number = 0;
+    processedApplicationNumbers?: string = '';
+    totalSchedulesProcessed?: number = 0;
+    totalPenaltyCalculated?: number = 0;
+    totalDaysPenaltyAdded?: number = 0;
+    penaltyRateUsed?: number = 0;
+    startTime?: string = '';
+    endTime?: string = '';
+    durationMs?: number = 0;
+    errorMessage?: string = '';
+    executionLog?: string = '';
+    triggeredBy?: string = 'SCHEDULER';
+    userAction?: string = '';
+
+    constructor(init?: Partial<PenaltyExecutionHistory>) {
+        Object.assign(this, init);
+    }
+}
+
+// Statut du planificateur
+export interface PenaltySchedulerStatus {
+    configId?: number;
+    configCode?: string;
+    dailyRate?: number;
+    schedulerEnabled?: boolean;
+    executionTime?: string;
+    lastExecutionDate?: string;
+    nextExecutionDate?: string;
+    lastExecutionStatus?: string;
+    lastExecutionId?: number;
+    lastTotalPenalty?: number;
+    lastSchedulesProcessed?: number;
+    error?: string;
+}
+
+export const STATUTS_EXECUTION = [
+    { label: 'En attente', value: 'PENDING' },
+    { label: 'En cours', value: 'RUNNING' },
+    { label: 'Terminé', value: 'COMPLETED' },
+    { label: 'Échoué', value: 'FAILED' }
+];
+
+export const BASES_CALCUL_PENALITE = [
+    { label: 'Montant impayé', value: 'OVERDUE_AMOUNT' },
+    { label: 'Solde restant dû', value: 'REMAINING_BALANCE' }
+];
+
+export const DECLENCHEURS_PENALITE = [
+    { label: 'Planificateur automatique', value: 'SCHEDULER' },
+    { label: 'Déclenchement manuel', value: 'MANUAL' }
 ];

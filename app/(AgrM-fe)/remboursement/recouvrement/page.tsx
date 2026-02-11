@@ -17,7 +17,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Calendar } from 'primereact/calendar';
 import { InputNumber } from 'primereact/inputnumber';
 
-import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
+import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 
 import DossierRecouvrementForm from './DossierRecouvrementForm';
@@ -44,10 +44,19 @@ const RecouvrementPage = () => {
     const [selectedDossier, setSelectedDossier] = useState<DossierRecouvrement | null>(null);
     const [newAction, setNewAction] = useState<ActionRecouvrement>(new ActionRecouvrementClass());
 
+    // Disbursement selection
+    const [showLoanSelectionDialog, setShowLoanSelectionDialog] = useState(false);
+    const [disbursements, setDisbursements] = useState<any[]>([]);
+    const [filteredDisbursements, setFilteredDisbursements] = useState<any[]>([]);
+    const [disbursementFilter, setDisbursementFilter] = useState('');
+    const [loadingDisbursements, setLoadingDisbursements] = useState(false);
+    const [selectedLoan, setSelectedLoan] = useState<any>(null);
+
     const toast = useRef<Toast>(null);
     const { data, loading, error, fetchData, callType } = useConsumApi('');
     const BASE_URL = buildApiUrl('/api/remboursement/recovery-cases');
     const ACTIONS_URL = buildApiUrl('/api/remboursement/action-logs');
+    const SCHEDULES_URL = buildApiUrl('/api/remboursement/schedules');
 
     useEffect(() => {
         loadDossiers();
@@ -92,6 +101,13 @@ const RecouvrementPage = () => {
                     showToast('success', 'Succès', 'Dossier clôturé');
                     loadDossiers();
                     break;
+                case 'loadLoansWithUnpaid':
+                    // Already filtered by backend - only loans with unpaid amounts
+                    const unpaidLoans = Array.isArray(data) ? data : data.content || [];
+                    setDisbursements(unpaidLoans);
+                    setFilteredDisbursements(unpaidLoans);
+                    setLoadingDisbursements(false);
+                    break;
             }
         }
         if (error) {
@@ -104,7 +120,7 @@ const RecouvrementPage = () => {
     };
 
     const loadActionsForDossier = (caseId: number) => {
-        fetchData(null, 'GET', `${ACTIONS_URL}/findbycaseidordered/${caseId}`, 'loadActions');
+        fetchData(null, 'GET', `${ACTIONS_URL}/findbyrecoverycaseidordered/${caseId}`, 'loadActions');
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -113,7 +129,58 @@ const RecouvrementPage = () => {
 
     const resetForm = () => {
         setDossier(new DossierRecouvrementClass());
+        setSelectedLoan(null);
         setIsViewMode(false);
+    };
+
+    // Load loans with unpaid schedules (for recovery case selection)
+    const loadLoansWithUnpaid = () => {
+        setLoadingDisbursements(true);
+        fetchData(null, 'GET', `${SCHEDULES_URL}/loanswithunpaid`, 'loadLoansWithUnpaid');
+    };
+
+    const handleLoadFromDisbursement = () => {
+        loadLoansWithUnpaid();
+        setShowLoanSelectionDialog(true);
+    };
+
+    const handleDisbursementSelect = (loan: any) => {
+        setSelectedLoan(loan);
+
+        // Update dossier with selected loan info including unpaid amounts, penalties and user action
+        setDossier(prev => ({
+            ...prev,
+            loanId: loan.loanId,
+            applicationNumber: loan.applicationNumber,
+            openedDate: new Date().toISOString().split('T')[0],
+            currentTotalOverdue: loan.unpaidAmount || 0,
+            currentDaysOverdue: loan.daysOverdue || 0,
+            penaltiesOverdue: loan.penaltyAccrued || 0,
+            accountNumber: loan.accountNumber || '',
+            userAction: getUserAction() // Set connected user as assignee
+        }));
+
+        setShowLoanSelectionDialog(false);
+        showToast('info', 'Crédit Sélectionné',
+            `${loan.applicationNumber} - ${loan.clientName} - Impayé: ${loan.unpaidAmount?.toLocaleString()} FBU`);
+    };
+
+    const handleDisbursementFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.toLowerCase();
+        setDisbursementFilter(value);
+
+        if (!value) {
+            setFilteredDisbursements(disbursements);
+            return;
+        }
+
+        const filtered = disbursements.filter((d: any) =>
+            (d.disbursementNumber || '').toLowerCase().includes(value) ||
+            (d.applicationNumber || '').toLowerCase().includes(value) ||
+            (d.clientName || '').toLowerCase().includes(value)
+        );
+
+        setFilteredDisbursements(filtered);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -143,21 +210,32 @@ const RecouvrementPage = () => {
             return;
         }
 
+        const dossierWithUser = { ...dossier, userAction: getUserAction() };
+
         if (dossier.id) {
-            fetchData(dossier, 'PUT', `${BASE_URL}/update/${dossier.id}`, 'update');
+            fetchData(dossierWithUser, 'PUT', `${BASE_URL}/update/${dossier.id}`, 'update');
         } else {
-            fetchData(dossier, 'POST', `${BASE_URL}/new`, 'create');
+            fetchData({ ...dossierWithUser, openedBy: getUserAction() }, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
+    // Normalize data from backend (currentStage comes as object, dropdown expects string code)
+    const normalizeDossier = (rowData: DossierRecouvrement): DossierRecouvrement => {
+        const normalized = { ...rowData };
+        if (typeof normalized.currentStage === 'object' && normalized.currentStage) {
+            normalized.currentStage = (normalized.currentStage as any).code;
+        }
+        return normalized;
+    };
+
     const handleView = (rowData: DossierRecouvrement) => {
-        setDossier({ ...rowData });
+        setDossier(normalizeDossier(rowData));
         setIsViewMode(true);
         setActiveIndex(0);
     };
 
     const handleEdit = (rowData: DossierRecouvrement) => {
-        setDossier({ ...rowData });
+        setDossier(normalizeDossier(rowData));
         setIsViewMode(false);
         setActiveIndex(0);
     };
@@ -194,7 +272,32 @@ const RecouvrementPage = () => {
             showToast('warn', 'Attention', 'Veuillez sélectionner le type d\'action');
             return;
         }
-        fetchData(newAction, 'POST', `${ACTIONS_URL}/new`, 'logAction');
+        // Map frontend fields to backend expected fields
+        const actionData = {
+            recoveryCaseId: newAction.caseId,
+            actionType: newAction.actionType,
+            description: newAction.actionDescription,
+            result: newAction.outcome,
+            nextActionDate: newAction.nextActionDate,
+            userAction: getUserAction()
+        };
+        fetchData(actionData, 'POST', `${ACTIONS_URL}/log`, 'logAction');
+    };
+
+    const handleClose = (rowData: DossierRecouvrement) => {
+        confirmDialog({
+            message: 'Êtes-vous sûr de vouloir clôturer ce dossier de recouvrement ?',
+            header: 'Confirmation de clôture',
+            icon: 'pi pi-lock',
+            acceptClassName: 'p-button-secondary',
+            acceptLabel: 'Oui, clôturer',
+            rejectLabel: 'Non, annuler',
+            accept: () => {
+                const amountRecovered = rowData.totalAmountRecovered || 0;
+                const userAction = getUserAction();
+                fetchData(null, 'POST', `${BASE_URL}/close/${rowData.id}?reason=Clôture manuelle&amountRecovered=${amountRecovered}&userAction=${encodeURIComponent(userAction)}`, 'close');
+            }
+        });
     };
 
     const handleEscalate = (rowData: DossierRecouvrement) => {
@@ -206,7 +309,8 @@ const RecouvrementPage = () => {
             acceptLabel: 'Oui, escalader',
             rejectLabel: 'Non, annuler',
             accept: () => {
-                fetchData(null, 'POST', `${BASE_URL}/escalate/${rowData.id}?escalationReason=Escalade manuelle&escalatedBy=1`, 'escalate');
+                const userAction = getUserAction();
+                fetchData(null, 'POST', `${BASE_URL}/escalate/${rowData.id}?escalationReason=Escalade manuelle&escalatedBy=1&userAction=${encodeURIComponent(userAction)}`, 'escalate');
             }
         });
     };
@@ -244,7 +348,11 @@ const RecouvrementPage = () => {
             'FINAL_NOTICE': 'Mise en demeure',
             'LITIGATION': 'Contentieux'
         };
-        return labelMap[rowData.currentStage || 'NEGOTIATION'] || rowData.currentStage;
+        // currentStage can be a string code or an object {code, name, ...} from backend
+        const stageCode = typeof rowData.currentStage === 'object' && rowData.currentStage
+            ? (rowData.currentStage as any).code
+            : rowData.currentStage;
+        return labelMap[stageCode || 'NEGOTIATION'] || stageCode;
     };
 
     const priorityBodyTemplate = (rowData: DossierRecouvrement) => {
@@ -273,7 +381,7 @@ const RecouvrementPage = () => {
     };
 
     const daysOverdueBodyTemplate = (rowData: DossierRecouvrement) => {
-        const days = rowData.daysOverdue || 0;
+        const days = rowData.currentDaysOverdue || 0;
         let severity: 'success' | 'warning' | 'danger' = 'success';
         if (days > 90) severity = 'danger';
         else if (days > 30) severity = 'warning';
@@ -310,25 +418,40 @@ const RecouvrementPage = () => {
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => handleViewHistory(rowData)}
             />
-            <Button
-                icon="pi pi-arrow-up"
-                rounded
-                text
-                severity="warning"
-                tooltip="Escalader"
-                tooltipOptions={{ position: 'top' }}
-                onClick={() => handleEscalate(rowData)}
-                disabled={rowData.isEscalated}
-            />
-            <Button
-                icon="pi pi-pencil"
-                rounded
-                text
-                severity="warning"
-                tooltip="Modifier"
-                tooltipOptions={{ position: 'top' }}
-                onClick={() => handleEdit(rowData)}
-            />
+            {rowData.status !== 'CLOSED' && rowData.status !== 'RESOLVED' && (
+                <Button
+                    icon="pi pi-arrow-up"
+                    rounded
+                    text
+                    severity="warning"
+                    tooltip="Escalader"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleEscalate(rowData)}
+                    disabled={rowData.isEscalated}
+                />
+            )}
+            {rowData.status === 'RESOLVED' && (
+                <Button
+                    icon="pi pi-lock"
+                    rounded
+                    text
+                    severity="secondary"
+                    tooltip="Clôturer"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleClose(rowData)}
+                />
+            )}
+            {rowData.status !== 'CLOSED' && (
+                <Button
+                    icon="pi pi-pencil"
+                    rounded
+                    text
+                    severity="warning"
+                    tooltip="Modifier"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleEdit(rowData)}
+                />
+            )}
         </div>
     );
 
@@ -360,12 +483,18 @@ const RecouvrementPage = () => {
                         {item.actionDate ? new Date(item.actionDate).toLocaleString('fr-FR') : '-'}
                     </small>
                 </div>
-                <p className="mt-2 mb-1">{item.actionDescription || '-'}</p>
-                {item.outcome && <p className="text-color-secondary mb-1"><strong>Résultat:</strong> {item.outcome}</p>}
+                <p className="mt-2 mb-1">{item.description || item.actionDescription || '-'}</p>
+                {(item.result || item.outcome) && <p className="text-color-secondary mb-1"><strong>Résultat:</strong> {item.result || item.outcome}</p>}
                 {item.promiseToPayAmount && item.promiseToPayAmount > 0 && (
                     <p className="text-primary mb-0">
                         <strong>Promesse:</strong> {currencyBodyTemplate(item.promiseToPayAmount)}
                         {item.promiseToPayDate && ` pour le ${new Date(item.promiseToPayDate).toLocaleDateString('fr-FR')}`}
+                    </p>
+                )}
+                {item.userAction && (
+                    <p className="text-color-secondary mb-0 mt-1">
+                        <i className="pi pi-user text-xs mr-1"></i>
+                        <small>Par: {item.userAction}</small>
                     </p>
                 )}
             </Card>
@@ -407,6 +536,45 @@ const RecouvrementPage = () => {
 
             <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
                 <TabPanel header="Nouveau Dossier" leftIcon="pi pi-plus mr-2">
+                    {/* Loan Selection Section */}
+                    {!dossier.id && (
+                        <div className="mb-4">
+                            <Card className="surface-50">
+                                <div className="flex align-items-center justify-content-between">
+                                    <div>
+                                        <h5 className="m-0 mb-2">
+                                            <i className="pi pi-file mr-2"></i>
+                                            Crédit Associé
+                                        </h5>
+                                        {selectedLoan ? (
+                                            <div className="text-color-secondary">
+                                                <p className="m-0"><strong>N° Dossier:</strong> {selectedLoan.applicationNumber}</p>
+                                                <p className="m-0"><strong>N° Décaissement:</strong> {selectedLoan.disbursementNumber}</p>
+                                                <p className="m-0"><strong>Client:</strong> {selectedLoan.clientName}</p>
+                                                <p className="m-0 text-red-500"><strong>Montant Impayé:</strong> {selectedLoan.unpaidAmount?.toLocaleString()} FBU</p>
+                                                {selectedLoan.penaltyAccrued > 0 && (
+                                                    <p className="m-0 text-orange-600"><strong>Pénalités Accumulées:</strong> {selectedLoan.penaltyAccrued?.toLocaleString()} FBU</p>
+                                                )}
+                                                <p className="m-0 text-orange-500"><strong>Jours de Retard:</strong> {selectedLoan.daysOverdue} jours</p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-color-secondary m-0">
+                                                Aucun crédit sélectionné. Cliquez sur le bouton pour sélectionner un crédit avec impayés.
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        label={selectedLoan ? "Changer de Crédit" : "Sélectionner un Crédit"}
+                                        icon="pi pi-search"
+                                        severity={selectedLoan ? "secondary" : "info"}
+                                        onClick={handleLoadFromDisbursement}
+                                        disabled={isViewMode}
+                                    />
+                                </div>
+                            </Card>
+                        </div>
+                    )}
+
                     <DossierRecouvrementForm
                         dossier={dossier}
                         handleChange={handleChange}
@@ -430,6 +598,7 @@ const RecouvrementPage = () => {
                                 icon="pi pi-save"
                                 onClick={handleSubmit}
                                 loading={loading}
+                                disabled={!dossier.id && !selectedLoan}
                             />
                         )}
                     </div>
@@ -446,28 +615,40 @@ const RecouvrementPage = () => {
                         header={header}
                         emptyMessage="Aucun dossier trouvé"
                         className="p-datatable-sm"
-                        sortField="daysOverdue"
+                        sortField="currentDaysOverdue"
                         sortOrder={-1}
                         rowClassName={(data) => ({
-                            'bg-red-50': data.daysOverdue > 90,
-                            'bg-orange-50': data.daysOverdue > 30 && data.daysOverdue <= 90
+                            'bg-red-50': data.currentDaysOverdue > 90,
+                            'bg-orange-50': data.currentDaysOverdue > 30 && data.currentDaysOverdue <= 90
                         })}
                     >
-                        <Column field="caseNumber" header="N° Dossier" sortable filter style={{ width: '10%' }} />
-                        <Column field="loanId" header="ID Crédit" sortable filter style={{ width: '8%' }} />
+                        <Column field="caseNumber" header="N° Dossier" sortable filter style={{ width: '9%' }} />
+                        <Column field="applicationNumber" header="N° Dossier Crédit" sortable filter style={{ width: '11%' }} />
+                        <Column field="accountNumber" header="N° Compte" sortable filter style={{ width: '9%' }} />
                         <Column
-                            field="totalOverdueAmount"
+                            field="currentTotalOverdue"
                             header="Montant Impayé"
-                            body={(rowData) => currencyBodyTemplate(rowData.totalOverdueAmount)}
+                            body={(rowData) => currencyBodyTemplate(rowData.currentTotalOverdue)}
                             sortable
-                            style={{ width: '12%' }}
+                            style={{ width: '10%' }}
                         />
                         <Column
-                            field="daysOverdue"
+                            field="penaltiesOverdue"
+                            header="Pénalités"
+                            body={(rowData) => (
+                                <span className={(rowData.penaltiesOverdue || 0) > 0 ? 'text-orange-600 font-semibold' : ''}>
+                                    {currencyBodyTemplate(rowData.penaltiesOverdue || 0)}
+                                </span>
+                            )}
+                            sortable
+                            style={{ width: '9%' }}
+                        />
+                        <Column
+                            field="currentDaysOverdue"
                             header="Jours Retard"
                             body={daysOverdueBodyTemplate}
                             sortable
-                            style={{ width: '10%' }}
+                            style={{ width: '9%' }}
                         />
                         <Column
                             field="currentStage"
@@ -489,12 +670,14 @@ const RecouvrementPage = () => {
                             body={statusBodyTemplate}
                             sortable
                             filter
-                            style={{ width: '10%' }}
+                            style={{ width: '8%' }}
                         />
+                        <Column field="openedBy" header="Ouvert par" sortable style={{ width: '9%' }} />
+                        <Column field="userAction" header="Modifié par" sortable style={{ width: '9%' }} />
                         <Column
                             header="Actions"
                             body={actionsBodyTemplate}
-                            style={{ width: '18%' }}
+                            style={{ width: '15%' }}
                         />
                     </DataTable>
                 </TabPanel>
@@ -626,6 +809,108 @@ const RecouvrementPage = () => {
                         <p>Aucune action enregistrée pour ce dossier</p>
                     </div>
                 )}
+            </Dialog>
+
+            {/* Dialog Sélection Crédit avec Impayés */}
+            <Dialog
+                visible={showLoanSelectionDialog}
+                onHide={() => setShowLoanSelectionDialog(false)}
+                header="Sélectionner un Crédit avec Impayés"
+                style={{ width: '85vw' }}
+                modal
+            >
+                <div className="mb-3">
+                    <span className="p-input-icon-left w-full">
+                        <i className="pi pi-search" />
+                        <InputText
+                            value={disbursementFilter}
+                            onChange={handleDisbursementFilterChange}
+                            placeholder="Rechercher par N° décaissement, N° dossier ou client..."
+                            className="w-full"
+                        />
+                    </span>
+                </div>
+
+                <DataTable
+                    value={filteredDisbursements}
+                    paginator
+                    rows={10}
+                    rowsPerPageOptions={[5, 10, 25]}
+                    loading={loadingDisbursements}
+                    emptyMessage="Aucun crédit avec impayés trouvé"
+                    className="p-datatable-sm"
+                    selectionMode="single"
+                    selection={selectedLoan}
+                    onSelectionChange={(e) => handleDisbursementSelect(e.value)}
+                    sortField="daysOverdue"
+                    sortOrder={-1}
+                    rowClassName={(data) => ({
+                        'bg-red-50': data.daysOverdue > 90,
+                        'bg-orange-50': data.daysOverdue > 30 && data.daysOverdue <= 90
+                    })}
+                >
+                    <Column field="disbursementNumber" header="N° Décaissement" sortable filter style={{ width: '12%' }} />
+                    <Column field="applicationNumber" header="N° Dossier" sortable filter style={{ width: '12%' }} />
+                    <Column field="clientName" header="Client" sortable filter style={{ width: '15%' }} />
+                    <Column field="accountNumber" header="N° Compte" sortable filter style={{ width: '10%' }} />
+                    <Column
+                        field="unpaidAmount"
+                        header="Montant Impayé"
+                        body={(rowData) => (
+                            <span className="text-red-500 font-semibold">
+                                {rowData.unpaidAmount?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                            </span>
+                        )}
+                        sortable
+                        style={{ width: '15%' }}
+                    />
+                    <Column
+                        field="penaltyAccrued"
+                        header="Pénalités"
+                        body={(rowData) => (
+                            <span className={rowData.penaltyAccrued > 0 ? 'text-orange-600 font-semibold' : ''}>
+                                {rowData.penaltyAccrued?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' }) || '0 FBU'}
+                            </span>
+                        )}
+                        sortable
+                        style={{ width: '12%' }}
+                    />
+                    <Column
+                        field="daysOverdue"
+                        header="Jours Retard"
+                        body={(rowData) => {
+                            const days = rowData.daysOverdue || 0;
+                            let severity: 'success' | 'warning' | 'danger' = 'success';
+                            if (days > 90) severity = 'danger';
+                            else if (days > 30) severity = 'warning';
+                            return <Tag value={`${days} jours`} severity={severity} />;
+                        }}
+                        sortable
+                        style={{ width: '10%' }}
+                    />
+                    <Column
+                        field="originalAmount"
+                        header="Montant Original"
+                        body={(rowData) => rowData.originalAmount?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                        sortable
+                        style={{ width: '12%' }}
+                    />
+                    <Column
+                        header="Sélectionner"
+                        body={(rowData) => (
+                            <Button
+                                icon="pi pi-check"
+                                rounded
+                                text
+                                severity="success"
+                                tooltip="Sélectionner ce crédit"
+                                tooltipOptions={{ position: 'top' }}
+                                onClick={() => handleDisbursementSelect(rowData)}
+                            />
+                        )}
+                        style={{ width: '10%' }}
+                    />
+                </DataTable>
             </Dialog>
         </div>
     );

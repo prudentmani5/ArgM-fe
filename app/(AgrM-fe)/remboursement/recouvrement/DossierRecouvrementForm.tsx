@@ -63,15 +63,16 @@ export default function DossierRecouvrementForm({
                         </div>
 
                         <div className="field col-12 md:col-3">
-                            <label htmlFor="loanId" className="font-semibold">
-                                ID Crédit *
+                            <label htmlFor="applicationNumber" className="font-semibold">
+                                N° Dossier Crédit *
                             </label>
-                            <InputNumber
-                                id="loanId"
-                                value={dossier.loanId || null}
-                                onValueChange={(e) => handleNumberChange('loanId', e.value ?? null)}
+                            <InputText
+                                id="applicationNumber"
+                                name="applicationNumber"
+                                value={dossier.applicationNumber || ''}
                                 className="w-full"
-                                disabled={isViewMode}
+                                disabled={true}
+                                placeholder="Sélectionner un crédit..."
                             />
                         </div>
 
@@ -136,30 +137,27 @@ export default function DossierRecouvrementForm({
                         </div>
 
                         <div className="field col-12 md:col-3">
-                            <label htmlFor="assignedTo" className="font-semibold">
-                                Assigné à
+                            <label htmlFor="userAction" className="font-semibold">
+                                Assigné à (Utilisateur)
                             </label>
-                            <Dropdown
-                                id="assignedTo"
-                                value={dossier.assignedTo}
-                                options={agents}
-                                optionLabel="name"
-                                optionValue="id"
-                                onChange={(e) => handleDropdownChange('assignedTo', e.value)}
+                            <InputText
+                                id="userAction"
+                                name="userAction"
+                                value={dossier.userAction || ''}
                                 className="w-full"
-                                disabled={isViewMode}
-                                placeholder="Sélectionner un agent..."
+                                disabled={true}
+                                placeholder="Utilisateur connecté"
                             />
                         </div>
 
                         <div className="field col-12 md:col-3">
-                            <label htmlFor="daysOverdue" className="font-semibold text-red-500">
+                            <label htmlFor="currentDaysOverdue" className="font-semibold text-red-500">
                                 Jours de Retard
                             </label>
                             <InputNumber
-                                id="daysOverdue"
-                                value={dossier.daysOverdue || null}
-                                onValueChange={(e) => handleNumberChange('daysOverdue', e.value ?? null)}
+                                id="currentDaysOverdue"
+                                value={dossier.currentDaysOverdue || null}
+                                onValueChange={(e) => handleNumberChange('currentDaysOverdue', e.value ?? null)}
                                 className="w-full"
                                 disabled={true}
                                 suffix=" jours"
@@ -179,13 +177,13 @@ export default function DossierRecouvrementForm({
 
                     <div className="formgrid grid">
                         <div className="field col-12 md:col-4">
-                            <label htmlFor="totalOverdueAmount" className="font-semibold text-red-500">
+                            <label htmlFor="currentTotalOverdue" className="font-semibold text-red-500">
                                 Montant Total Impayé (FBU)
                             </label>
                             <InputNumber
-                                id="totalOverdueAmount"
-                                value={dossier.totalOverdueAmount || null}
-                                onValueChange={(e) => handleNumberChange('totalOverdueAmount', e.value ?? null)}
+                                id="currentTotalOverdue"
+                                value={dossier.currentTotalOverdue || null}
+                                onValueChange={(e) => handleNumberChange('currentTotalOverdue', e.value ?? null)}
                                 className="w-full"
                                 disabled={isViewMode}
                                 mode="currency"
@@ -195,13 +193,13 @@ export default function DossierRecouvrementForm({
                         </div>
 
                         <div className="field col-12 md:col-4">
-                            <label htmlFor="totalPenalties" className="font-semibold text-orange-500">
+                            <label htmlFor="penaltiesOverdue" className="font-semibold text-orange-500">
                                 Total Pénalités (FBU)
                             </label>
                             <InputNumber
-                                id="totalPenalties"
-                                value={dossier.totalPenalties || null}
-                                onValueChange={(e) => handleNumberChange('totalPenalties', e.value ?? null)}
+                                id="penaltiesOverdue"
+                                value={dossier.penaltiesOverdue || null}
+                                onValueChange={(e) => handleNumberChange('penaltiesOverdue', e.value ?? null)}
                                 className="w-full"
                                 disabled={isViewMode}
                                 mode="currency"

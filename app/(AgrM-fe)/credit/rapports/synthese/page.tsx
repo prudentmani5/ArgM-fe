@@ -158,26 +158,40 @@ export default function SynthesePortefeuillePage() {
                     <i className="pi pi-chart-pie mr-2"></i>
                     Synthèse du Portefeuille Crédit
                 </h4>
-                <div className="flex gap-2 align-items-center">
-                    <Calendar
-                        value={dateRange}
-                        onChange={(e) => setDateRange(e.value as Date[])}
-                        selectionMode="range"
-                        placeholder="Période"
-                        dateFormat="dd/mm/yy"
-                        showIcon
-                        className="w-15rem"
-                    />
-                    <Dropdown
-                        value={branchFilter}
-                        options={branches}
-                        onChange={(e) => setBranchFilter(e.value)}
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Toutes les agences"
-                        className="w-12rem"
-                        showClear
-                    />
+            </div>
+
+            {/* Filters */}
+            <div className="surface-100 p-3 border-round mb-4">
+                <h5 className="mb-3"><i className="pi pi-filter mr-2"></i>Filtres</h5>
+                <div className="grid">
+                    <div className="col-12 md:col-6">
+                        <label className="font-semibold block mb-2">Période</label>
+                        <Calendar
+                            value={dateRange}
+                            onChange={(e) => setDateRange(e.value as Date[])}
+                            selectionMode="range"
+                            readOnlyInput
+                            placeholder="Sélectionner une période"
+                            dateFormat="dd/mm/yy"
+                            showIcon
+                            showButtonBar
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="col-12 md:col-6">
+                        <label className="font-semibold block mb-2">Agence</label>
+                        <Dropdown
+                            value={branchFilter}
+                            options={branches}
+                            onChange={(e) => setBranchFilter(e.value)}
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Toutes les agences"
+                            className="w-full"
+                            showClear
+                            filter
+                        />
+                    </div>
                 </div>
             </div>
 

@@ -72,7 +72,7 @@ export default function ClassificationsRetardPage() {
     };
 
     const handleSave = () => {
-        if (!classification.code || !classification.label) {
+        if (!classification.code || !classification.name || !classification.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir les champs obligatoires', life: 3000 });
             return;
         }
@@ -86,7 +86,7 @@ export default function ClassificationsRetardPage() {
 
     const confirmDelete = (rowData: ClassificationRetard) => {
         confirmDialog({
-            message: `Êtes-vous sûr de vouloir supprimer la classification "${rowData.label}" ?`,
+            message: `Êtes-vous sûr de vouloir supprimer la classification "${rowData.nameFr || rowData.name}" ?`,
             header: 'Confirmation de suppression',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Oui',
@@ -122,7 +122,7 @@ export default function ClassificationsRetardPage() {
     };
 
     const activeBodyTemplate = (rowData: ClassificationRetard) => {
-        return <Tag value={rowData.active ? 'Actif' : 'Inactif'} severity={rowData.active ? 'success' : 'danger'} />;
+        return <Tag value={rowData.isActive ? 'Actif' : 'Inactif'} severity={rowData.isActive ? 'success' : 'danger'} />;
     };
 
     const colorBodyTemplate = (rowData: ClassificationRetard) => {
@@ -174,12 +174,14 @@ export default function ClassificationsRetardPage() {
                 stripedRows
             >
                 <Column field="code" header="Code" sortable />
-                <Column field="label" header="Libellé" sortable />
-                <Column field="minDays" header="Jours Min" sortable />
-                <Column field="maxDays" header="Jours Max" sortable />
+                <Column field="nameFr" header="Libellé (FR)" sortable />
+                <Column field="name" header="Libellé (EN)" sortable />
+                <Column field="minDaysOverdue" header="Jours Min" sortable />
+                <Column field="maxDaysOverdue" header="Jours Max" sortable />
                 <Column field="provisionRate" header="Taux Provision" body={provisionBodyTemplate} sortable />
                 <Column field="colorCode" header="Couleur" body={colorBodyTemplate} />
-                <Column field="active" header="Statut" body={activeBodyTemplate} />
+                <Column field="sortOrder" header="Ordre" sortable />
+                <Column field="isActive" header="Statut" body={activeBodyTemplate} />
                 <Column header="Actions" body={actionBodyTemplate} style={{ width: '10rem' }} />
             </DataTable>
 
@@ -208,11 +210,25 @@ export default function ClassificationsRetardPage() {
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="label" className="font-semibold">Libellé *</label>
+                            <label htmlFor="name" className="font-semibold">Libellé (EN) *</label>
                             <InputText
-                                id="label"
-                                name="label"
-                                value={classification.label || ''}
+                                id="name"
+                                name="name"
+                                value={classification.name || ''}
+                                onChange={handleChange}
+                                className="w-full"
+                                placeholder="Ex: Late 1-30 days"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="nameFr" className="font-semibold">Libellé (FR) *</label>
+                            <InputText
+                                id="nameFr"
+                                name="nameFr"
+                                value={classification.nameFr || ''}
                                 onChange={handleChange}
                                 className="w-full"
                                 placeholder="Ex: Retard 1-30 jours"
@@ -220,7 +236,63 @@ export default function ClassificationsRetardPage() {
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-4">
+                    <div className="col-12 md:col-3">
+                        <div className="field">
+                            <label htmlFor="minDaysOverdue" className="font-semibold">Jours Minimum *</label>
+                            <InputNumber
+                                id="minDaysOverdue"
+                                value={classification.minDaysOverdue || null}
+                                onValueChange={(e) => handleNumberChange('minDaysOverdue', e.value ?? null)}
+                                className="w-full"
+                                min={0}
+                                suffix=" jours"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-3">
+                        <div className="field">
+                            <label htmlFor="maxDaysOverdue" className="font-semibold">Jours Maximum *</label>
+                            <InputNumber
+                                id="maxDaysOverdue"
+                                value={classification.maxDaysOverdue || null}
+                                onValueChange={(e) => handleNumberChange('maxDaysOverdue', e.value ?? null)}
+                                className="w-full"
+                                min={0}
+                                suffix=" jours"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-3">
+                        <div className="field">
+                            <label htmlFor="provisionRate" className="font-semibold">Taux de Provision (%)</label>
+                            <InputNumber
+                                id="provisionRate"
+                                value={classification.provisionRate || null}
+                                onValueChange={(e) => handleNumberChange('provisionRate', e.value ?? null)}
+                                className="w-full"
+                                min={0}
+                                max={100}
+                                suffix="%"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-3">
+                        <div className="field">
+                            <label htmlFor="sortOrder" className="font-semibold">Ordre</label>
+                            <InputNumber
+                                id="sortOrder"
+                                value={classification.sortOrder || null}
+                                onValueChange={(e) => handleNumberChange('sortOrder', e.value ?? null)}
+                                className="w-full"
+                                min={0}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-8">
                         <div className="field">
                             <label htmlFor="colorCode" className="font-semibold">Couleur</label>
                             <div className="flex align-items-center gap-2">
@@ -240,43 +312,11 @@ export default function ClassificationsRetardPage() {
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="minDays" className="font-semibold">Jours Minimum *</label>
-                            <InputNumber
-                                id="minDays"
-                                value={classification.minDays || null}
-                                onValueChange={(e) => handleNumberChange('minDays', e.value ?? null)}
-                                className="w-full"
-                                min={0}
-                                suffix=" jours"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="maxDays" className="font-semibold">Jours Maximum *</label>
-                            <InputNumber
-                                id="maxDays"
-                                value={classification.maxDays || null}
-                                onValueChange={(e) => handleNumberChange('maxDays', e.value ?? null)}
-                                className="w-full"
-                                min={0}
-                                suffix=" jours"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="provisionRate" className="font-semibold">Taux de Provision (%)</label>
-                            <InputNumber
-                                id="provisionRate"
-                                value={classification.provisionRate || null}
-                                onValueChange={(e) => handleNumberChange('provisionRate', e.value ?? null)}
-                                className="w-full"
-                                min={0}
-                                max={100}
-                                suffix="%"
+                            <label htmlFor="isActive" className="font-semibold block mb-2">Actif</label>
+                            <InputSwitch
+                                id="isActive"
+                                checked={classification.isActive ?? true}
+                                onChange={(e) => setClassification(prev => ({ ...prev, isActive: e.value }))}
                             />
                         </div>
                     </div>
@@ -291,17 +331,6 @@ export default function ClassificationsRetardPage() {
                                 onChange={handleChange}
                                 className="w-full"
                                 rows={3}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="active" className="font-semibold block mb-2">Actif</label>
-                            <InputSwitch
-                                id="active"
-                                checked={classification.active ?? true}
-                                onChange={(e) => setClassification(prev => ({ ...prev, active: e.value }))}
                             />
                         </div>
                     </div>

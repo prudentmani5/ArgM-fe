@@ -432,6 +432,8 @@ function TermDepositPage() {
                         stripedRows
                         showGridlines
                         size="small"
+                        sortField="startDate"
+                        sortOrder={-1}
                     >
                         <Column field="depositNumber" header="N° Dépôt" sortable />
                         <Column
@@ -468,6 +470,8 @@ function TermDepositPage() {
                         stripedRows
                         showGridlines
                         size="small"
+                        sortField="maturityDate"
+                        sortOrder={-1}
                     >
                         <Column field="depositNumber" header="N° Dépôt" sortable />
                         <Column

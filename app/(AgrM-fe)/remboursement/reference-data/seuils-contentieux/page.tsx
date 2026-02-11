@@ -18,28 +18,32 @@ import { buildApiUrl } from '../../../../../utils/apiConfig';
 
 interface SeuilContentieux {
     id?: number;
-    thresholdName?: string;
+    code?: string;
+    name?: string;
+    nameFr?: string;
     minAmount?: number;
-    maxAmount?: number;
     minDaysOverdue?: number;
-    requiresDGApproval?: boolean;
-    autoEscalate?: boolean;
-    escalationLevel?: string;
+    requiresDgApproval?: boolean;
+    provisionRate?: number;
+    expectedRecoveryRateMin?: number;
+    expectedRecoveryRateMax?: number;
     description?: string;
-    active?: boolean;
+    isActive?: boolean;
 }
 
 class SeuilContentieuxClass implements SeuilContentieux {
     id?: number;
-    thresholdName?: string = '';
+    code?: string = '';
+    name?: string = '';
+    nameFr?: string = '';
     minAmount?: number = 0;
-    maxAmount?: number;
-    minDaysOverdue?: number = 90;
-    requiresDGApproval?: boolean = false;
-    autoEscalate?: boolean = false;
-    escalationLevel?: string = '';
+    minDaysOverdue?: number = 120;
+    requiresDgApproval?: boolean = true;
+    provisionRate?: number = 100;
+    expectedRecoveryRateMin?: number = 30;
+    expectedRecoveryRateMax?: number = 50;
     description?: string = '';
-    active?: boolean = true;
+    isActive?: boolean = true;
 }
 
 export default function SeuilsContentieuxPage() {
@@ -96,7 +100,7 @@ export default function SeuilsContentieuxPage() {
     };
 
     const handleSave = () => {
-        if (!seuil.thresholdName) {
+        if (!seuil.code || !seuil.name || !seuil.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir les champs obligatoires', life: 3000 });
             return;
         }
@@ -110,7 +114,7 @@ export default function SeuilsContentieuxPage() {
 
     const confirmDelete = (rowData: SeuilContentieux) => {
         confirmDialog({
-            message: `Êtes-vous sûr de vouloir supprimer le seuil "${rowData.thresholdName}" ?`,
+            message: `Êtes-vous sûr de vouloir supprimer le seuil "${rowData.nameFr || rowData.name}" ?`,
             header: 'Confirmation de suppression',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Oui',
@@ -151,27 +155,26 @@ export default function SeuilsContentieuxPage() {
     };
 
     const activeBodyTemplate = (rowData: SeuilContentieux) => {
-        return <Tag value={rowData.active ? 'Actif' : 'Inactif'} severity={rowData.active ? 'success' : 'danger'} />;
+        return <Tag value={rowData.isActive ? 'Actif' : 'Inactif'} severity={rowData.isActive ? 'success' : 'danger'} />;
     };
 
     const dgApprovalBodyTemplate = (rowData: SeuilContentieux) => {
         return (
             <Tag
-                value={rowData.requiresDGApproval ? 'Approbation DG' : 'Standard'}
-                severity={rowData.requiresDGApproval ? 'danger' : 'secondary'}
-                icon={rowData.requiresDGApproval ? 'pi pi-lock' : undefined}
+                value={rowData.requiresDgApproval ? 'Approbation DG' : 'Standard'}
+                severity={rowData.requiresDgApproval ? 'danger' : 'secondary'}
+                icon={rowData.requiresDgApproval ? 'pi pi-lock' : undefined}
             />
         );
     };
 
-    const autoEscalateBodyTemplate = (rowData: SeuilContentieux) => {
-        return <Tag value={rowData.autoEscalate ? 'Auto' : 'Manuel'} severity={rowData.autoEscalate ? 'info' : 'secondary'} />;
+    const provisionBodyTemplate = (rowData: SeuilContentieux) => {
+        return rowData.provisionRate ? `${rowData.provisionRate}%` : '-';
     };
 
-    const amountRangeBodyTemplate = (rowData: SeuilContentieux) => {
-        const min = formatCurrency(rowData.minAmount);
-        const max = rowData.maxAmount ? formatCurrency(rowData.maxAmount) : '∞';
-        return `${min} - ${max}`;
+    const recoveryRateBodyTemplate = (rowData: SeuilContentieux) => {
+        if (!rowData.expectedRecoveryRateMin && !rowData.expectedRecoveryRateMax) return '-';
+        return `${rowData.expectedRecoveryRateMin || 0}% - ${rowData.expectedRecoveryRateMax || 0}%`;
     };
 
     const dialogFooter = (
@@ -212,13 +215,15 @@ export default function SeuilsContentieuxPage() {
                 sortField="minAmount"
                 sortOrder={1}
             >
-                <Column field="thresholdName" header="Nom du Seuil" sortable />
-                <Column header="Plage de Montants" body={amountRangeBodyTemplate} />
+                <Column field="code" header="Code" sortable />
+                <Column field="nameFr" header="Nom (FR)" sortable />
+                <Column field="name" header="Nom (EN)" sortable />
+                <Column field="minAmount" header="Montant Min" body={(row) => formatCurrency(row.minAmount)} sortable />
                 <Column field="minDaysOverdue" header="Jours Retard Min" sortable />
-                <Column field="requiresDGApproval" header="Approbation" body={dgApprovalBodyTemplate} />
-                <Column field="autoEscalate" header="Escalade" body={autoEscalateBodyTemplate} />
-                <Column field="escalationLevel" header="Niveau Escalade" />
-                <Column field="active" header="Statut" body={activeBodyTemplate} />
+                <Column field="provisionRate" header="Taux Provision" body={provisionBodyTemplate} sortable />
+                <Column header="Taux Récupération" body={recoveryRateBodyTemplate} />
+                <Column field="requiresDgApproval" header="Approbation DG" body={dgApprovalBodyTemplate} />
+                <Column field="isActive" header="Statut" body={activeBodyTemplate} />
                 <Column header="Actions" body={actionBodyTemplate} style={{ width: '10rem' }} />
             </DataTable>
 
@@ -231,37 +236,51 @@ export default function SeuilsContentieuxPage() {
                 modal
             >
                 <div className="grid">
-                    <div className="col-12 md:col-6">
+                    <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="thresholdName" className="font-semibold">Nom du Seuil *</label>
+                            <label htmlFor="code" className="font-semibold">Code *</label>
                             <InputText
-                                id="thresholdName"
-                                name="thresholdName"
-                                value={seuil.thresholdName || ''}
+                                id="code"
+                                name="code"
+                                value={seuil.code || ''}
                                 onChange={handleChange}
                                 className="w-full"
-                                placeholder="Ex: Seuil DG Approbation"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-6">
-                        <div className="field">
-                            <label htmlFor="escalationLevel" className="font-semibold">Niveau d'Escalade</label>
-                            <InputText
-                                id="escalationLevel"
-                                name="escalationLevel"
-                                value={seuil.escalationLevel || ''}
-                                onChange={handleChange}
-                                className="w-full"
-                                placeholder="Ex: DG, COMITE_CREDIT"
+                                placeholder="Ex: SEUIL_DG"
                             />
                         </div>
                     </div>
 
                     <div className="col-12 md:col-4">
                         <div className="field">
-                            <label htmlFor="minAmount" className="font-semibold">Montant Minimum (FBU)</label>
+                            <label htmlFor="name" className="font-semibold">Nom (EN) *</label>
+                            <InputText
+                                id="name"
+                                name="name"
+                                value={seuil.name || ''}
+                                onChange={handleChange}
+                                className="w-full"
+                                placeholder="Ex: DG Approval Threshold"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="nameFr" className="font-semibold">Nom (FR) *</label>
+                            <InputText
+                                id="nameFr"
+                                name="nameFr"
+                                value={seuil.nameFr || ''}
+                                onChange={handleChange}
+                                className="w-full"
+                                placeholder="Ex: Seuil Approbation DG"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-6">
+                        <div className="field">
+                            <label htmlFor="minAmount" className="font-semibold">Montant Minimum (FBU) *</label>
                             <InputNumber
                                 id="minAmount"
                                 value={seuil.minAmount || null}
@@ -274,25 +293,9 @@ export default function SeuilsContentieuxPage() {
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-4">
+                    <div className="col-12 md:col-6">
                         <div className="field">
-                            <label htmlFor="maxAmount" className="font-semibold">Montant Maximum (FBU)</label>
-                            <InputNumber
-                                id="maxAmount"
-                                value={seuil.maxAmount || null}
-                                onValueChange={(e) => handleNumberChange('maxAmount', e.value ?? null)}
-                                className="w-full"
-                                mode="currency"
-                                currency="BIF"
-                                locale="fr-BI"
-                            />
-                            <small className="text-500">Laisser vide pour illimité</small>
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="minDaysOverdue" className="font-semibold">Jours de Retard Minimum</label>
+                            <label htmlFor="minDaysOverdue" className="font-semibold">Jours de Retard Minimum *</label>
                             <InputNumber
                                 id="minDaysOverdue"
                                 value={seuil.minDaysOverdue || null}
@@ -300,6 +303,51 @@ export default function SeuilsContentieuxPage() {
                                 className="w-full"
                                 min={0}
                                 suffix=" jours"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="provisionRate" className="font-semibold">Taux de Provision (%)</label>
+                            <InputNumber
+                                id="provisionRate"
+                                value={seuil.provisionRate || null}
+                                onValueChange={(e) => handleNumberChange('provisionRate', e.value ?? null)}
+                                className="w-full"
+                                min={0}
+                                max={100}
+                                suffix="%"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="expectedRecoveryRateMin" className="font-semibold">Taux Récupération Min (%)</label>
+                            <InputNumber
+                                id="expectedRecoveryRateMin"
+                                value={seuil.expectedRecoveryRateMin || null}
+                                onValueChange={(e) => handleNumberChange('expectedRecoveryRateMin', e.value ?? null)}
+                                className="w-full"
+                                min={0}
+                                max={100}
+                                suffix="%"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="expectedRecoveryRateMax" className="font-semibold">Taux Récupération Max (%)</label>
+                            <InputNumber
+                                id="expectedRecoveryRateMax"
+                                value={seuil.expectedRecoveryRateMax || null}
+                                onValueChange={(e) => handleNumberChange('expectedRecoveryRateMax', e.value ?? null)}
+                                className="w-full"
+                                min={0}
+                                max={100}
+                                suffix="%"
                             />
                         </div>
                     </div>
@@ -318,35 +366,24 @@ export default function SeuilsContentieuxPage() {
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-4">
+                    <div className="col-12 md:col-6">
                         <div className="field">
-                            <label htmlFor="requiresDGApproval" className="font-semibold block mb-2">Approbation DG Requise</label>
+                            <label htmlFor="requiresDgApproval" className="font-semibold block mb-2">Approbation DG Requise</label>
                             <InputSwitch
-                                id="requiresDGApproval"
-                                checked={seuil.requiresDGApproval || false}
-                                onChange={(e) => setSeuil(prev => ({ ...prev, requiresDGApproval: e.value }))}
+                                id="requiresDgApproval"
+                                checked={seuil.requiresDgApproval ?? true}
+                                onChange={(e) => setSeuil(prev => ({ ...prev, requiresDgApproval: e.value }))}
                             />
                         </div>
                     </div>
 
-                    <div className="col-12 md:col-4">
+                    <div className="col-12 md:col-6">
                         <div className="field">
-                            <label htmlFor="autoEscalate" className="font-semibold block mb-2">Escalade Automatique</label>
+                            <label htmlFor="isActive" className="font-semibold block mb-2">Actif</label>
                             <InputSwitch
-                                id="autoEscalate"
-                                checked={seuil.autoEscalate || false}
-                                onChange={(e) => setSeuil(prev => ({ ...prev, autoEscalate: e.value }))}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="active" className="font-semibold block mb-2">Actif</label>
-                            <InputSwitch
-                                id="active"
-                                checked={seuil.active ?? true}
-                                onChange={(e) => setSeuil(prev => ({ ...prev, active: e.value }))}
+                                id="isActive"
+                                checked={seuil.isActive ?? true}
+                                onChange={(e) => setSeuil(prev => ({ ...prev, isActive: e.value }))}
                             />
                         </div>
                     </div>

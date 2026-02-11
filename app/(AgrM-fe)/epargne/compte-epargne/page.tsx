@@ -372,6 +372,8 @@ function SavingsAccountPage() {
                         stripedRows
                         showGridlines
                         size="small"
+                        sortField="openingDate"
+                        sortOrder={-1}
                     >
                         <Column field="accountNumber" header="N° Compte" sortable />
                         <Column

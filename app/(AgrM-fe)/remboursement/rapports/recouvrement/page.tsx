@@ -7,161 +7,171 @@ import { Button } from 'primereact/button';
 import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
-import { Card } from 'primereact/card';
 import { Tag } from 'primereact/tag';
-import { Chart } from 'primereact/chart';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
-
-interface RapportRecouvrement {
-    id?: number;
-    dossierNumber?: string;
-    creditNumber?: string;
-    clientName?: string;
-    phase?: string;
-    etape?: string;
-    amountDue?: number;
-    amountRecovered?: number;
-    recoveryRate?: number;
-    agentName?: string;
-    lastActionDate?: string;
-    nextActionDate?: string;
-    status?: string;
-}
-
-const PHASES = [
-    { label: 'Toutes', value: null },
-    { label: 'Phase Amiable', value: 'AMIABLE' },
-    { label: 'Phase Relance', value: 'RELANCE' },
-    { label: 'Phase Contentieux', value: 'CONTENTIEUX' }
-];
+import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 const STATUTS = [
-    { label: 'Tous', value: null },
-    { label: 'En cours', value: 'IN_PROGRESS' },
+    { label: 'Actif', value: 'ACTIVE' },
     { label: 'Résolu', value: 'RESOLVED' },
-    { label: 'Escaladé', value: 'ESCALATED' }
+    { label: 'Contentieux', value: 'LITIGATION' },
+    { label: 'Clôturé', value: 'CLOSED' }
+];
+
+const PRIORITIES = [
+    { label: 'Faible', value: 'LOW' },
+    { label: 'Normal', value: 'NORMAL' },
+    { label: 'Élevée', value: 'HIGH' },
+    { label: 'Critique', value: 'CRITICAL' }
 ];
 
 export default function RapportRecouvrementPage() {
-    const [dossiers, setDossiers] = useState<RapportRecouvrement[]>([]);
-    const [dateDebut, setDateDebut] = useState<Date | null>(null);
-    const [dateFin, setDateFin] = useState<Date | null>(null);
-    const [phase, setPhase] = useState<string | null>(null);
-    const [statut, setStatut] = useState<string | null>(null);
-    const [stats, setStats] = useState({ total: 0, recovered: 0, inProgress: 0, resolved: 0, rate: 0 });
-    const [chartData, setChartData] = useState({});
+    const [dossiers, setDossiers] = useState<any[]>([]);
+    const [filters, setFilters] = useState<any>({
+        dateRange: null,
+        status: null,
+        priority: null
+    });
     const toast = useRef<Toast>(null);
+    const dt = useRef<DataTable<any[]>>(null);
 
-    const { data, loading, error, fetchData, callType } = useConsumApi('');
-    const BASE_URL = buildApiUrl('/api/remboursement/reports/recovery');
+    const { data, loading, error, fetchData } = useConsumApi('');
+    const BASE_URL = buildApiUrl('/api/remboursement/recovery-cases');
 
     useEffect(() => {
-        if (data && callType === 'search') {
+        loadDossiers();
+    }, []);
+
+    useEffect(() => {
+        if (data) {
             setDossiers(Array.isArray(data) ? data : data.content || []);
-            calculateStats(Array.isArray(data) ? data : data.content || []);
         }
         if (error) {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue', life: 3000 });
         }
-    }, [data, error, callType]);
+    }, [data, error]);
 
-    const calculateStats = (data: RapportRecouvrement[]) => {
-        const totalDue = data.reduce((acc, item) => acc + (item.amountDue || 0), 0);
-        const totalRecovered = data.reduce((acc, item) => acc + (item.amountRecovered || 0), 0);
-        const inProgress = data.filter(d => d.status === 'IN_PROGRESS').length;
-        const resolved = data.filter(d => d.status === 'RESOLVED').length;
-        const rate = totalDue > 0 ? Math.round((totalRecovered / totalDue) * 100) : 0;
+    const loadDossiers = () => {
+        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDossiers');
+    };
 
-        setStats({ total: data.length, recovered: totalRecovered, inProgress, resolved, rate });
+    const formatCurrency = (value: number) => {
+        if (!value && value !== 0) return '-';
+        return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0 }).format(value) + ' BIF';
+    };
 
-        // Chart data
-        const phaseCount = {
-            'AMIABLE': data.filter(d => d.phase === 'AMIABLE').length,
-            'RELANCE': data.filter(d => d.phase === 'RELANCE').length,
-            'CONTENTIEUX': data.filter(d => d.phase === 'CONTENTIEUX').length
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('fr-FR');
+    };
+
+    const getStageName = (row: any): string => {
+        const stage = row.currentStage;
+        if (!stage) return '-';
+        if (typeof stage === 'object') return stage.nameFr || stage.name || stage.code || '-';
+        return stage;
+    };
+
+    // Client-side filtering
+    const filteredDossiers = dossiers.filter((d: any) => {
+        let match = true;
+        if (filters.status) {
+            match = match && d.status === filters.status;
+        }
+        if (filters.priority) {
+            match = match && d.priority === filters.priority;
+        }
+        if (filters.dateRange && filters.dateRange[0]) {
+            const openDate = new Date(d.openedDate);
+            match = match && openDate >= filters.dateRange[0];
+            if (filters.dateRange[1]) {
+                match = match && openDate <= filters.dateRange[1];
+            }
+        }
+        return match;
+    });
+
+    // Statistics
+    const totalOverdue = filteredDossiers.reduce((sum, d) => sum + (d.totalOverdue || 0), 0);
+    const totalRecovered = filteredDossiers.reduce((sum, d) => sum + (d.amountRecovered || 0), 0);
+    const activeCount = filteredDossiers.filter(d => d.status === 'ACTIVE').length;
+    const recoveryRate = totalOverdue > 0 ? Math.round((totalRecovered / totalOverdue) * 100) : 0;
+
+    const stageBodyTemplate = (rowData: any) => {
+        return getStageName(rowData);
+    };
+
+    const statusBodyTemplate = (rowData: any) => {
+        const labels: Record<string, string> = {
+            'ACTIVE': 'Actif', 'RESOLVED': 'Résolu', 'LITIGATION': 'Contentieux', 'CLOSED': 'Clôturé', 'ESCALATED': 'Escaladé'
         };
-
-        setChartData({
-            labels: ['Phase Amiable', 'Phase Relance', 'Phase Contentieux'],
-            datasets: [{
-                data: [phaseCount.AMIABLE, phaseCount.RELANCE, phaseCount.CONTENTIEUX],
-                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444']
-            }]
-        });
-    };
-
-    const handleSearch = () => {
-        const params = new URLSearchParams();
-        if (dateDebut) params.append('dateDebut', dateDebut.toISOString().split('T')[0]);
-        if (dateFin) params.append('dateFin', dateFin.toISOString().split('T')[0]);
-        if (phase) params.append('phase', phase);
-        if (statut) params.append('statut', statut);
-
-        fetchData(null, 'GET', `${BASE_URL}?${params.toString()}`, 'search');
-    };
-
-    const handleExport = () => {
-        toast.current?.show({ severity: 'info', summary: 'Export', detail: 'Export en cours...', life: 3000 });
-    };
-
-    const formatCurrency = (value: number | undefined) => {
-        if (value === undefined || value === null) return '-';
-        return new Intl.NumberFormat('fr-BI', { style: 'currency', currency: 'BIF' }).format(value);
-    };
-
-    const formatDate = (value: string | undefined) => {
-        if (!value) return '-';
-        return new Date(value).toLocaleDateString('fr-FR');
-    };
-
-    const phaseBodyTemplate = (rowData: RapportRecouvrement) => {
-        const phaseLabels: { [key: string]: string } = {
-            'AMIABLE': 'Amiable',
-            'RELANCE': 'Relance',
-            'CONTENTIEUX': 'Contentieux'
+        const severities: Record<string, any> = {
+            'ACTIVE': 'warning', 'RESOLVED': 'success', 'LITIGATION': 'danger', 'CLOSED': 'secondary', 'ESCALATED': 'danger'
         };
-        const severities: { [key: string]: 'success' | 'warning' | 'danger' } = {
-            'AMIABLE': 'success',
-            'RELANCE': 'warning',
-            'CONTENTIEUX': 'danger'
-        };
-        return <Tag value={phaseLabels[rowData.phase || ''] || rowData.phase} severity={severities[rowData.phase || ''] || 'info'} />;
+        return <Tag value={labels[rowData.status] || rowData.status} severity={severities[rowData.status] || 'info'} />;
     };
 
-    const statusBodyTemplate = (rowData: RapportRecouvrement) => {
-        const statusLabels: { [key: string]: string } = {
-            'IN_PROGRESS': 'En cours',
-            'RESOLVED': 'Résolu',
-            'ESCALATED': 'Escaladé'
-        };
-        const severities: { [key: string]: 'success' | 'warning' | 'danger' | 'info' } = {
-            'IN_PROGRESS': 'info',
-            'RESOLVED': 'success',
-            'ESCALATED': 'danger'
-        };
-        return <Tag value={statusLabels[rowData.status || ''] || rowData.status} severity={severities[rowData.status || ''] || 'secondary'} />;
+    const priorityBodyTemplate = (rowData: any) => {
+        const labels: Record<string, string> = { 'LOW': 'Faible', 'NORMAL': 'Normal', 'HIGH': 'Élevée', 'CRITICAL': 'Critique' };
+        const severities: Record<string, any> = { 'LOW': 'success', 'NORMAL': 'info', 'HIGH': 'warning', 'CRITICAL': 'danger' };
+        return <Tag value={labels[rowData.priority] || rowData.priority || '-'} severity={severities[rowData.priority] || 'secondary'} />;
     };
 
-    const rateBodyTemplate = (rowData: RapportRecouvrement) => {
-        const rate = rowData.recoveryRate || 0;
+    const rateBodyTemplate = (rowData: any) => {
+        const overdue = rowData.totalOverdue || 0;
+        const recovered = rowData.amountRecovered || 0;
+        const rate = overdue > 0 ? Math.round((recovered / overdue) * 100) : 0;
         return (
             <div className="flex align-items-center gap-2">
                 <span>{rate}%</span>
                 <div className="w-4rem h-0.5rem bg-gray-200 border-round">
                     <div
                         className={`h-full border-round ${rate >= 75 ? 'bg-green-500' : rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${rate}%` }}
+                        style={{ width: `${Math.min(rate, 100)}%` }}
                     />
                 </div>
             </div>
         );
     };
 
+    const exportCSV = () => {
+        dt.current?.exportCSV();
+    };
+
+    const exportPdf = () => {
+        exportToPDF({
+            title: 'Rapport de Recouvrement',
+            columns: [
+                { header: 'N° Dossier', dataKey: 'caseNumber' },
+                { header: 'N° Dossier Crédit', dataKey: 'applicationNumber' },
+                { header: 'Date Ouverture', dataKey: 'openedDate', formatter: formatDatePDF },
+                { header: 'Étape', dataKey: 'currentStage', formatter: (v: any) => typeof v === 'object' ? (v?.nameFr || v?.name || '-') : (v || '-') },
+                { header: 'Montant Dû', dataKey: 'totalOverdue', formatter: formatCurrencyPDF },
+                { header: 'Recouvré', dataKey: 'amountRecovered', formatter: formatCurrencyPDF },
+                { header: 'Jours Retard', dataKey: 'currentDaysOverdue' },
+                { header: 'Priorité', dataKey: 'priority' },
+                { header: 'Statut', dataKey: 'status' }
+            ],
+            data: filteredDossiers,
+            filename: 'rapport_recouvrement.pdf',
+            orientation: 'landscape',
+            statistics: [
+                { label: 'Total Dossiers', value: filteredDossiers.length },
+                { label: 'Montant Total Dû', value: formatCurrency(totalOverdue) },
+                { label: 'Montant Recouvré', value: formatCurrency(totalRecovered) },
+                { label: 'Taux de Recouvrement', value: `${recoveryRate}%` }
+            ]
+        });
+    };
+
     const header = (
         <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-            <h4 className="m-0">Dossiers de Recouvrement</h4>
-            <Button label="Exporter" icon="pi pi-download" severity="help" onClick={handleExport} />
+            <h5 className="m-0">Dossiers de Recouvrement</h5>
+            <div className="flex gap-2">
+                <Button label="Exporter CSV" icon="pi pi-file-excel" severity="success" onClick={exportCSV} />
+                <Button label="Exporter PDF" icon="pi pi-file-pdf" severity="danger" onClick={exportPdf} />
+            </div>
         </div>
     );
 
@@ -174,119 +184,104 @@ export default function RapportRecouvrementPage() {
                 Rapport de Recouvrement
             </h2>
 
-            <Card className="mb-4">
+            <div className="surface-100 p-3 border-round mb-4">
+                <h5 className="mb-3"><i className="pi pi-filter mr-2"></i>Filtres</h5>
                 <div className="grid">
-                    <div className="col-12 md:col-3">
-                        <div className="field">
-                            <label htmlFor="dateDebut" className="font-semibold">Date Début</label>
-                            <Calendar
-                                id="dateDebut"
-                                value={dateDebut}
-                                onChange={(e) => setDateDebut(e.value as Date)}
-                                className="w-full"
-                                dateFormat="dd/mm/yy"
-                                showIcon
-                            />
-                        </div>
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Période d'ouverture</label>
+                        <Calendar
+                            value={filters.dateRange}
+                            onChange={(e) => setFilters({ ...filters, dateRange: e.value })}
+                            selectionMode="range"
+                            readOnlyInput
+                            placeholder="Sélectionner une période"
+                            dateFormat="dd/mm/yy"
+                            showIcon
+                            showButtonBar
+                            className="w-full"
+                        />
                     </div>
-                    <div className="col-12 md:col-3">
-                        <div className="field">
-                            <label htmlFor="dateFin" className="font-semibold">Date Fin</label>
-                            <Calendar
-                                id="dateFin"
-                                value={dateFin}
-                                onChange={(e) => setDateFin(e.value as Date)}
-                                className="w-full"
-                                dateFormat="dd/mm/yy"
-                                showIcon
-                            />
-                        </div>
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Statut</label>
+                        <Dropdown
+                            value={filters.status}
+                            options={STATUTS}
+                            onChange={(e) => setFilters({ ...filters, status: e.value })}
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Tous les statuts"
+                            className="w-full"
+                            showClear
+                        />
                     </div>
-                    <div className="col-12 md:col-2">
-                        <div className="field">
-                            <label htmlFor="phase" className="font-semibold">Phase</label>
-                            <Dropdown
-                                id="phase"
-                                value={phase}
-                                options={PHASES}
-                                onChange={(e) => setPhase(e.value)}
-                                className="w-full"
-                                placeholder="Toutes"
-                            />
-                        </div>
-                    </div>
-                    <div className="col-12 md:col-2">
-                        <div className="field">
-                            <label htmlFor="statut" className="font-semibold">Statut</label>
-                            <Dropdown
-                                id="statut"
-                                value={statut}
-                                options={STATUTS}
-                                onChange={(e) => setStatut(e.value)}
-                                className="w-full"
-                                placeholder="Tous"
-                            />
-                        </div>
-                    </div>
-                    <div className="col-12 md:col-2 flex align-items-end">
-                        <Button label="Rechercher" icon="pi pi-search" onClick={handleSearch} className="w-full" />
+                    <div className="col-12 md:col-4">
+                        <label className="font-semibold block mb-2">Priorité</label>
+                        <Dropdown
+                            value={filters.priority}
+                            options={PRIORITIES}
+                            onChange={(e) => setFilters({ ...filters, priority: e.value })}
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Toutes les priorités"
+                            className="w-full"
+                            showClear
+                        />
                     </div>
                 </div>
-            </Card>
+            </div>
 
             <div className="grid mb-4">
                 <div className="col-12 md:col-3">
-                    <Card className="bg-blue-100">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-700">{stats.total}</div>
-                            <div className="text-500">Total Dossiers</div>
-                        </div>
-                    </Card>
+                    <div className="bg-blue-100 p-3 border-round text-center">
+                        <p className="text-500 m-0">Total Dossiers</p>
+                        <p className="text-2xl font-bold text-blue-700 m-0">{filteredDossiers.length}</p>
+                    </div>
                 </div>
                 <div className="col-12 md:col-3">
-                    <Card className="bg-green-100">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-green-700">{formatCurrency(stats.recovered)}</div>
-                            <div className="text-500">Montant Recouvré</div>
-                        </div>
-                    </Card>
+                    <div className="bg-green-100 p-3 border-round text-center">
+                        <p className="text-500 m-0">Montant Recouvré</p>
+                        <p className="text-2xl font-bold text-green-700 m-0">{formatCurrency(totalRecovered)}</p>
+                    </div>
                 </div>
                 <div className="col-12 md:col-3">
-                    <Card className="bg-orange-100">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-orange-700">{stats.inProgress}</div>
-                            <div className="text-500">En Cours</div>
-                        </div>
-                    </Card>
+                    <div className="bg-orange-100 p-3 border-round text-center">
+                        <p className="text-500 m-0">Dossiers Actifs</p>
+                        <p className="text-2xl font-bold text-orange-700 m-0">{activeCount}</p>
+                    </div>
                 </div>
                 <div className="col-12 md:col-3">
-                    <Card className="bg-purple-100">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold text-purple-700">{stats.rate}%</div>
-                            <div className="text-500">Taux de Recouvrement</div>
-                        </div>
-                    </Card>
+                    <div className="bg-purple-100 p-3 border-round text-center">
+                        <p className="text-500 m-0">Taux de Recouvrement</p>
+                        <p className="text-2xl font-bold text-purple-700 m-0">{recoveryRate}%</p>
+                    </div>
                 </div>
             </div>
 
             <DataTable
-                value={dossiers}
-                loading={loading && callType === 'search'}
+                ref={dt}
+                value={filteredDossiers}
+                loading={loading}
                 paginator
                 rows={10}
-                emptyMessage="Aucun dossier trouvé. Veuillez effectuer une recherche."
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                emptyMessage="Aucun dossier trouvé."
                 stripedRows
                 header={header}
+                exportFilename="rapport_recouvrement"
+                sortField="openedDate"
+                sortOrder={-1}
+                className="p-datatable-sm"
             >
-                <Column field="dossierNumber" header="N° Dossier" sortable />
-                <Column field="creditNumber" header="N° Crédit" sortable />
-                <Column field="clientName" header="Client" sortable />
-                <Column field="phase" header="Phase" body={phaseBodyTemplate} sortable />
-                <Column field="etape" header="Étape" />
-                <Column field="amountDue" header="Montant Dû" body={(row) => formatCurrency(row.amountDue)} sortable />
-                <Column field="recoveryRate" header="Taux" body={rateBodyTemplate} sortable />
-                <Column field="agentName" header="Agent" />
-                <Column field="status" header="Statut" body={statusBodyTemplate} />
+                <Column field="caseNumber" header="N° Dossier" sortable />
+                <Column field="applicationNumber" header="N° Dossier Crédit" sortable />
+                <Column field="openedDate" header="Date Ouverture" body={(row) => formatDate(row.openedDate)} sortable />
+                <Column header="Étape" body={stageBodyTemplate} sortable />
+                <Column field="totalOverdue" header="Montant Dû" body={(row) => formatCurrency(row.totalOverdue)} sortable />
+                <Column field="amountRecovered" header="Recouvré" body={(row) => formatCurrency(row.amountRecovered)} />
+                <Column header="Taux" body={rateBodyTemplate} />
+                <Column field="currentDaysOverdue" header="Jours Retard" sortable />
+                <Column field="priority" header="Priorité" body={priorityBodyTemplate} sortable />
+                <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
             </DataTable>
         </div>
     );

@@ -10,6 +10,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
 
@@ -96,7 +97,40 @@ export default function RapportDemandesPage() {
     };
 
     const exportPdf = () => {
-        toast.current?.show({ severity: 'info', summary: 'Export PDF', detail: 'Fonctionnalité en cours de développement', life: 3000 });
+        exportToPDF({
+            title: 'Rapport des Demandes de Crédit',
+            columns: [
+                { header: 'N° Dossier', dataKey: 'applicationNumber' },
+                { header: 'Date Dépôt', dataKey: 'applicationDate', formatter: formatDatePDF },
+                {
+                    header: 'Client',
+                    dataKey: 'client',
+                    formatter: (client: any) => client ? `${client.firstName} ${client.lastName}` : '-'
+                },
+                { header: 'Montant Demandé', dataKey: 'amountRequested', formatter: formatCurrencyPDF },
+                { header: 'Durée (mois)', dataKey: 'durationMonths' },
+                {
+                    header: 'Statut',
+                    dataKey: 'status',
+                    formatter: (status: any) => status?.nameFr || status?.name || '-'
+                },
+                {
+                    header: 'Agence',
+                    dataKey: 'branch',
+                    formatter: (branch: any) => branch?.name || '-'
+                },
+                { header: 'Responsable', dataKey: 'userAction' }
+            ],
+            data: filteredDemandes,
+            filename: 'rapport_demandes_credit.pdf',
+            orientation: 'landscape',
+            statistics: [
+                { label: 'Total Demandes', value: filteredDemandes.length },
+                { label: 'Montant Total', value: formatCurrency(totalAmount) },
+                { label: 'Approuvées', value: approvedCount },
+                { label: 'Rejetées', value: rejectedCount }
+            ]
+        });
     };
 
     const statusBodyTemplate = (rowData: any) => {
@@ -267,6 +301,8 @@ export default function RapportDemandesPage() {
                 emptyMessage="Aucune demande trouvée"
                 className="p-datatable-sm"
                 exportFilename="rapport_demandes_credit"
+                sortField="applicationDate"
+                sortOrder={-1}
             >
                 <Column field="applicationNumber" header="N° Dossier" sortable />
                 <Column field="applicationDate" header="Date Dépôt" body={(row) => formatDate(row.applicationDate)} sortable />
@@ -275,7 +311,7 @@ export default function RapportDemandesPage() {
                 <Column field="durationMonths" header="Durée (mois)" sortable />
                 <Column header="Statut" body={statusBodyTemplate} />
                 <Column header="Agence" body={branchBodyTemplate} sortable />
-                <Column header="Agent de Crédit" body={creditOfficerBodyTemplate} sortable />
+                <Column field="userAction" header="Responsable" sortable />
             </DataTable>
         </div>
     );

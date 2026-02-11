@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Calendar } from 'primereact/calendar';
@@ -8,6 +8,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { PaiementCredit, ModeRemboursement, MODES_REMBOURSEMENT } from '../types/RemboursementTypes';
+import { buildApiUrl } from '@/utils/apiConfig';
+import Cookies from 'js-cookie';
 
 interface PaiementFormProps {
     paiement: PaiementCredit;
@@ -17,7 +19,10 @@ interface PaiementFormProps {
     handleDateChange: (name: string, value: Date | null) => void;
     handleCheckboxChange: (name: string, value: boolean) => void;
     modesRemboursement: ModeRemboursement[];
+    selectedLoan?: any;
     isViewMode?: boolean;
+    onReceiptValidation?: (isValid: boolean) => void;
+    onAmountAutoFill?: (amount: number) => void;
 }
 
 export default function PaiementForm({
@@ -28,8 +33,84 @@ export default function PaiementForm({
     handleDateChange,
     handleCheckboxChange,
     modesRemboursement,
-    isViewMode = false
+    selectedLoan,
+    isViewMode = false,
+    onReceiptValidation,
+    onAmountAutoFill
 }: PaiementFormProps) {
+    const [receiptError, setReceiptError] = useState<string>('');
+    const [receiptValid, setReceiptValid] = useState(false);
+    const [receiptDetails, setReceiptDetails] = useState<string>('');
+    const [checkingReceipt, setCheckingReceipt] = useState(false);
+
+    const BASE_URL = buildApiUrl('/api/remboursement/payments');
+
+    // Check if payment mode is "Paiement en agence" (AGENCY)
+    const isAgencyMode = !paiement.isAutoDebit && !paiement.isHomeCollection && !paiement.isMobileMoney && !paiement.isBankTransfer;
+
+    // Debounced check for receipt number (only for Paiement en agence)
+    useEffect(() => {
+        const checkReceiptNumber = async () => {
+            const receiptNumber = paiement.receiptNumber?.trim();
+
+            // Reset states
+            setReceiptError('');
+            setReceiptValid(false);
+            setReceiptDetails('');
+
+            // Only validate for "Paiement en agence" mode
+            if (!isAgencyMode) {
+                onReceiptValidation?.(true);
+                return;
+            }
+
+            if (!receiptNumber || receiptNumber.length < 2) {
+                onReceiptValidation?.(true);
+                return;
+            }
+
+            setCheckingReceipt(true);
+            try {
+                const token = Cookies.get('token');
+                const response = await fetch(`${BASE_URL}/check-receipt/${encodeURIComponent(receiptNumber)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.valid) {
+                        // Receipt is valid - auto-fill amount
+                        setReceiptValid(true);
+                        setReceiptDetails(data.details || '');
+                        onReceiptValidation?.(true);
+
+                        // Auto-fill the amount from deposit slip
+                        if (data.amount && onAmountAutoFill) {
+                            onAmountAutoFill(data.amount);
+                        }
+                    } else {
+                        // Receipt is invalid - show error
+                        setReceiptError(data.error || 'Erreur de validation');
+                        onReceiptValidation?.(false);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking receipt number:', error);
+            } finally {
+                setCheckingReceipt(false);
+            }
+        };
+
+        const timeoutId = setTimeout(checkReceiptNumber, 500);
+        return () => clearTimeout(timeoutId);
+    }, [paiement.receiptNumber, isAgencyMode]);
+
     const getModeRemboursementType = () => {
         if (paiement.isAutoDebit) return 'AUTO_DEBIT';
         if (paiement.isHomeCollection) return 'HOME_COLLECTION';
@@ -68,20 +149,6 @@ export default function PaiementForm({
                                 className="w-full"
                                 disabled={true}
                                 placeholder="Généré automatiquement"
-                            />
-                        </div>
-
-                        <div className="field col-12 md:col-3">
-                            <label htmlFor="loanId" className="font-semibold">
-                                ID Crédit *
-                            </label>
-                            <InputNumber
-                                id="loanId"
-                                value={paiement.loanId || null}
-                                onValueChange={(e) => handleNumberChange('loanId', e.value ?? null)}
-                                className="w-full"
-                                disabled={isViewMode}
-                                placeholder="ID du crédit"
                             />
                         </div>
 
@@ -133,17 +200,32 @@ export default function PaiementForm({
 
                         <div className="field col-12 md:col-4">
                             <label htmlFor="receiptNumber" className="font-semibold">
-                                N° Reçu
+                                {isAgencyMode ? 'N° Bordereau de Dépôt' : 'N° Reçu'} {isAgencyMode && <span className="text-red-500">*</span>}
+                                {checkingReceipt && (
+                                    <i className="pi pi-spin pi-spinner ml-2 text-primary" style={{ fontSize: '0.8rem' }}></i>
+                                )}
                             </label>
                             <InputText
                                 id="receiptNumber"
                                 name="receiptNumber"
                                 value={paiement.receiptNumber || ''}
                                 onChange={handleChange}
-                                className="w-full"
+                                className={`w-full ${receiptError ? 'p-invalid' : ''} ${receiptValid ? 'border-green-500' : ''}`}
                                 disabled={isViewMode}
-                                placeholder="Numéro du reçu"
+                                placeholder={isAgencyMode ? "Ex: DS20260205123456" : "Numéro du reçu"}
                             />
+                            {receiptError && !isViewMode && isAgencyMode && (
+                                <small className="p-error block mt-1">
+                                    <i className="pi pi-exclamation-triangle mr-1"></i>
+                                    {receiptError}
+                                </small>
+                            )}
+                            {receiptValid && receiptDetails && !isViewMode && isAgencyMode && (
+                                <small className="text-green-600 block mt-1">
+                                    <i className="pi pi-check-circle mr-1"></i>
+                                    {receiptDetails}
+                                </small>
+                            )}
                         </div>
                     </div>
                 </div>

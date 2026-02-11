@@ -532,6 +532,8 @@ function DepositSlipPage() {
                         stripedRows
                         showGridlines
                         size="small"
+                        sortField="depositDate"
+                        sortOrder={-1}
                     >
                         <Column field="slipNumber" header="N° Bordereau" sortable />
                         <Column

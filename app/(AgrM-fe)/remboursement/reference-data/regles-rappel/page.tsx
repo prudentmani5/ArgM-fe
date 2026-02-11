@@ -19,26 +19,36 @@ import { buildApiUrl } from '../../../../../utils/apiConfig';
 
 interface RegleRappel {
     id?: number;
-    ruleName?: string;
-    daysAfterDue?: number;
+    code?: string;
+    name?: string;
+    nameFr?: string;
+    daysRelative?: number;
     reminderType?: string;
     channel?: string;
-    messageTemplate?: string;
-    description?: string;
-    isAutomatic?: boolean;
-    active?: boolean;
+    messageTemplateFr?: string;
+    messageTemplateEn?: string;
+    requiresAction?: boolean;
+    actionDescription?: string;
+    escalationRequired?: boolean;
+    sortOrder?: number;
+    isActive?: boolean;
 }
 
 class RegleRappelClass implements RegleRappel {
     id?: number;
-    ruleName?: string = '';
-    daysAfterDue?: number = 1;
+    code?: string = '';
+    name?: string = '';
+    nameFr?: string = '';
+    daysRelative?: number = 1;
     reminderType?: string = 'REMINDER';
     channel?: string = 'SMS';
-    messageTemplate?: string = '';
-    description?: string = '';
-    isAutomatic?: boolean = true;
-    active?: boolean = true;
+    messageTemplateFr?: string = '';
+    messageTemplateEn?: string = '';
+    requiresAction?: boolean = false;
+    actionDescription?: string = '';
+    escalationRequired?: boolean = false;
+    sortOrder?: number = 0;
+    isActive?: boolean = true;
 }
 
 const TYPES_RAPPEL = [
@@ -111,7 +121,7 @@ export default function ReglesRappelPage() {
     };
 
     const handleSave = () => {
-        if (!regle.ruleName || regle.daysAfterDue === undefined) {
+        if (!regle.code || !regle.name || !regle.nameFr || regle.daysRelative === undefined) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez remplir les champs obligatoires', life: 3000 });
             return;
         }
@@ -125,7 +135,7 @@ export default function ReglesRappelPage() {
 
     const confirmDelete = (rowData: RegleRappel) => {
         confirmDialog({
-            message: `Êtes-vous sûr de vouloir supprimer la règle "${rowData.ruleName}" ?`,
+            message: `Êtes-vous sûr de vouloir supprimer la règle "${rowData.nameFr || rowData.name}" ?`,
             header: 'Confirmation de suppression',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Oui',
@@ -165,11 +175,15 @@ export default function ReglesRappelPage() {
     };
 
     const activeBodyTemplate = (rowData: RegleRappel) => {
-        return <Tag value={rowData.active ? 'Actif' : 'Inactif'} severity={rowData.active ? 'success' : 'danger'} />;
+        return <Tag value={rowData.isActive ? 'Actif' : 'Inactif'} severity={rowData.isActive ? 'success' : 'danger'} />;
     };
 
-    const automaticBodyTemplate = (rowData: RegleRappel) => {
-        return <Tag value={rowData.isAutomatic ? 'Automatique' : 'Manuel'} severity={rowData.isAutomatic ? 'info' : 'secondary'} />;
+    const actionRequiredBodyTemplate = (rowData: RegleRappel) => {
+        return <Tag value={rowData.requiresAction ? 'Action Requise' : 'Auto'} severity={rowData.requiresAction ? 'warning' : 'info'} />;
+    };
+
+    const escalationBodyTemplate = (rowData: RegleRappel) => {
+        return rowData.escalationRequired ? <Tag value="Escalade" severity="danger" icon="pi pi-exclamation-triangle" /> : '-';
     };
 
     const canalBodyTemplate = (rowData: RegleRappel) => {
@@ -195,9 +209,9 @@ export default function ReglesRappelPage() {
     };
 
     const daysBodyTemplate = (rowData: RegleRappel) => {
-        if (rowData.daysAfterDue === 0) return 'Jour J';
-        if ((rowData.daysAfterDue || 0) < 0) return `J${rowData.daysAfterDue}`;
-        return `J+${rowData.daysAfterDue}`;
+        if (rowData.daysRelative === 0) return 'Jour J';
+        if ((rowData.daysRelative || 0) < 0) return `J${rowData.daysRelative}`;
+        return `J+${rowData.daysRelative}`;
     };
 
     const dialogFooter = (
@@ -237,15 +251,18 @@ export default function ReglesRappelPage() {
                 rows={10}
                 emptyMessage="Aucune règle trouvée"
                 stripedRows
-                sortField="daysAfterDue"
+                sortField="daysRelative"
                 sortOrder={1}
             >
-                <Column field="ruleName" header="Nom de la Règle" sortable />
-                <Column field="daysAfterDue" header="Déclenchement" body={daysBodyTemplate} sortable />
+                <Column field="code" header="Code" sortable />
+                <Column field="nameFr" header="Nom (FR)" sortable />
+                <Column field="daysRelative" header="Déclenchement" body={daysBodyTemplate} sortable />
                 <Column field="reminderType" header="Type" body={typeBodyTemplate} />
                 <Column field="channel" header="Canal" body={canalBodyTemplate} />
-                <Column field="isAutomatic" header="Mode" body={automaticBodyTemplate} />
-                <Column field="active" header="Statut" body={activeBodyTemplate} />
+                <Column field="requiresAction" header="Action" body={actionRequiredBodyTemplate} />
+                <Column field="escalationRequired" header="Escalade" body={escalationBodyTemplate} />
+                <Column field="sortOrder" header="Ordre" sortable />
+                <Column field="isActive" header="Statut" body={activeBodyTemplate} />
                 <Column header="Actions" body={actionBodyTemplate} style={{ width: '10rem' }} />
             </DataTable>
 

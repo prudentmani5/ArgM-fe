@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from 'primereact/button';
-import { Calendar } from 'primereact/calendar';
 import { Toast } from 'primereact/toast';
 import { Card } from 'primereact/card';
 import { Chart } from 'primereact/chart';
@@ -12,174 +11,171 @@ import { Divider } from 'primereact/divider';
 import { Tag } from 'primereact/tag';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
-
-interface SyntheseStat {
-    label: string;
-    value: number;
-    change?: number;
-    trend?: 'up' | 'down' | 'stable';
-}
-
-interface TopClient {
-    clientName: string;
-    creditNumber: string;
-    totalDue: number;
-    daysOverdue: number;
-    classification: string;
-}
+import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 export default function SyntheseRemboursementPage() {
-    const [dateDebut, setDateDebut] = useState<Date | null>(() => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - 1);
-        return date;
-    });
-    const [dateFin, setDateFin] = useState<Date | null>(new Date());
     const [stats, setStats] = useState({
-        totalCredits: 0,
-        totalOutstanding: 0,
-        totalCollected: 0,
-        collectionRate: 0,
-        overdueCount: 0,
-        overdueAmount: 0,
-        litigationCount: 0,
-        litigationAmount: 0
+        totalPayments: 0, totalCollected: 0,
+        overdueCount: 0, overdueAmount: 0, avgDaysOverdue: 0,
+        recoveryCount: 0, recoveryRecovered: 0, recoveryRate: 0,
+        litigationCount: 0, litigationAmount: 0
     });
-    const [paymentTrend, setPaymentTrend] = useState<any>({});
     const [classificationChart, setClassificationChart] = useState<any>({});
-    const [topOverdue, setTopOverdue] = useState<TopClient[]>([]);
+    const [statusChart, setStatusChart] = useState<any>({});
+    const [topOverdue, setTopOverdue] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const toast = useRef<Toast>(null);
 
-    const { data, loading, error, fetchData, callType } = useConsumApi('');
-    const BASE_URL = buildApiUrl('/api/remboursement/reports/summary');
+    const paymentsApi = useConsumApi('');
+    const overdueApi = useConsumApi('');
+    const recoveryApi = useConsumApi('');
+    const legalApi = useConsumApi('');
 
     useEffect(() => {
-        // Initialize with sample chart data
-        initializeCharts();
+        loadAllData();
     }, []);
 
+    // Handle payments data
     useEffect(() => {
-        if (data && callType === 'search') {
-            if (data.stats) setStats(data.stats);
-            if (data.topOverdue) setTopOverdue(data.topOverdue);
-            if (data.paymentTrend) updatePaymentTrendChart(data.paymentTrend);
-            if (data.classification) updateClassificationChart(data.classification);
+        if (paymentsApi.data) {
+            const payments = Array.isArray(paymentsApi.data) ? paymentsApi.data : paymentsApi.data.content || [];
+            const totalCollected = payments.reduce((sum: number, p: any) => sum + (p.amountReceived || 0), 0);
+            setStats(prev => ({ ...prev, totalPayments: payments.length, totalCollected }));
         }
-        if (error) {
-            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: error.message || 'Une erreur est survenue', life: 3000 });
+        if (paymentsApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Erreur chargement paiements', life: 3000 });
         }
-    }, [data, error, callType]);
+    }, [paymentsApi.data, paymentsApi.error]);
 
-    const initializeCharts = () => {
-        // Payment trend chart
-        setPaymentTrend({
-            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
-            datasets: [
-                {
-                    label: 'Paiements Attendus',
-                    data: [0, 0, 0, 0, 0, 0],
-                    fill: false,
-                    borderColor: '#3b82f6',
-                    tension: 0.4
-                },
-                {
-                    label: 'Paiements Reçus',
-                    data: [0, 0, 0, 0, 0, 0],
-                    fill: false,
-                    borderColor: '#22c55e',
-                    tension: 0.4
-                }
-            ]
-        });
+    // Handle overdue data
+    useEffect(() => {
+        if (overdueApi.data) {
+            const overdue = Array.isArray(overdueApi.data) ? overdueApi.data : overdueApi.data.content || [];
+            const overdueAmount = overdue.reduce((sum: number, r: any) => sum + (r.totalDue || 0) - (r.totalPaid || 0), 0);
+            const avgDays = overdue.length > 0
+                ? Math.round(overdue.reduce((sum: number, r: any) => sum + (r.daysOverdue || 0), 0) / overdue.length)
+                : 0;
 
-        // Classification chart
-        setClassificationChart({
-            labels: ['Normal', 'À surveiller', 'Douteux', 'Contentieux'],
-            datasets: [{
-                data: [0, 0, 0, 0],
-                backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444']
-            }]
-        });
+            setStats(prev => ({ ...prev, overdueCount: overdue.length, overdueAmount, avgDaysOverdue: avgDays }));
+
+            // Top 10 overdue
+            const sorted = [...overdue].sort((a, b) => (b.totalDue || 0) - (a.totalDue || 0)).slice(0, 10);
+            setTopOverdue(sorted);
+
+            // Classification chart
+            const classCount = { normal: 0, watch: 0, doubtful: 0, litigation: 0 };
+            overdue.forEach((r: any) => {
+                const days = r.daysOverdue || 0;
+                if (days > 90) classCount.litigation++;
+                else if (days > 60) classCount.doubtful++;
+                else if (days > 30) classCount.watch++;
+                else classCount.normal++;
+            });
+            setClassificationChart({
+                labels: ['Normal', 'A surveiller', 'Douteux', 'Contentieux'],
+                datasets: [{
+                    data: [classCount.normal, classCount.watch, classCount.doubtful, classCount.litigation],
+                    backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444']
+                }]
+            });
+        }
+    }, [overdueApi.data, overdueApi.error]);
+
+    // Handle recovery data
+    useEffect(() => {
+        if (recoveryApi.data) {
+            const recovery = Array.isArray(recoveryApi.data) ? recoveryApi.data : recoveryApi.data.content || [];
+            const totalOverdue = recovery.reduce((sum: number, d: any) => sum + (d.totalOverdue || 0), 0);
+            const totalRecovered = recovery.reduce((sum: number, d: any) => sum + (d.amountRecovered || 0), 0);
+            const rate = totalOverdue > 0 ? Math.round((totalRecovered / totalOverdue) * 100) : 0;
+
+            setStats(prev => ({ ...prev, recoveryCount: recovery.length, recoveryRecovered: totalRecovered, recoveryRate: rate }));
+
+            // Status chart
+            const statusCount: Record<string, number> = {};
+            recovery.forEach((d: any) => {
+                const s = d.status || 'UNKNOWN';
+                statusCount[s] = (statusCount[s] || 0) + 1;
+            });
+            const labels: Record<string, string> = { 'ACTIVE': 'Actif', 'RESOLVED': 'Résolu', 'LITIGATION': 'Contentieux', 'CLOSED': 'Clôturé' };
+            const colors: Record<string, string> = { 'ACTIVE': '#f59e0b', 'RESOLVED': '#22c55e', 'LITIGATION': '#ef4444', 'CLOSED': '#6b7280' };
+            setStatusChart({
+                labels: Object.keys(statusCount).map(k => labels[k] || k),
+                datasets: [{
+                    data: Object.values(statusCount),
+                    backgroundColor: Object.keys(statusCount).map(k => colors[k] || '#3b82f6')
+                }]
+            });
+        }
+    }, [recoveryApi.data, recoveryApi.error]);
+
+    // Handle legal data
+    useEffect(() => {
+        if (legalApi.data) {
+            const legal = Array.isArray(legalApi.data) ? legalApi.data : legalApi.data.content || [];
+            const litigationAmount = legal.reduce((sum: number, d: any) => sum + (d.amountAtTransfer || 0), 0);
+            setStats(prev => ({ ...prev, litigationCount: legal.length, litigationAmount }));
+        }
+    }, [legalApi.data, legalApi.error]);
+
+    useEffect(() => {
+        setIsLoading(paymentsApi.loading || overdueApi.loading || recoveryApi.loading || legalApi.loading);
+    }, [paymentsApi.loading, overdueApi.loading, recoveryApi.loading, legalApi.loading]);
+
+    const loadAllData = () => {
+        paymentsApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/payments/findall'), 'loadPayments');
+        overdueApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/schedules/findoverdue'), 'loadOverdue');
+        recoveryApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/recovery-cases/findall'), 'loadRecovery');
+        legalApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/legal-cases/findall'), 'loadLegal');
     };
 
-    const updatePaymentTrendChart = (trendData: any) => {
-        setPaymentTrend({
-            labels: trendData.labels || [],
-            datasets: [
-                {
-                    label: 'Paiements Attendus',
-                    data: trendData.expected || [],
-                    fill: false,
-                    borderColor: '#3b82f6',
-                    tension: 0.4
-                },
-                {
-                    label: 'Paiements Reçus',
-                    data: trendData.received || [],
-                    fill: false,
-                    borderColor: '#22c55e',
-                    tension: 0.4
-                }
-            ]
-        });
+    const formatCurrency = (value: number) => {
+        if (!value && value !== 0) return '-';
+        return new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0 }).format(value) + ' BIF';
     };
 
-    const updateClassificationChart = (classData: any) => {
-        setClassificationChart({
-            labels: ['Normal', 'À surveiller', 'Douteux', 'Contentieux'],
-            datasets: [{
-                data: [
-                    classData.normal || 0,
-                    classData.watch || 0,
-                    classData.doubtful || 0,
-                    classData.litigation || 0
-                ],
-                backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444']
-            }]
-        });
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('fr-FR');
     };
 
-    const handleSearch = () => {
-        const params = new URLSearchParams();
-        if (dateDebut) params.append('dateDebut', dateDebut.toISOString().split('T')[0]);
-        if (dateFin) params.append('dateFin', dateFin.toISOString().split('T')[0]);
-
-        fetchData(null, 'GET', `${BASE_URL}?${params.toString()}`, 'search');
-    };
-
-    const handleExport = () => {
-        toast.current?.show({ severity: 'info', summary: 'Export', detail: 'Génération du rapport PDF en cours...', life: 3000 });
-    };
-
-    const formatCurrency = (value: number | undefined) => {
-        if (value === undefined || value === null) return '-';
-        return new Intl.NumberFormat('fr-BI', { style: 'currency', currency: 'BIF' }).format(value);
-    };
-
-    const classificationBodyTemplate = (rowData: TopClient) => {
-        const labels: { [key: string]: string } = {
-            'NORMAL': 'Normal',
-            'WATCH': 'À surveiller',
-            'DOUBTFUL': 'Douteux',
-            'LITIGATION': 'Contentieux'
-        };
-        const severities: { [key: string]: 'success' | 'info' | 'warning' | 'danger' } = {
-            'NORMAL': 'success',
-            'WATCH': 'info',
-            'DOUBTFUL': 'warning',
-            'LITIGATION': 'danger'
-        };
-        return <Tag value={labels[rowData.classification] || rowData.classification} severity={severities[rowData.classification] || 'secondary'} />;
+    const classificationBodyTemplate = (rowData: any) => {
+        const days = rowData.daysOverdue || 0;
+        let label = 'Normal';
+        let severity: any = 'success';
+        if (days > 90) { label = 'Contentieux'; severity = 'danger'; }
+        else if (days > 60) { label = 'Douteux'; severity = 'warning'; }
+        else if (days > 30) { label = 'A surveiller'; severity = 'info'; }
+        return <Tag value={label} severity={severity} />;
     };
 
     const chartOptions = {
-        plugins: {
-            legend: {
-                position: 'bottom' as const
-            }
-        },
+        plugins: { legend: { position: 'bottom' as const } },
         responsive: true,
         maintainAspectRatio: false
+    };
+
+    const exportPdf = () => {
+        exportToPDF({
+            title: 'Synthese Remboursement',
+            columns: [
+                { header: 'N° Crédit', dataKey: 'loanId' },
+                { header: 'Date Échéance', dataKey: 'dueDate', formatter: formatDatePDF },
+                { header: 'Montant Dû', dataKey: 'totalDue', formatter: formatCurrencyPDF },
+                { header: 'Jours Retard', dataKey: 'daysOverdue' }
+            ],
+            data: topOverdue,
+            filename: 'synthese_remboursement.pdf',
+            orientation: 'landscape',
+            statistics: [
+                { label: 'Total Paiements', value: stats.totalPayments },
+                { label: 'Montant Collecté', value: formatCurrency(stats.totalCollected) },
+                { label: 'Crédits en Retard', value: stats.overdueCount },
+                { label: 'Taux de Recouvrement', value: `${stats.recoveryRate}%` },
+                { label: 'Dossiers Contentieux', value: stats.litigationCount },
+                { label: 'Montant Contentieux', value: formatCurrency(stats.litigationAmount) }
+            ]
+        });
     };
 
     return (
@@ -189,44 +185,13 @@ export default function SyntheseRemboursementPage() {
             <div className="flex flex-wrap align-items-center justify-content-between mb-4">
                 <h2 className="m-0">
                     <i className="pi pi-chart-pie mr-2"></i>
-                    Synthèse Remboursement
+                    Synthese Remboursement
                 </h2>
-                <Button label="Exporter PDF" icon="pi pi-file-pdf" severity="help" onClick={handleExport} />
-            </div>
-
-            <Card className="mb-4">
-                <div className="grid">
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="dateDebut" className="font-semibold">Période du</label>
-                            <Calendar
-                                id="dateDebut"
-                                value={dateDebut}
-                                onChange={(e) => setDateDebut(e.value as Date)}
-                                className="w-full"
-                                dateFormat="dd/mm/yy"
-                                showIcon
-                            />
-                        </div>
-                    </div>
-                    <div className="col-12 md:col-4">
-                        <div className="field">
-                            <label htmlFor="dateFin" className="font-semibold">Au</label>
-                            <Calendar
-                                id="dateFin"
-                                value={dateFin}
-                                onChange={(e) => setDateFin(e.value as Date)}
-                                className="w-full"
-                                dateFormat="dd/mm/yy"
-                                showIcon
-                            />
-                        </div>
-                    </div>
-                    <div className="col-12 md:col-4 flex align-items-end">
-                        <Button label="Générer Synthèse" icon="pi pi-refresh" onClick={handleSearch} className="w-full" loading={loading} />
-                    </div>
+                <div className="flex gap-2">
+                    <Button label="Actualiser" icon="pi pi-refresh" onClick={loadAllData} loading={isLoading} />
+                    <Button label="Exporter PDF" icon="pi pi-file-pdf" severity="danger" onClick={exportPdf} />
                 </div>
-            </Card>
+            </div>
 
             {/* Key Performance Indicators */}
             <div className="grid mb-4">
@@ -234,8 +199,8 @@ export default function SyntheseRemboursementPage() {
                     <Card className="bg-blue-100 h-full">
                         <div className="text-center">
                             <i className="pi pi-wallet text-4xl text-blue-500 mb-2"></i>
-                            <div className="text-2xl font-bold text-blue-700">{stats.totalCredits}</div>
-                            <div className="text-500">Crédits Actifs</div>
+                            <div className="text-2xl font-bold text-blue-700">{stats.totalPayments}</div>
+                            <div className="text-500">Paiements Enregistrés</div>
                         </div>
                     </Card>
                 </div>
@@ -262,7 +227,7 @@ export default function SyntheseRemboursementPage() {
                     <Card className="bg-purple-100 h-full">
                         <div className="text-center">
                             <i className="pi pi-percentage text-4xl text-purple-500 mb-2"></i>
-                            <div className="text-2xl font-bold text-purple-700">{stats.collectionRate}%</div>
+                            <div className="text-2xl font-bold text-purple-700">{stats.recoveryRate}%</div>
                             <div className="text-500">Taux de Recouvrement</div>
                         </div>
                     </Card>
@@ -271,17 +236,17 @@ export default function SyntheseRemboursementPage() {
 
             {/* Charts Section */}
             <div className="grid mb-4">
-                <div className="col-12 md:col-8">
-                    <Card title="Tendance des Paiements" className="h-full">
-                        <div style={{ height: '300px' }}>
-                            <Chart type="line" data={paymentTrend} options={chartOptions} style={{ height: '100%' }} />
-                        </div>
-                    </Card>
-                </div>
-                <div className="col-12 md:col-4">
+                <div className="col-12 md:col-6">
                     <Card title="Classification des Retards" className="h-full">
                         <div style={{ height: '300px' }}>
                             <Chart type="doughnut" data={classificationChart} options={chartOptions} style={{ height: '100%' }} />
+                        </div>
+                    </Card>
+                </div>
+                <div className="col-12 md:col-6">
+                    <Card title="Statut des Dossiers Recouvrement" className="h-full">
+                        <div style={{ height: '300px' }}>
+                            <Chart type="pie" data={statusChart} options={chartOptions} style={{ height: '100%' }} />
                         </div>
                     </Card>
                 </div>
@@ -289,52 +254,50 @@ export default function SyntheseRemboursementPage() {
 
             {/* Secondary Stats */}
             <div className="grid mb-4">
-                <div className="col-12 md:col-6">
+                <div className="col-12 md:col-4">
                     <Card className="bg-red-50">
-                        <div className="flex align-items-center justify-content-between">
-                            <div>
-                                <div className="text-500 mb-1">Dossiers Contentieux</div>
-                                <div className="text-2xl font-bold text-red-700">{stats.litigationCount}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-500 mb-1">Montant en Contentieux</div>
-                                <div className="text-xl font-semibold text-red-600">{formatCurrency(stats.litigationAmount)}</div>
-                            </div>
+                        <div className="text-center">
+                            <div className="text-500 mb-1">Dossiers Contentieux</div>
+                            <div className="text-2xl font-bold text-red-700">{stats.litigationCount}</div>
+                            <div className="text-sm text-500">{formatCurrency(stats.litigationAmount)}</div>
                         </div>
                     </Card>
                 </div>
-                <div className="col-12 md:col-6">
+                <div className="col-12 md:col-4">
                     <Card className="bg-cyan-50">
-                        <div className="flex align-items-center justify-content-between">
-                            <div>
-                                <div className="text-500 mb-1">Encours Total</div>
-                                <div className="text-2xl font-bold text-cyan-700">{formatCurrency(stats.totalOutstanding)}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-500 mb-1">Taux de Retard</div>
-                                <div className="text-xl font-semibold text-cyan-600">
-                                    {stats.totalOutstanding > 0 ? Math.round((stats.overdueAmount / stats.totalOutstanding) * 100) : 0}%
-                                </div>
-                            </div>
+                        <div className="text-center">
+                            <div className="text-500 mb-1">Dossiers Recouvrement</div>
+                            <div className="text-2xl font-bold text-cyan-700">{stats.recoveryCount}</div>
+                            <div className="text-sm text-500">{formatCurrency(stats.recoveryRecovered)} recouvré</div>
+                        </div>
+                    </Card>
+                </div>
+                <div className="col-12 md:col-4">
+                    <Card className="bg-indigo-50">
+                        <div className="text-center">
+                            <div className="text-500 mb-1">Retard Moyen</div>
+                            <div className="text-2xl font-bold text-indigo-700">{stats.avgDaysOverdue} jours</div>
                         </div>
                     </Card>
                 </div>
             </div>
 
-            {/* Top Overdue Clients */}
-            <Card title="Top 10 - Clients avec les Plus Gros Impayés" className="mb-4">
+            {/* Top Overdue */}
+            <Card title="Top 10 - Échéances avec les Plus Gros Impayés" className="mb-4">
                 <DataTable
                     value={topOverdue}
-                    loading={loading && callType === 'search'}
-                    emptyMessage="Aucune donnée disponible. Veuillez générer la synthèse."
+                    loading={isLoading}
+                    emptyMessage="Aucune donnée disponible."
                     stripedRows
                     rows={10}
+                    className="p-datatable-sm"
                 >
-                    <Column field="clientName" header="Client" sortable />
-                    <Column field="creditNumber" header="N° Crédit" />
+                    <Column field="loanId" header="N° Crédit" sortable />
+                    <Column field="dueDate" header="Date Échéance" body={(row) => formatDate(row.dueDate)} sortable />
                     <Column field="totalDue" header="Montant Dû" body={(row) => formatCurrency(row.totalDue)} sortable />
+                    <Column field="totalPaid" header="Montant Payé" body={(row) => formatCurrency(row.totalPaid)} />
                     <Column field="daysOverdue" header="Jours Retard" body={(row) => <Tag value={`${row.daysOverdue} jours`} severity={row.daysOverdue > 90 ? 'danger' : row.daysOverdue > 30 ? 'warning' : 'info'} />} sortable />
-                    <Column field="classification" header="Classification" body={classificationBodyTemplate} />
+                    <Column header="Classification" body={classificationBodyTemplate} />
                 </DataTable>
             </Card>
 
@@ -342,7 +305,7 @@ export default function SyntheseRemboursementPage() {
 
             <div className="text-center text-500">
                 <i className="pi pi-info-circle mr-2"></i>
-                Les données sont calculées en temps réel à partir de la base de données.
+                Les données sont calculées en temps réel a partir de la base de données.
             </div>
         </div>
     );
