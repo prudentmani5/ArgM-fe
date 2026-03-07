@@ -10,8 +10,9 @@ import { Chart } from 'primereact/chart';
 import { useSearchParams } from 'next/navigation';
 import { LoanRiskAssessment } from './LoanRiskAssessment';
 import { LoanRiskAssessmentForm } from './LoanRiskAssessmentForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function LoanRiskAssessmentPage() {
+function LoanRiskAssessmentPage() {
     const [assessment, setAssessment] = useState<LoanRiskAssessment | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -282,3 +283,12 @@ export default function LoanRiskAssessmentPage() {
         </div>
     );
 }
+
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanRiskAssessmentPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { InsurancePartner } from './InsurancePartner';
 import InsurancePartnerForm from './InsurancePartnerForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const InsurancePartnersPage = () => {
     const [insurancePartners, setInsurancePartners] = useState<InsurancePartner[]>([]);
@@ -206,4 +207,11 @@ const InsurancePartnersPage = () => {
     );
 };
 
-export default InsurancePartnersPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <InsurancePartnersPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

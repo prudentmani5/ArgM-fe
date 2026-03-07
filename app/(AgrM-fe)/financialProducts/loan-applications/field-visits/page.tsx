@@ -13,6 +13,7 @@ import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoanFieldVisit, VisitTypeLabels, VisitTypeIcons, VisitTypeColors } from './LoanFieldVisit';
 import LoanFieldVisitForm from './LoanFieldVisitForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanFieldVisitPage = () => {
     const [fieldVisits, setFieldVisits] = useState<LoanFieldVisit[]>([]);
@@ -293,4 +294,11 @@ const LoanFieldVisitPage = () => {
     );
 };
 
-export default LoanFieldVisitPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanFieldVisitPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

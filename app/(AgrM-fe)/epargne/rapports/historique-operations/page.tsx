@@ -13,8 +13,10 @@ import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import { AutoComplete } from 'primereact/autocomplete';
 import { InputText } from 'primereact/inputtext';
-import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
-import { API_BASE_URL } from '../../../../../utils/apiConfig';
+import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { API_BASE_URL } from '@/utils/apiConfig';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const SAVINGS_URL = `${API_BASE_URL}/api/savings-accounts`;
@@ -111,7 +113,7 @@ const RapportHistoriqueOperationsPage = () => {
                 accountNumber: acc.accountNumber,
                 currentBalance: acc.currentBalance || 0,
                 clientId: acc.client?.id,
-                clientName: acc.client ? `${acc.client.firstName} ${acc.client.lastName}` : '',
+                clientName: getClientDisplayName(acc.client),
                 clientNumber: acc.client?.clientNumber || '',
                 status: acc.status
             }));
@@ -279,17 +281,11 @@ const RapportHistoriqueOperationsPage = () => {
                         gap: 12px;
                     }
 
-                    .logo {
+                    .logo-img {
                         width: 50px;
                         height: 50px;
-                        background: linear-gradient(135deg, #1e40af, #3b82f6);
+                        object-fit: contain;
                         border-radius: 8px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: #fff;
-                        font-size: 16px;
-                        font-weight: bold;
                     }
 
                     .company-name {
@@ -559,7 +555,7 @@ const RapportHistoriqueOperationsPage = () => {
                     <!-- Header -->
                     <div class="header">
                         <div class="logo-section">
-                            <div class="logo">AgrM</div>
+                            <img src="/layout/images/logo/logoAgrinova.PNG" alt="Logo" style="width:50px;height:50px;object-fit:contain;border-radius:8px" />
                             <div>
                                 <h1 class="company-name">${companyName}</h1>
                                 <p class="company-subtitle">Institution de Microfinance Agréée</p>
@@ -1037,4 +1033,11 @@ const RapportHistoriqueOperationsPage = () => {
     );
 };
 
-export default RapportHistoriqueOperationsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_REPORT']}>
+            <RapportHistoriqueOperationsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

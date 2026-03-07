@@ -14,6 +14,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import Cookies from 'js-cookie';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
 const DISBURSEMENT_URL = buildApiUrl('/api/credit/disbursements');
@@ -117,7 +118,9 @@ export default function DecaissementsApprouvesPage() {
     }, [savingsAccounts]);
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     const formatCurrency = (value: number) => {

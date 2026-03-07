@@ -17,8 +17,9 @@ import { Tag } from 'primereact/tag';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptCompte } from '../types';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function ComptePage() {
+function ComptePage() {
     const [comptes, setComptes] = useState<CptCompte[]>([]);
     const [compte, setCompte] = useState<CptCompte>(new CptCompte());
     const [dialogVisible, setDialogVisible] = useState(false);
@@ -365,5 +366,13 @@ export default function ComptePage() {
                 </div>
             </Dialog>
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_VIEW']}>
+            <ComptePage />
+        </ProtectedPage>
     );
 }

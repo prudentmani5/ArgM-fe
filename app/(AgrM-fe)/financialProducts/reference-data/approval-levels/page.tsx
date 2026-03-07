@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { ApprovalLevel } from './ApprovalLevel';
 import ApprovalLevelForm from './ApprovalLevelForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const ApprovalLevelsPage = () => {
     const [approvalLevels, setApprovalLevels] = useState<ApprovalLevel[]>([]);
@@ -207,4 +208,11 @@ const ApprovalLevelsPage = () => {
     );
 };
 
-export default ApprovalLevelsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <ApprovalLevelsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

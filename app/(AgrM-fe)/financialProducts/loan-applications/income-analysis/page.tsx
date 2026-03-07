@@ -10,8 +10,9 @@ import { Tag } from 'primereact/tag';
 import { useSearchParams } from 'next/navigation';
 import { LoanIncomeAnalysis } from './LoanIncomeAnalysis';
 import { LoanIncomeAnalysisForm } from './LoanIncomeAnalysisForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function LoanIncomeAnalysisPage() {
+function LoanIncomeAnalysisPage() {
     const [incomes, setIncomes] = useState<LoanIncomeAnalysis[]>([]);
     const [selectedIncomes, setSelectedIncomes] = useState<LoanIncomeAnalysis[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -227,3 +228,12 @@ export default function LoanIncomeAnalysisPage() {
         </div>
     );
 }
+
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanIncomeAnalysisPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

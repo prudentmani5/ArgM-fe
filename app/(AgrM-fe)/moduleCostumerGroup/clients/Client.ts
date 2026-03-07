@@ -1,7 +1,8 @@
 // Enums
 export enum ClientType {
     INDIVIDUAL = 'INDIVIDUAL',
-    BUSINESS = 'BUSINESS'
+    BUSINESS = 'BUSINESS',
+    JOINT_ACCOUNT = 'JOINT_ACCOUNT'
 }
 
 export enum Gender {
@@ -122,6 +123,52 @@ export interface Branch {
     isActive: boolean;
 }
 
+export interface RelationshipType {
+    id?: number;
+    code: string;
+    name: string;
+    nameFr: string;
+    isActive: boolean;
+}
+
+export interface EmergencyContact {
+    id?: number;
+    contactName: string;
+    relationshipType?: RelationshipType;
+    relationshipTypeId?: number;
+    relationshipOther: string;
+    phonePrimary: string;
+    phoneSecondary: string;
+    address: string;
+    isPrimary: boolean;
+    isActive: boolean;
+    contactFor: string;
+}
+
+export class EmergencyContactClass implements EmergencyContact {
+    id?: number;
+    contactName: string;
+    relationshipTypeId?: number;
+    relationshipOther: string;
+    phonePrimary: string;
+    phoneSecondary: string;
+    address: string;
+    isPrimary: boolean;
+    isActive: boolean;
+    contactFor: string;
+
+    constructor(contactFor: string = 'PRINCIPAL') {
+        this.contactName = '';
+        this.relationshipOther = '';
+        this.phonePrimary = '';
+        this.phoneSecondary = '';
+        this.address = '';
+        this.isPrimary = false;
+        this.isActive = true;
+        this.contactFor = contactFor;
+    }
+}
+
 // Client Class
 export class Client {
     id?: number;
@@ -194,8 +241,35 @@ export class Client {
     // Status
     status: ClientStatus;
 
-    // Photo
+    // Photo & Signature
     photoPath: string;
+    signatureImagePath: string;
+
+    // Co-titulaire (JOINT_ACCOUNT)
+    secondLastName: string;
+    secondFirstName: string;
+    secondGender: Gender;
+    secondDateOfBirth: string;
+    secondPlaceOfBirth: string;
+    secondNationalityId?: number;
+    secondPhonePrimary: string;
+    secondIdDocumentTypeId?: number;
+    secondIdDocumentNumber: string;
+    secondIdIssueDate: string;
+    secondIdExpiryDate: string;
+    secondIdDocumentScanPath: string;
+    secondPhotoPath: string;
+    secondSignatureImagePath: string;
+
+    // Co-titulaire Address
+    secondProvinceId?: number;
+    secondCommuneId?: number;
+    secondZoneId?: number;
+    secondCollineId?: number;
+    secondStreetAddress: string;
+
+    // Emergency Contacts (Personne de Contact)
+    emergencyContacts: EmergencyContact[];
 
     // Notes
     notes: string;
@@ -232,6 +306,21 @@ export class Client {
         this.riskRating = RiskRating.LOW;
         this.status = ClientStatus.PENDING;
         this.photoPath = '';
+        this.signatureImagePath = '';
+        this.secondLastName = '';
+        this.secondFirstName = '';
+        this.secondGender = Gender.M;
+        this.secondDateOfBirth = '';
+        this.secondPlaceOfBirth = '';
+        this.secondPhonePrimary = '';
+        this.secondIdDocumentNumber = '';
+        this.secondIdIssueDate = '';
+        this.secondIdExpiryDate = '';
+        this.secondIdDocumentScanPath = '';
+        this.secondPhotoPath = '';
+        this.secondSignatureImagePath = '';
+        this.secondStreetAddress = '';
+        this.emergencyContacts = [];
         this.notes = '';
         this.userAction = '';
     }

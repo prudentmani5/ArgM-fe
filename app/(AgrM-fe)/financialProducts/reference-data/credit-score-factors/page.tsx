@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { CreditScoreFactor } from './CreditScoreFactor';
 import CreditScoreFactorForm from './CreditScoreFactorForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const CreditScoreFactorsPage = () => {
     const [creditScoreFactors, setCreditScoreFactors] = useState<CreditScoreFactor[]>([]);
@@ -206,4 +207,11 @@ const CreditScoreFactorsPage = () => {
     );
 };
 
-export default CreditScoreFactorsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <CreditScoreFactorsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

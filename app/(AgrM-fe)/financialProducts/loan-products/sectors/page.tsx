@@ -12,6 +12,7 @@ import { LoanProductSector } from "./LoanProductSector";
 import LoanProductSectorForm from "./LoanProductSectorForm";
 import useConsumApi from "@/hooks/fetchData/useConsumApi";
 import { useSearchParams } from "next/navigation";
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanProductSectorPage = () => {
   const [loanProductSectors, setLoanProductSectors] = useState<LoanProductSector[]>([]);
@@ -340,4 +341,11 @@ const LoanProductSectorPage = () => {
   );
 };
 
-export default LoanProductSectorPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_VIEW']}>
+            <LoanProductSectorPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -11,6 +11,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
 
@@ -60,7 +61,9 @@ export default function RapportDecisionsPage() {
                 branchName: item.branch?.name || '-',
                 comments: item.approvalConditions || item.rejectionReason || '-'
             }));
-            setDecisions(mappedData);
+            // Filter by branch if user is restricted to a specific branch
+            const { filter, branchId } = shouldFilterByBranch();
+            setDecisions(filter ? mappedData.filter((d: any) => d.branchId === branchId) : mappedData);
         }
         if (decisionsApi.error) {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: decisionsApi.error.message, life: 3000 });

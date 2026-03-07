@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { InsuranceType } from './InsuranceType';
 import InsuranceTypeForm from './InsuranceTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const InsuranceTypesPage = () => {
     const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([]);
@@ -199,4 +200,11 @@ const InsuranceTypesPage = () => {
     );
 };
 
-export default InsuranceTypesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <InsuranceTypesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

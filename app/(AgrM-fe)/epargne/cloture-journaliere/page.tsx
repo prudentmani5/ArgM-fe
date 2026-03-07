@@ -13,10 +13,12 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 
-import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
-import { buildApiUrl } from '../../../../utils/apiConfig';
+import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 // --- Helper functions ---
 
@@ -32,18 +34,6 @@ const toApiDate = (date: Date): string => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-// --- Interfaces ---
-
-interface ClosingPreview {
-    deposits: any[];
-    withdrawals: any[];
-    depositsCount: number;
-    withdrawalsCount: number;
-    verifiedDepositsCount: number;
-    verifiedWithdrawalsCount: number;
-    allVerified: boolean;
-}
-
 // --- API URLs ---
 
 const MODULE_CLOSING_URL = buildApiUrl('/api/epargne/module-closing');
@@ -57,13 +47,24 @@ const ClotureJournalierePage = () => {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
     const [branches, setBranches] = useState<any[]>([]);
+    const [canViewAllBranches, setCanViewAllBranches] = useState(false);
+    const [userBranchId, setUserBranchId] = useState<number | null>(null);
 
     const [deposits, setDeposits] = useState<any[]>([]);
     const [withdrawals, setWithdrawals] = useState<any[]>([]);
+    const [statementRequests, setStatementRequests] = useState<any[]>([]);
+    const [checkbookOrders, setCheckbookOrders] = useState<any[]>([]);
+
     const [depositsCount, setDepositsCount] = useState(0);
     const [withdrawalsCount, setWithdrawalsCount] = useState(0);
+    const [statementRequestsCount, setStatementRequestsCount] = useState(0);
+    const [checkbookOrdersCount, setCheckbookOrdersCount] = useState(0);
+
     const [verifiedDepositsCount, setVerifiedDepositsCount] = useState(0);
     const [verifiedWithdrawalsCount, setVerifiedWithdrawalsCount] = useState(0);
+    const [verifiedStatementRequestsCount, setVerifiedStatementRequestsCount] = useState(0);
+    const [verifiedCheckbookOrdersCount, setVerifiedCheckbookOrdersCount] = useState(0);
+
     const [allVerified, setAllVerified] = useState(false);
 
     const [loading, setLoading] = useState(false);
@@ -81,8 +82,24 @@ const ClotureJournalierePage = () => {
     const unverifySingleApi = useConsumApi('');
     const comptaStatusApi = useConsumApi('');
 
-    // --- Load branches on mount ---
+    // --- Detect user role and branch on mount ---
     useEffect(() => {
+        const appUserStr = Cookies.get('appUser');
+        if (appUserStr) {
+            try {
+                const appUser = JSON.parse(appUserStr);
+                const auths: string[] = appUser.authorities || [];
+                const isSuperAdmin = auths.includes('SUPER_ADMIN') || auths.includes('ROLE_SUPER_ADMIN');
+                const hasViewAll = auths.includes('VIEW_ALL_BRANCHES') || auths.includes('ROLE_VIEW_ALL_BRANCHES');
+                setCanViewAllBranches(isSuperAdmin || hasViewAll);
+                if (appUser.branchId) {
+                    setUserBranchId(appUser.branchId);
+                    if (!isSuperAdmin && !hasViewAll) {
+                        setSelectedBranch(appUser.branchId);
+                    }
+                }
+            } catch (e) { /* ignore */ }
+        }
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findactive`, 'loadBranches');
     }, []);
 
@@ -100,13 +117,22 @@ const ClotureJournalierePage = () => {
     // --- Handle preview response ---
     useEffect(() => {
         if (previewApi.data && previewApi.callType === 'loadPreview') {
-            const preview: ClosingPreview = previewApi.data;
+            const preview = previewApi.data;
             setDeposits(Array.isArray(preview.deposits) ? preview.deposits : []);
             setWithdrawals(Array.isArray(preview.withdrawals) ? preview.withdrawals : []);
+            setStatementRequests(Array.isArray(preview.statementRequests) ? preview.statementRequests : []);
+            setCheckbookOrders(Array.isArray(preview.checkbookOrders) ? preview.checkbookOrders : []);
+
             setDepositsCount(preview.depositsCount || 0);
             setWithdrawalsCount(preview.withdrawalsCount || 0);
+            setStatementRequestsCount(preview.statementRequestsCount || 0);
+            setCheckbookOrdersCount(preview.checkbookOrdersCount || 0);
+
             setVerifiedDepositsCount(preview.verifiedDepositsCount || 0);
             setVerifiedWithdrawalsCount(preview.verifiedWithdrawalsCount || 0);
+            setVerifiedStatementRequestsCount(preview.verifiedStatementRequestsCount || 0);
+            setVerifiedCheckbookOrdersCount(preview.verifiedCheckbookOrdersCount || 0);
+
             setAllVerified(preview.allVerified || false);
             setLoading(false);
         }
@@ -244,12 +270,12 @@ const ClotureJournalierePage = () => {
         });
     };
 
-    const handleVerifySingle = (type: 'deposit' | 'withdrawal', id: number) => {
+    const handleVerifySingle = (type: string, id: number) => {
         const url = `${MODULE_CLOSING_URL}/verify/${type}/${id}?userAction=${getUserAction()}`;
         verifySingleApi.fetchData(null, 'POST', url, 'verifySingle');
     };
 
-    const handleUnverifySingle = (type: 'deposit' | 'withdrawal', id: number) => {
+    const handleUnverifySingle = (type: string, id: number) => {
         const url = `${MODULE_CLOSING_URL}/unverify/${type}/${id}`;
         unverifySingleApi.fetchData(null, 'POST', url, 'unverifySingle');
     };
@@ -271,42 +297,38 @@ const ClotureJournalierePage = () => {
         return <span>{formatNumber(rowData.disbursedAmount)} FBU</span>;
     };
 
+    const feeAmountBodyTemplate = (rowData: any) => {
+        return <span>{formatNumber(rowData.feeAmount || rowData.totalAmount)} FBU</span>;
+    };
+
     const clientBodyTemplate = (rowData: any) => {
-        if (rowData.client) {
-            return `${rowData.client.firstName || ''} ${rowData.client.lastName || ''}`.trim() || '-';
-        }
-        return '-';
+        return getClientDisplayName(rowData.client);
     };
 
     const branchBodyTemplate = (rowData: any) => {
         return rowData.branch?.name || '-';
     };
 
-    const depositActionsBodyTemplate = (rowData: any) => {
-        if (rowData.closingVerified) {
-            return (
-                <Button
-                    icon="pi pi-times"
-                    className="p-button-rounded p-button-danger p-button-sm"
-                    tooltip={comptaClosingCompleted ? 'Cloture comptable completee - annulation interdite' : 'Annuler la verification'}
-                    tooltipOptions={{ position: 'top' }}
-                    onClick={() => handleUnverifySingle('deposit', rowData.id)}
-                    disabled={comptaClosingCompleted}
-                />
-            );
+    const requestTypeBodyTemplate = (rowData: any) => {
+        if (rowData.requestType === 'HISTORIQUE') {
+            return <Tag value="Historique" severity="info" />;
         }
-        return (
-            <Button
-                icon="pi pi-check"
-                className="p-button-rounded p-button-success p-button-sm"
-                tooltip="Verifier"
-                tooltipOptions={{ position: 'top' }}
-                onClick={() => handleVerifySingle('deposit', rowData.id)}
-            />
-        );
+        return <Tag value="Situation" severity="success" />;
     };
 
-    const withdrawalActionsBodyTemplate = (rowData: any) => {
+    const statusBodyTemplate = (rowData: any) => {
+        const statusMap: Record<string, { label: string; severity: 'success' | 'info' | 'warning' | 'danger' }> = {
+            'VALIDATED': { label: 'Valide', severity: 'success' },
+            'DELIVERED': { label: 'Livre', severity: 'info' },
+            'RECEIVED': { label: 'Recu', severity: 'info' },
+            'COMPLETED': { label: 'Complete', severity: 'success' },
+            'DISBURSED': { label: 'Decaisse', severity: 'success' }
+        };
+        const info = statusMap[rowData.status] || { label: rowData.status, severity: 'warning' as const };
+        return <Tag value={info.label} severity={info.severity} />;
+    };
+
+    const makeActionsTemplate = (type: string) => (rowData: any) => {
         if (rowData.closingVerified) {
             return (
                 <Button
@@ -314,7 +336,7 @@ const ClotureJournalierePage = () => {
                     className="p-button-rounded p-button-danger p-button-sm"
                     tooltip={comptaClosingCompleted ? 'Cloture comptable completee - annulation interdite' : 'Annuler la verification'}
                     tooltipOptions={{ position: 'top' }}
-                    onClick={() => handleUnverifySingle('withdrawal', rowData.id)}
+                    onClick={() => handleUnverifySingle(type, rowData.id)}
                     disabled={comptaClosingCompleted}
                 />
             );
@@ -325,17 +347,25 @@ const ClotureJournalierePage = () => {
                 className="p-button-rounded p-button-success p-button-sm"
                 tooltip="Verifier"
                 tooltipOptions={{ position: 'top' }}
-                onClick={() => handleVerifySingle('withdrawal', rowData.id)}
+                onClick={() => handleVerifySingle(type, rowData.id)}
             />
         );
     };
 
     // --- Branch dropdown options ---
 
-    const branchOptions = [
-        { label: 'Toutes les agences', value: null },
-        ...branches.map((b: any) => ({ label: b.name, value: b.id }))
-    ];
+    const branchOptions = canViewAllBranches
+        ? [
+            { label: 'Toutes les agences', value: null },
+            ...branches.map((b: any) => ({ label: b.name, value: b.id }))
+          ]
+        : branches
+            .filter((b: any) => b.id === userBranchId)
+            .map((b: any) => ({ label: b.name, value: b.id }));
+
+    // --- Totals ---
+    const totalItems = depositsCount + withdrawalsCount + statementRequestsCount + checkbookOrdersCount;
+    const totalVerified = verifiedDepositsCount + verifiedWithdrawalsCount + verifiedStatementRequestsCount + verifiedCheckbookOrdersCount;
 
     // --- Toolbar content ---
 
@@ -353,8 +383,9 @@ const ClotureJournalierePage = () => {
                 value={selectedBranch}
                 options={branchOptions}
                 onChange={(e) => setSelectedBranch(e.value)}
-                placeholder="Toutes les agences"
+                placeholder={canViewAllBranches ? 'Toutes les agences' : 'Mon agence'}
                 className="w-14rem"
+                disabled={!canViewAllBranches && userBranchId !== null}
             />
             <Button
                 label="Charger"
@@ -372,15 +403,37 @@ const ClotureJournalierePage = () => {
                 icon="pi pi-check-circle"
                 className="p-button-success"
                 onClick={handleVerifyAll}
-                disabled={loading || (deposits.length === 0 && withdrawals.length === 0) || allVerified}
+                disabled={loading || totalItems === 0 || allVerified}
             />
             <Button
                 label="Annuler Tout"
                 icon="pi pi-times-circle"
                 className="p-button-danger"
                 onClick={handleUnverifyAll}
-                disabled={loading || comptaClosingCompleted || (verifiedDepositsCount === 0 && verifiedWithdrawalsCount === 0)}
+                disabled={loading || comptaClosingCompleted || totalVerified === 0}
             />
+        </div>
+    );
+
+    // --- Summary card helper ---
+    const renderSummaryCard = (label: string, count: number, verifiedCount: number, icon: string, iconBg: string, iconColor: string) => (
+        <div className="col-12 md:col-6 lg:col-3">
+            <div className="surface-card shadow-2 p-3 border-round">
+                <div className="flex justify-content-between mb-2">
+                    <div>
+                        <span className="block text-500 font-medium mb-1" style={{ fontSize: '0.85rem' }}>{label}</span>
+                        <div className="text-900 font-medium text-xl">
+                            <span className={verifiedCount === count && count > 0 ? 'text-green-500' : 'text-orange-500'}>
+                                {verifiedCount}
+                            </span>
+                            <span className="text-500 text-sm"> / {count}</span>
+                        </div>
+                    </div>
+                    <div className={`flex align-items-center justify-content-center ${iconBg} border-round`} style={{ width: '2.5rem', height: '2.5rem' }}>
+                        <i className={`${icon} ${iconColor} text-xl`}></i>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 
@@ -401,68 +454,10 @@ const ClotureJournalierePage = () => {
 
             {/* Summary Cards */}
             <div className="grid mb-4">
-                <div className="col-12 md:col-6 lg:col-3">
-                    <div className="surface-card shadow-2 p-3 border-round">
-                        <div className="flex justify-content-between mb-3">
-                            <div>
-                                <span className="block text-500 font-medium mb-2">Total Depots</span>
-                                <div className="text-900 font-medium text-xl">{depositsCount}</div>
-                            </div>
-                            <div className="flex align-items-center justify-content-center bg-blue-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
-                                <i className="pi pi-arrow-down text-blue-500 text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-12 md:col-6 lg:col-3">
-                    <div className="surface-card shadow-2 p-3 border-round">
-                        <div className="flex justify-content-between mb-3">
-                            <div>
-                                <span className="block text-500 font-medium mb-2">Depots Verifies</span>
-                                <div className="text-900 font-medium text-xl">
-                                    <span className={verifiedDepositsCount === depositsCount && depositsCount > 0 ? 'text-green-500' : 'text-orange-500'}>
-                                        {verifiedDepositsCount}
-                                    </span>
-                                    <span className="text-500 text-sm"> / {depositsCount}</span>
-                                </div>
-                            </div>
-                            <div className="flex align-items-center justify-content-center bg-green-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
-                                <i className="pi pi-check text-green-500 text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-12 md:col-6 lg:col-3">
-                    <div className="surface-card shadow-2 p-3 border-round">
-                        <div className="flex justify-content-between mb-3">
-                            <div>
-                                <span className="block text-500 font-medium mb-2">Total Retraits</span>
-                                <div className="text-900 font-medium text-xl">{withdrawalsCount}</div>
-                            </div>
-                            <div className="flex align-items-center justify-content-center bg-purple-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
-                                <i className="pi pi-arrow-up text-purple-500 text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-12 md:col-6 lg:col-3">
-                    <div className="surface-card shadow-2 p-3 border-round">
-                        <div className="flex justify-content-between mb-3">
-                            <div>
-                                <span className="block text-500 font-medium mb-2">Retraits Verifies</span>
-                                <div className="text-900 font-medium text-xl">
-                                    <span className={verifiedWithdrawalsCount === withdrawalsCount && withdrawalsCount > 0 ? 'text-green-500' : 'text-orange-500'}>
-                                        {verifiedWithdrawalsCount}
-                                    </span>
-                                    <span className="text-500 text-sm"> / {withdrawalsCount}</span>
-                                </div>
-                            </div>
-                            <div className="flex align-items-center justify-content-center bg-orange-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
-                                <i className="pi pi-check-circle text-orange-500 text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {renderSummaryCard('Depots', depositsCount, verifiedDepositsCount, 'pi pi-arrow-down', 'bg-blue-100', 'text-blue-500')}
+                {renderSummaryCard('Retraits', withdrawalsCount, verifiedWithdrawalsCount, 'pi pi-arrow-up', 'bg-purple-100', 'text-purple-500')}
+                {renderSummaryCard('Demandes Situation', statementRequestsCount, verifiedStatementRequestsCount, 'pi pi-file', 'bg-teal-100', 'text-teal-500')}
+                {renderSummaryCard('Carnets Cheques', checkbookOrdersCount, verifiedCheckbookOrdersCount, 'pi pi-book', 'bg-orange-100', 'text-orange-500')}
             </div>
 
             {/* Comptability closing completed banner */}
@@ -476,7 +471,7 @@ const ClotureJournalierePage = () => {
             )}
 
             {/* All verified banner */}
-            {allVerified && (deposits.length > 0 || withdrawals.length > 0) && (
+            {allVerified && totalItems > 0 && (
                 <div className="bg-green-50 border-1 border-green-300 border-round p-3 mb-4 flex align-items-center gap-2">
                     <i className="pi pi-check-circle text-green-600 text-xl"></i>
                     <span className="text-green-700 font-medium">
@@ -485,7 +480,7 @@ const ClotureJournalierePage = () => {
                 </div>
             )}
 
-            {/* Tabs: Depots / Retraits */}
+            {/* Tabs */}
             <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
                 {/* Tab Depots */}
                 <TabPanel header={`Depots (${depositsCount})`} leftIcon="pi pi-arrow-down mr-2">
@@ -503,37 +498,12 @@ const ClotureJournalierePage = () => {
                         sortOrder={-1}
                     >
                         <Column field="slipNumber" header="N. Bordereau" sortable />
-                        <Column
-                            header="Client"
-                            body={clientBodyTemplate}
-                            sortable
-                            sortField="client.lastName"
-                        />
-                        <Column
-                            field="amount"
-                            header="Montant"
-                            body={depositAmountBodyTemplate}
-                            sortable
-                        />
+                        <Column header="Client" body={clientBodyTemplate} sortable sortField="client.lastName" />
+                        <Column field="amount" header="Montant" body={depositAmountBodyTemplate} sortable />
                         <Column field="depositDate" header="Date" sortable />
-                        <Column
-                            header="Agence"
-                            body={branchBodyTemplate}
-                            sortable
-                            sortField="branch.name"
-                        />
-                        <Column
-                            field="closingVerified"
-                            header="Verifie"
-                            body={verifiedBodyTemplate}
-                            sortable
-                            style={{ width: '120px' }}
-                        />
-                        <Column
-                            header="Actions"
-                            body={depositActionsBodyTemplate}
-                            style={{ width: '100px' }}
-                        />
+                        <Column header="Agence" body={branchBodyTemplate} sortable sortField="branch.name" />
+                        <Column field="closingVerified" header="Verifie" body={verifiedBodyTemplate} sortable style={{ width: '120px' }} />
+                        <Column header="Actions" body={makeActionsTemplate('deposit')} style={{ width: '100px' }} />
                     </DataTable>
                 </TabPanel>
 
@@ -553,37 +523,64 @@ const ClotureJournalierePage = () => {
                         sortOrder={-1}
                     >
                         <Column field="requestNumber" header="N. Demande" sortable />
-                        <Column
-                            header="Client"
-                            body={clientBodyTemplate}
-                            sortable
-                            sortField="client.lastName"
-                        />
-                        <Column
-                            field="disbursedAmount"
-                            header="Montant"
-                            body={withdrawalAmountBodyTemplate}
-                            sortable
-                        />
+                        <Column header="Client" body={clientBodyTemplate} sortable sortField="client.lastName" />
+                        <Column field="disbursedAmount" header="Montant" body={withdrawalAmountBodyTemplate} sortable />
                         <Column field="disbursementDate" header="Date Decaissement" sortable />
-                        <Column
-                            header="Agence"
-                            body={branchBodyTemplate}
-                            sortable
-                            sortField="branch.name"
-                        />
-                        <Column
-                            field="closingVerified"
-                            header="Verifie"
-                            body={verifiedBodyTemplate}
-                            sortable
-                            style={{ width: '120px' }}
-                        />
-                        <Column
-                            header="Actions"
-                            body={withdrawalActionsBodyTemplate}
-                            style={{ width: '100px' }}
-                        />
+                        <Column header="Agence" body={branchBodyTemplate} sortable sortField="branch.name" />
+                        <Column field="closingVerified" header="Verifie" body={verifiedBodyTemplate} sortable style={{ width: '120px' }} />
+                        <Column header="Actions" body={makeActionsTemplate('withdrawal')} style={{ width: '100px' }} />
+                    </DataTable>
+                </TabPanel>
+
+                {/* Tab Demandes Situation/Historique */}
+                <TabPanel header={`Demandes (${statementRequestsCount})`} leftIcon="pi pi-file mr-2">
+                    <DataTable
+                        value={statementRequests}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        emptyMessage="Aucune demande de situation/historique pour cette date"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="requestDate"
+                        sortOrder={-1}
+                    >
+                        <Column field="requestNumber" header="N. Demande" sortable />
+                        <Column header="Client" body={clientBodyTemplate} sortable sortField="client.lastName" />
+                        <Column header="Type" body={requestTypeBodyTemplate} sortable sortField="requestType" style={{ width: '120px' }} />
+                        <Column field="feeAmount" header="Frais" body={feeAmountBodyTemplate} sortable />
+                        <Column header="Statut" body={statusBodyTemplate} sortable sortField="status" style={{ width: '120px' }} />
+                        <Column header="Agence" body={branchBodyTemplate} sortable sortField="branch.name" />
+                        <Column field="closingVerified" header="Verifie" body={verifiedBodyTemplate} sortable style={{ width: '120px' }} />
+                        <Column header="Actions" body={makeActionsTemplate('statement')} style={{ width: '100px' }} />
+                    </DataTable>
+                </TabPanel>
+
+                {/* Tab Carnets de Cheques */}
+                <TabPanel header={`Carnets (${checkbookOrdersCount})`} leftIcon="pi pi-book mr-2">
+                    <DataTable
+                        value={checkbookOrders}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        emptyMessage="Aucune commande de carnet pour cette date"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="orderDate"
+                        sortOrder={-1}
+                    >
+                        <Column field="orderNumber" header="N. Commande" sortable />
+                        <Column header="Client" body={clientBodyTemplate} sortable sortField="client.lastName" />
+                        <Column field="totalAmount" header="Montant" body={feeAmountBodyTemplate} sortable />
+                        <Column field="orderDate" header="Date" sortable />
+                        <Column header="Statut" body={statusBodyTemplate} sortable sortField="status" style={{ width: '120px' }} />
+                        <Column header="Agence" body={branchBodyTemplate} sortable sortField="branch.name" />
+                        <Column field="closingVerified" header="Verifie" body={verifiedBodyTemplate} sortable style={{ width: '120px' }} />
+                        <Column header="Actions" body={makeActionsTemplate('checkbook')} style={{ width: '100px' }} />
                     </DataTable>
                 </TabPanel>
             </TabView>
@@ -591,4 +588,11 @@ const ClotureJournalierePage = () => {
     );
 };
 
-export default ClotureJournalierePage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_DAILY_CLOSING']}>
+            <ClotureJournalierePage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

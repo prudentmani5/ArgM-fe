@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { FeeCalculationMethod } from './FeeCalculationMethod';
 import FeeCalculationMethodForm from './FeeCalculationMethodForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const FeeCalculationMethodsPage = () => {
     const [feeCalculationMethods, setFeeCalculationMethods] = useState<FeeCalculationMethod[]>([]);
@@ -199,4 +200,11 @@ const FeeCalculationMethodsPage = () => {
     );
 };
 
-export default FeeCalculationMethodsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <FeeCalculationMethodsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

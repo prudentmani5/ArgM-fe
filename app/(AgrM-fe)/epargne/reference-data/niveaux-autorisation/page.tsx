@@ -11,9 +11,22 @@ import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { WithdrawalAuthorizationLevel, WithdrawalAuthorizationLevelClass } from './WithdrawalAuthorizationLevel';
+import { ProtectedPage } from '@/components/ProtectedPage';
+
+const getCurrentUser = (): string => {
+    try {
+        const userCookie = Cookies.get('appUser');
+        if (userCookie) {
+            const user = JSON.parse(userCookie);
+            return user?.email || user?.username || 'system';
+        }
+    } catch (e) {}
+    return 'system';
+};
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/withdrawal-authorization-levels`;
 
@@ -35,6 +48,7 @@ function WithdrawalAuthorizationLevelPage() {
             switch (callType) {
                 case 'loadData':
                     setAuthLevels(Array.isArray(data) ? data : []);
+                    setLoading(false);
                     break;
                 case 'create':
                     showToast('success', 'Succès', 'Niveau créé avec succès');
@@ -56,13 +70,13 @@ function WithdrawalAuthorizationLevelPage() {
         }
         if (error) {
             showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
+            setLoading(false);
         }
     }, [data, error, callType]);
 
     const loadData = () => {
         setLoading(true);
         fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadData');
-        setLoading(false);
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -100,11 +114,12 @@ function WithdrawalAuthorizationLevelPage() {
 
     const handleSubmit = () => {
         if (!validateForm()) return;
+        const dataToSend = { ...authLevel, userAction: getCurrentUser() };
 
         if (authLevel.id) {
-            fetchData(authLevel, 'PUT', `${BASE_URL}/update/${authLevel.id}`, 'update');
+            fetchData(dataToSend, 'PUT', `${BASE_URL}/update/${authLevel.id}`, 'update');
         } else {
-            fetchData(authLevel, 'POST', `${BASE_URL}/new`, 'create');
+            fetchData(dataToSend, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
@@ -126,7 +141,7 @@ function WithdrawalAuthorizationLevelPage() {
             acceptLabel: 'Oui, supprimer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
+                fetchData({ userAction: getCurrentUser() }, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
             }
         });
     };
@@ -412,4 +427,11 @@ function WithdrawalAuthorizationLevelPage() {
     );
 }
 
-export default WithdrawalAuthorizationLevelPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_SETTINGS']}>
+            <WithdrawalAuthorizationLevelPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -11,6 +11,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
 
@@ -57,18 +58,20 @@ export default function RapportDemandesPage() {
         }
     }, [branchesApi.data, branchesApi.error]);
 
-    // Handle statuts data
+    // Handle statuts data (silently ignore 403 for users without settings authority)
     useEffect(() => {
         if (statutsApi.data) {
             setStatuts(Array.isArray(statutsApi.data) ? statutsApi.data : statutsApi.data.content || []);
         }
-        if (statutsApi.error) {
+        if (statutsApi.error && statutsApi.error.status !== 403 && statutsApi.error.status !== 0) {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des statuts', life: 3000 });
         }
     }, [statutsApi.data, statutsApi.error]);
 
     const loadDemandes = () => {
-        demandesApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        demandesApi.fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     const loadBranches = () => {

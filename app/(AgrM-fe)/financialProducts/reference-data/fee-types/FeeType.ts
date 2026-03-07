@@ -6,6 +6,8 @@ export class FeeType {
     description?: string;
     descriptionFr?: string;
     isActive: boolean;
+    internalAccountId?: number;
+    internalAccount?: any;
     userAction?: string;
     createdAt?: string;
     updatedAt?: string;

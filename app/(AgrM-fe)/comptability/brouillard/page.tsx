@@ -7,7 +7,7 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { InputSwitch } from 'primereact/inputswitch';
-import { InputMask } from 'primereact/inputmask';
+import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
@@ -18,6 +18,7 @@ import Cookies from 'js-cookie';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptBrouillard, CptExercice, CptJournal } from '../types';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 // Helper: convert dd/mm/yyyy to yyyy-mm-dd (ISO)
 const toISODate = (ddmmyyyy: string): string => {
@@ -37,7 +38,7 @@ const toDisplayDate = (isoDate: string): string => {
     return `${dd}/${mm}/${yyyy}`;
 };
 
-export default function BrouillardPage() {
+function BrouillardPage() {
     const [brouillards, setBrouillards] = useState<CptBrouillard[]>([]);
     const [brouillard, setBrouillard] = useState<CptBrouillard>(new CptBrouillard());
     const [journaux, setJournaux] = useState<CptJournal[]>([]);
@@ -46,14 +47,15 @@ export default function BrouillardPage() {
     const [isEdit, setIsEdit] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
 
-    // Local form state for masked date inputs (dd/mm/yyyy format)
-    const [dateDebutDisplay, setDateDebutDisplay] = useState('');
-    const [dateFinDisplay, setDateFinDisplay] = useState('');
+    // Local form state for calendar date inputs
+    const [dateDebutValue, setDateDebutValue] = useState<Date | null>(null);
+    const [dateFinValue, setDateFinValue] = useState<Date | null>(null);
 
     const toast = useRef<Toast>(null);
 
     const { data, loading, error, fetchData, callType } = useConsumApi('');
     const { data: journauxData, loading: loadingJournaux, error: journauxError, fetchData: fetchJournaux, callType: journauxCallType } = useConsumApi('');
+    const { data: generateData, loading: generateLoading, error: generateError, fetchData: fetchGenerate, callType: generateCallType } = useConsumApi('');
 
     const BASE_URL = buildApiUrl('/api/comptability/brouillards');
 
@@ -134,6 +136,28 @@ export default function BrouillardPage() {
         }
     }, [data, error, callType]);
 
+    // Handle generate responses
+    useEffect(() => {
+        if (generateData && generateCallType === 'generate') {
+            const msg = generateData.message || `${generateData.count || 0} brouillard(s) genere(s)`;
+            toast.current?.show({
+                severity: generateData.count > 0 ? 'success' : 'info',
+                summary: generateData.count > 0 ? 'Succes' : 'Information',
+                detail: msg,
+                life: 5000
+            });
+            loadBrouillards();
+        }
+        if (generateError) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Erreur',
+                detail: generateError.message || 'Erreur lors de la generation',
+                life: 3000
+            });
+        }
+    }, [generateData, generateError, generateCallType]);
+
     const loadBrouillards = () => {
         if (currentExercice?.exerciceId) {
             fetchData(null, 'GET', `${BASE_URL}/findbyexercice/${currentExercice.exerciceId}`, 'getall');
@@ -153,16 +177,16 @@ export default function BrouillardPage() {
         const newBrouillard = new CptBrouillard();
         newBrouillard.exerciceId = currentExercice.exerciceId;
         setBrouillard(newBrouillard);
-        setDateDebutDisplay('');
-        setDateFinDisplay('');
+        setDateDebutValue(null);
+        setDateFinValue(null);
         setIsEdit(false);
         setDialogVisible(true);
     };
 
     const openEdit = (rowData: CptBrouillard) => {
         setBrouillard({ ...rowData });
-        setDateDebutDisplay(toDisplayDate(rowData.dateDebut));
-        setDateFinDisplay(toDisplayDate(rowData.dateFin));
+        setDateDebutValue(rowData.dateDebut ? new Date(rowData.dateDebut + 'T00:00:00') : null);
+        setDateFinValue(rowData.dateFin ? new Date(rowData.dateFin + 'T00:00:00') : null);
         setIsEdit(true);
         setDialogVisible(true);
     };
@@ -178,11 +202,18 @@ export default function BrouillardPage() {
             return;
         }
 
-        // Convert display dates to ISO format and include exercice
+        // Convert Date objects to ISO format and include exercice
+        const toIso = (d: Date | null) => {
+            if (!d) return '';
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
         const dataToSend = {
             ...brouillard,
-            dateDebut: toISODate(dateDebutDisplay),
-            dateFin: toISODate(dateFinDisplay),
+            dateDebut: toIso(dateDebutValue),
+            dateFin: toIso(dateFinValue),
             exerciceId: currentExercice?.exerciceId || brouillard.exerciceId,
             userAction: getUserAction()
         };
@@ -204,6 +235,33 @@ export default function BrouillardPage() {
             acceptClassName: 'p-button-danger',
             accept: () => {
                 fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.brouillardId}`, 'delete');
+            }
+        });
+    };
+
+    const handleGenerate = () => {
+        if (!currentExercice?.exerciceId) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Attention',
+                detail: 'Veuillez selectionner un exercice courant dans la page Exercices',
+                life: 3000
+            });
+            return;
+        }
+        confirmDialog({
+            message: `Generer automatiquement les brouillards pour tous les mois de l'exercice "${currentExercice.codeExercice}" et tous les journaux ? Les brouillards existants ne seront pas dupliques.`,
+            header: 'Confirmation de generation',
+            icon: 'pi pi-cog',
+            acceptLabel: 'Generer',
+            rejectLabel: 'Annuler',
+            accept: () => {
+                fetchGenerate(
+                    { userAction: getUserAction() },
+                    'POST',
+                    `${BASE_URL}/generate/${currentExercice.exerciceId}`,
+                    'generate'
+                );
             }
         });
     };
@@ -238,7 +296,17 @@ export default function BrouillardPage() {
 
     const leftToolbarTemplate = () => {
         return (
-            <Button label="Nouveau" icon="pi pi-plus" severity="success" onClick={openNew} />
+            <div className="flex gap-2">
+                <Button label="Nouveau" icon="pi pi-plus" severity="success" onClick={openNew} />
+                <Button
+                    label="Generer Brouillards"
+                    icon="pi pi-cog"
+                    severity="info"
+                    onClick={handleGenerate}
+                    loading={generateLoading && generateCallType === 'generate'}
+                    disabled={!currentExercice?.exerciceId}
+                />
+            </div>
         );
     };
 
@@ -314,7 +382,7 @@ export default function BrouillardPage() {
                 header={header}
                 emptyMessage="Aucun brouillard trouve"
                 stripedRows
-                sortField="codeBrouillard"
+                sortField="dateDebut"
                 sortOrder={1}
                 className="p-datatable-sm"
             >
@@ -416,13 +484,13 @@ export default function BrouillardPage() {
                     <div className="col-12 md:col-6">
                         <div className="field">
                             <label htmlFor="dateDebut" className="font-semibold">Date Debut</label>
-                            <InputMask
+                            <Calendar
                                 id="dateDebut"
-                                value={dateDebutDisplay}
-                                onChange={(e) => setDateDebutDisplay(e.target.value ?? '')}
-                                mask="99/99/9999"
-                                placeholder="jj/mm/aaaa"
-                                slotChar="jj/mm/aaaa"
+                                value={dateDebutValue}
+                                onChange={(e) => setDateDebutValue(e.value as Date | null)}
+                                dateFormat="dd/mm/yy"
+                                showIcon
+                                placeholder="Selectionner une date"
                                 className="w-full"
                             />
                         </div>
@@ -431,13 +499,13 @@ export default function BrouillardPage() {
                     <div className="col-12 md:col-6">
                         <div className="field">
                             <label htmlFor="dateFin" className="font-semibold">Date Fin</label>
-                            <InputMask
+                            <Calendar
                                 id="dateFin"
-                                value={dateFinDisplay}
-                                onChange={(e) => setDateFinDisplay(e.target.value ?? '')}
-                                mask="99/99/9999"
-                                placeholder="jj/mm/aaaa"
-                                slotChar="jj/mm/aaaa"
+                                value={dateFinValue}
+                                onChange={(e) => setDateFinValue(e.value as Date | null)}
+                                dateFormat="dd/mm/yy"
+                                showIcon
+                                placeholder="Selectionner une date"
                                 className="w-full"
                             />
                         </div>
@@ -455,5 +523,13 @@ export default function BrouillardPage() {
                 )}
             </Dialog>
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_VIEW']}>
+            <BrouillardPage />
+        </ProtectedPage>
     );
 }

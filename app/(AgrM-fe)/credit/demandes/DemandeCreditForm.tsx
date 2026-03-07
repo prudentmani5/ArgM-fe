@@ -6,6 +6,9 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
+import { Tag } from 'primereact/tag';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
 import { DemandeCredit, FrequencesRemboursement } from '../types/DemandeCredit';
 
 interface DemandeCreditFormProps {
@@ -26,6 +29,8 @@ interface DemandeCreditFormProps {
     onProductChange?: (product: any) => void;
     connectedUser?: string;
     isViewMode?: boolean;
+    productFees?: any[];
+    productGuarantees?: any[];
 }
 
 export default function DemandeCreditForm({
@@ -45,7 +50,9 @@ export default function DemandeCreditForm({
     onClientChange,
     onProductChange,
     connectedUser,
-    isViewMode = false
+    isViewMode = false,
+    productFees = [],
+    productGuarantees = []
 }: DemandeCreditFormProps) {
 
     const formatCurrency = (value: number) => {
@@ -103,6 +110,12 @@ export default function DemandeCreditForm({
         if (!selectedProduct || !demande.amountRequested) return true;
         return demande.amountRequested >= selectedProduct.minAmount &&
                demande.amountRequested <= selectedProduct.maxAmount;
+    };
+
+    const isRateValid = () => {
+        if (!selectedProduct || !demande.interestRate) return true;
+        return demande.interestRate >= selectedProduct.minInterestRate &&
+               demande.interestRate <= selectedProduct.maxInterestRate;
     };
 
     const isDurationValid = () => {
@@ -278,7 +291,7 @@ export default function DemandeCreditForm({
                 </h5>
 
                 <div className="formgrid grid">
-                    <div className="field col-12 md:col-4">
+                    <div className="field col-12 md:col-3">
                         <label htmlFor="loanProductId" className="font-semibold">
                             Produit de Crédit *
                         </label>
@@ -308,13 +321,13 @@ export default function DemandeCreditForm({
                         )}
                     </div>
 
-                    <div className="field col-12 md:col-4">
+                    <div className="field col-12 md:col-3">
                         <label htmlFor="amountRequested" className="font-semibold">
                             Montant Demandé (BIF) *
                         </label>
                         <InputNumber
                             id="amountRequested"
-                            value={demande.amountRequested || 0}
+                            value={demande.amountRequested ?? 0}
                             onValueChange={(e) => {
                                 let newValue = e.value ?? 0;
                                 // Enforce strict limits if product is selected
@@ -353,14 +366,55 @@ export default function DemandeCreditForm({
                     </div>
 
                     <div className="field col-12 md:col-2">
+                        <label htmlFor="interestRate" className="font-semibold">
+                            Taux (%) *
+                        </label>
+                        <InputNumber
+                            id="interestRate"
+                            value={demande.interestRate ?? 0}
+                            onValueChange={(e) => {
+                                let newValue = e.value ?? 0;
+                                if (selectedProduct) {
+                                    if (newValue < selectedProduct.minInterestRate) {
+                                        newValue = selectedProduct.minInterestRate;
+                                    }
+                                    if (newValue > selectedProduct.maxInterestRate) {
+                                        newValue = selectedProduct.maxInterestRate;
+                                    }
+                                }
+                                handleNumberChange('interestRate', newValue);
+                            }}
+                            className={`w-full ${selectedProduct && !isRateValid() ? 'p-invalid' : ''}`}
+                            disabled={isViewMode || !demande.loanProductId}
+                            minFractionDigits={2}
+                            maxFractionDigits={2}
+                            min={selectedProduct?.minInterestRate || 0}
+                            max={selectedProduct?.maxInterestRate || undefined}
+                            suffix="%"
+                        />
+                        {!demande.loanProductId && (
+                            <small className="text-orange-500 block mt-1">
+                                <i className="pi pi-exclamation-circle mr-1"></i>
+                                Selectionnez un produit
+                            </small>
+                        )}
+                        {selectedProduct && (
+                            <small className={`block mt-1 ${!isRateValid() ? 'text-red-500' : 'text-green-600'}`}>
+                                <i className={`pi ${!isRateValid() ? 'pi-exclamation-triangle' : 'pi-check-circle'} mr-1`}></i>
+                                {selectedProduct.minInterestRate}% - {selectedProduct.maxInterestRate}%
+                            </small>
+                        )}
+                    </div>
+
+                    <div className="field col-12 md:col-2">
                         <label htmlFor="durationMonths" className="font-semibold">
                             Durée (mois) *
                         </label>
                         <InputNumber
                             id="durationMonths"
-                            value={demande.durationMonths || 12}
+                            value={demande.durationMonths ?? 0}
                             onValueChange={(e) => {
-                                let newValue = e.value ?? 12;
+                                let newValue = e.value ?? 0;
                                 // Enforce strict limits if product is selected
                                 if (selectedProduct) {
                                     if (newValue < selectedProduct.minTermMonths) {
@@ -410,6 +464,52 @@ export default function DemandeCreditForm({
                         />
                     </div>
                 </div>
+
+                {/* Fees and Guarantees for selected product */}
+                {selectedProduct && (productFees.length > 0 || productGuarantees.length > 0) && (
+                    <div className="formgrid grid mt-3">
+                        {productFees.length > 0 && (
+                            <div className="field col-12 md:col-6">
+                                <label className="font-semibold mb-2 block">
+                                    <i className="pi pi-money-bill mr-2"></i>
+                                    Frais du Produit ({productFees.length})
+                                </label>
+                                <DataTable value={productFees} size="small" stripedRows className="border-round">
+                                    <Column header="Frais" body={(row: any) => row.feeNameFr || row.feeName || row.feeType?.nameFr || '-'} />
+                                    <Column header="Montant/Taux" body={(row: any) => {
+                                        if (row.calculationMethod?.code === 'PERCENTAGE' || row.percentageRate) {
+                                            return `${row.percentageRate || 0} %`;
+                                        }
+                                        return row.fixedAmount != null ? formatCurrency(row.fixedAmount) : '-';
+                                    }} />
+                                    <Column header="Perception" body={(row: any) => {
+                                        const labels: any = { AT_DISBURSEMENT: 'Décaissement', MONTHLY: 'Mensuel', UPFRONT: 'Avance', AT_MATURITY: 'Échéance' };
+                                        return labels[row.collectionTime] || row.collectionTime || '-';
+                                    }} />
+                                    <Column header="Obligatoire" body={(row: any) => (
+                                        <Tag value={row.isMandatory ? 'Oui' : 'Non'} severity={row.isMandatory ? 'danger' : 'info'} />
+                                    )} style={{ width: '100px' }} />
+                                </DataTable>
+                            </div>
+                        )}
+
+                        {productGuarantees.length > 0 && (
+                            <div className="field col-12 md:col-6">
+                                <label className="font-semibold mb-2 block">
+                                    <i className="pi pi-shield mr-2"></i>
+                                    Garanties Requises ({productGuarantees.length})
+                                </label>
+                                <DataTable value={productGuarantees} size="small" stripedRows className="border-round">
+                                    <Column header="Type de Garantie" body={(row: any) => row.guaranteeType?.nameFr || row.guaranteeType?.name || '-'} />
+                                    <Column header="Couverture Min (%)" body={(row: any) => row.minCoveragePercentage != null ? `${row.minCoveragePercentage} %` : '-'} />
+                                    <Column header="Obligatoire" body={(row: any) => (
+                                        <Tag value={row.isMandatory ? 'Oui' : 'Non'} severity={row.isMandatory ? 'danger' : 'info'} />
+                                    )} style={{ width: '100px' }} />
+                                </DataTable>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Section: Objet du Crédit */}

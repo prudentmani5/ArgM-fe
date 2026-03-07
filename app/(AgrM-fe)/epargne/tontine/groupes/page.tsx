@@ -16,15 +16,29 @@ import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
 import { Card } from 'primereact/card';
 import { ProgressBar } from 'primereact/progressbar';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { TontineGroup, TontineGroupClass, TontineMember, ContributionFrequency } from './TontineGroup';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/tontine-groups`;
 const CLIENTS_URL = `${API_BASE_URL}/api/clients`;
-const BRANCHES_URL = `${API_BASE_URL}/api/branches`;
+const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const STATUSES_URL = `${API_BASE_URL}/api/epargne/tontine-statuses`;
-const CURRENCIES_URL = `${API_BASE_URL}/api/currencies`;
+const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currencies`;
+
+const getCurrentUser = (): string => {
+    try {
+        const userCookie = Cookies.get('appUser');
+        if (userCookie) {
+            const user = JSON.parse(userCookie);
+            return user?.email || user?.username || 'system';
+        }
+    } catch (e) {}
+    return 'system';
+};
 
 function TontineGroupPage() {
     const [group, setGroup] = useState<TontineGroup>(new TontineGroupClass());
@@ -41,7 +55,12 @@ function TontineGroupPage() {
     const [selectedGroup, setSelectedGroup] = useState<TontineGroup | null>(null);
     const [newMemberClientId, setNewMemberClientId] = useState<number | null>(null);
     const toast = useRef<Toast>(null);
-    const { data, error, fetchData, callType } = useConsumApi('');
+    const clientsApi = useConsumApi('');
+    const branchesApi = useConsumApi('');
+    const statusesApi = useConsumApi('');
+    const currenciesApi = useConsumApi('');
+    const groupsApi = useConsumApi('');
+    const actionsApi = useConsumApi('');
 
     const frequencyOptions = [
         { label: 'Hebdomadaire', value: ContributionFrequency.WEEKLY },
@@ -64,24 +83,58 @@ function TontineGroupPage() {
         loadGroups();
     }, []);
 
+    // Clients response
     useEffect(() => {
-        if (data) {
-            switch (callType) {
-                case 'loadGroups':
-                    setGroups(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadClients':
-                    setClients(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadBranches':
-                    setBranches(Array.isArray(data) ? data : []);
-                    break;
-                case 'loadStatuses':
-                    setStatuses(Array.isArray(data) ? data : []);
-                    break;
-                case 'loadCurrencies':
-                    setCurrencies(Array.isArray(data) ? data : []);
-                    break;
+        if (clientsApi.data) {
+            setClients(Array.isArray(clientsApi.data) ? clientsApi.data : clientsApi.data.content || []);
+        }
+        if (clientsApi.error) showToast('error', 'Erreur', 'Erreur chargement clients');
+    }, [clientsApi.data, clientsApi.error]);
+
+    // Branches response
+    useEffect(() => {
+        if (branchesApi.data) {
+            setBranches(Array.isArray(branchesApi.data) ? branchesApi.data : []);
+        }
+        if (branchesApi.error) showToast('error', 'Erreur', 'Erreur chargement agences');
+    }, [branchesApi.data, branchesApi.error]);
+
+    // Statuses response (silently ignore 403 for users without settings authority)
+    useEffect(() => {
+        if (statusesApi.data) {
+            setStatuses(Array.isArray(statusesApi.data) ? statusesApi.data : []);
+        }
+        if (statusesApi.error && statusesApi.error.status !== 403 && statusesApi.error.status !== 0) {
+            showToast('error', 'Erreur', 'Erreur chargement statuts');
+        }
+    }, [statusesApi.data, statusesApi.error]);
+
+    // Currencies response (silently ignore 403)
+    useEffect(() => {
+        if (currenciesApi.data) {
+            setCurrencies(Array.isArray(currenciesApi.data) ? currenciesApi.data : []);
+        }
+        if (currenciesApi.error && currenciesApi.error.status !== 403 && currenciesApi.error.status !== 0) {
+            showToast('error', 'Erreur', 'Erreur chargement devises');
+        }
+    }, [currenciesApi.data, currenciesApi.error]);
+
+    // Groups response
+    useEffect(() => {
+        if (groupsApi.data) {
+            setGroups(Array.isArray(groupsApi.data) ? groupsApi.data : groupsApi.data.content || []);
+            setLoading(false);
+        }
+        if (groupsApi.error) {
+            showToast('error', 'Erreur', 'Erreur chargement groupes');
+            setLoading(false);
+        }
+    }, [groupsApi.data, groupsApi.error]);
+
+    // Actions response (create, update, addMember, removeMember, startGroup, startCycle, endGroup, delete)
+    useEffect(() => {
+        if (actionsApi.data) {
+            switch (actionsApi.callType) {
                 case 'create':
                     showToast('success', 'Succès', 'Groupe de tontine créé avec succès');
                     resetForm();
@@ -119,22 +172,21 @@ function TontineGroupPage() {
                     break;
             }
         }
-        if (error) {
-            showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
+        if (actionsApi.error) {
+            showToast('error', 'Erreur', actionsApi.error.message || 'Une erreur est survenue');
         }
-    }, [data, error, callType]);
+    }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
 
     const loadReferenceData = () => {
-        fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
-        fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
-        fetchData(null, 'GET', `${STATUSES_URL}/findall`, 'loadStatuses');
-        fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
+        clientsApi.fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
+        branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
+        statusesApi.fetchData(null, 'GET', `${STATUSES_URL}/findall`, 'loadStatuses');
+        currenciesApi.fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
     };
 
     const loadGroups = () => {
         setLoading(true);
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadGroups');
-        setLoading(false);
+        groupsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadGroups');
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -183,11 +235,12 @@ function TontineGroupPage() {
 
     const handleSubmit = () => {
         if (!validateForm()) return;
+        const dataToSend = { ...group, userAction: getCurrentUser() };
 
         if (group.id) {
-            fetchData(group, 'PUT', `${BASE_URL}/update/${group.id}`, 'update');
+            actionsApi.fetchData(dataToSend, 'PUT', `${BASE_URL}/update/${group.id}`, 'update');
         } else {
-            fetchData(group, 'POST', `${BASE_URL}/new`, 'create');
+            actionsApi.fetchData(dataToSend, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
@@ -213,8 +266,8 @@ function TontineGroupPage() {
 
     const addMember = () => {
         if (selectedGroup && newMemberClientId) {
-            fetchData(
-                { clientId: newMemberClientId },
+            actionsApi.fetchData(
+                { clientId: newMemberClientId, userAction: getCurrentUser() },
                 'POST',
                 `${BASE_URL}/${selectedGroup.id}/addmember`,
                 'addMember'
@@ -231,7 +284,7 @@ function TontineGroupPage() {
             acceptLabel: 'Oui',
             rejectLabel: 'Non',
             accept: () => {
-                fetchData({}, 'POST', `${BASE_URL}/${groupId}/removemember/${memberId}`, 'removeMember');
+                actionsApi.fetchData({ userAction: getCurrentUser() }, 'POST', `${BASE_URL}/${groupId}/removemember/${memberId}`, 'removeMember');
             }
         });
     };
@@ -245,7 +298,7 @@ function TontineGroupPage() {
             acceptLabel: 'Démarrer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData({}, 'POST', `${BASE_URL}/start/${rowData.id}`, 'startGroup');
+                actionsApi.fetchData({ userAction: getCurrentUser() }, 'POST', `${BASE_URL}/start/${rowData.id}`, 'startGroup');
             }
         });
     };
@@ -259,7 +312,7 @@ function TontineGroupPage() {
             acceptLabel: 'Démarrer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData({}, 'POST', `${BASE_URL}/${rowData.id}/startnewcycle`, 'startCycle');
+                actionsApi.fetchData({ userAction: getCurrentUser() }, 'POST', `${BASE_URL}/${rowData.id}/startnewcycle`, 'startCycle');
             }
         });
     };
@@ -273,7 +326,7 @@ function TontineGroupPage() {
             acceptLabel: 'Clôturer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData({}, 'POST', `${BASE_URL}/end/${rowData.id}`, 'endGroup');
+                actionsApi.fetchData({ userAction: getCurrentUser() }, 'POST', `${BASE_URL}/end/${rowData.id}`, 'endGroup');
             }
         });
     };
@@ -559,7 +612,7 @@ function TontineGroupPage() {
                                         value={group.coordinatorId}
                                         options={clients}
                                         onChange={(e) => handleDropdownChange('coordinatorId', e.value)}
-                                        optionLabel={(item) => `${item.firstName} ${item.lastName}`}
+                                        optionLabel={(item) => getClientDisplayName(item)}
                                         optionValue="id"
                                         placeholder="Sélectionner"
                                         filter
@@ -677,7 +730,7 @@ function TontineGroupPage() {
                             value={newMemberClientId}
                             options={clients}
                             onChange={(e) => setNewMemberClientId(e.value)}
-                            optionLabel={(item) => `${item.firstName} ${item.lastName} - ${item.clientNumber}`}
+                            optionLabel={(item) => `${getClientDisplayName(item)} - ${item.clientNumber}`}
                             optionValue="id"
                             placeholder="Rechercher un client..."
                             filter
@@ -725,7 +778,7 @@ function TontineGroupPage() {
                                     <Column
                                         field="client"
                                         header="Membre"
-                                        body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                                        body={(row) => getClientDisplayName(row.client)}
                                     />
                                     <Column field="payoutOrder" header="Ordre Paiement" />
                                     <Column
@@ -760,4 +813,11 @@ function TontineGroupPage() {
     );
 }
 
-export default TontineGroupPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+            <TontineGroupPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

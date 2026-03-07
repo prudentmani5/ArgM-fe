@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
@@ -961,4 +962,11 @@ const PendingApprovalsPage = () => {
     );
 };
 
-export default PendingApprovalsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['USER_APPROVE']}>
+            <PendingApprovalsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

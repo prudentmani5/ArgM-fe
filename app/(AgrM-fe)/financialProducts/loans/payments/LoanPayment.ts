@@ -33,6 +33,9 @@ export class LoanPayment {
     // Notes
     notes?: string;
 
+    // Caisse/guichet for in-agency cash payment
+    caisseId?: number;
+
     // Reversal
     reversedDate?: string;
     reversedById?: number;

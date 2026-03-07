@@ -29,44 +29,16 @@ const AppMenu = () => {
         {
             label: 'MODULE DES CLIENTS ET GROUPES',
             icon: 'pi pi-truck',
-            /*visible: appUser ? hasAnyAuthority(appUser, [
-                'ENTREE_SETTINGS_CREATE',
-                'ENTREE_SETTINGS_VIEW',
-                'ENTREE_SETTINGS_UPDATE',
-                'ENTREE_VEHICULE_CREATE',
-                'ENTREE_VEHICULE_UPDATE',
-                'ENTREE_VEHICULE_CONSULTATION',
-                'ENTREE_MAGASIN_CREATE',
-                'ENTREE_MAGASIN_UPDATE',
-                'ENTREE_MAGASIN_CONSULTATION',
-                'GPS_MAGASIN_CREATE',
-                'GPS_MAGASIN_UPDATE',
-                'GPS_MAGASIN_VIEW',
-                'GPS_MAGASIN_VALIDATE_1',
-                'GPS_MAGASIN_VALIDATE_2',
-                'GPS_ENREGISTREMENT_CREATE',
-                'GPS_ENREGISTREMENT_UPDATE',
-                'GPS_ENREGISTREMENT_VIEW',
-                'GPS_ENREGISTREMENT_VALIDATE_1',
-                'GPS_ENREGISTREMENT_VALIDATE_2',
-                'ACCOSTAGE_CREATE',
-                'ACCOSTAGE_UPDATE',
-                'ACCOSTAGE_VALIDATE_1',
-                'ACCOSTAGE_VALIDATE_2',
-                'REMORQUAGE_CREATE',
-                'REMORQUAGE_UPDATE',
-                'REMORQUAGE_VALIDATE_1',
-                'REMORQUAGE_VALIDATE_2'
-            ]) : false, */
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'CUSTOMER_GROUP_VIEW', 'CUSTOMER_GROUP_CREATE', 'CUSTOMER_GROUP_UPDATE',
+                'CUSTOMER_GROUP_DELETE', 'CUSTOMER_GROUP_APPROVE', 'CUSTOMER_GROUP_BLACKLIST',
+                'CUSTOMER_GROUP_REPORT', 'CUSTOMER_GROUP_SETTINGS'
+            ]) : false,
             items: [
                 {
                     label: ' Paramétres',
                     icon: 'pi pi-wallet',
-                  /*  visible: appUser ? hasAnyAuthority(appUser, [
-                        'ENTREE_SETTINGS_CREATE',
-                        'ENTREE_SETTINGS_VIEW',
-                        'ENTREE_SETTINGS_UPDATE'
-                    ]) : false,*/
+                    visible: appUser ? hasAnyAuthority(appUser, ['CUSTOMER_GROUP_SETTINGS']) : false,
                     items: [
                         {
                             label: 'Parametres de base',
@@ -81,30 +53,22 @@ const AppMenu = () => {
                 {
                     label: 'Clients',
                     icon: 'pi pi-wallet',
+                    visible: appUser ? hasAnyAuthority(appUser, ['CUSTOMER_GROUP_VIEW', 'CUSTOMER_GROUP_CREATE', 'CUSTOMER_GROUP_UPDATE']) : false,
                     items: [{
                         label: 'Enregistrement du client',
                         icon: 'pi pi-chart-bar',
-                        to: '/moduleCostumerGroup/clients',
-                       /* visible: appUser ? hasAnyAuthority(appUser, [
-                            'ENTREE_VEHICULE_CREATE',
-                            'ENTREE_VEHICULE_UPDATE',
-                            'ENTREE_VEHICULE_CONSULTATION'
-                        ]) : false*/
+                        to: '/moduleCostumerGroup/clients'
                     }, {
                         label: 'Enregistrement du groupe',
                         icon: 'pi pi-wallet',
-                        to: '/moduleCostumerGroup/solidarity-groups',
-                       /* visible: appUser ? hasAnyAuthority(appUser, [
-                            'ENTREE_MAGASIN_CREATE',
-                            'ENTREE_MAGASIN_UPDATE',
-                            'ENTREE_MAGASIN_CONSULTATION'
-                        ]) : false*/
+                        to: '/moduleCostumerGroup/solidarity-groups'
                     }]
                 },
 
                 {
                     label: 'Rapports',
                     icon: 'pi pi-chart-bar',
+                    visible: appUser ? hasAnyAuthority(appUser, ['CUSTOMER_GROUP_REPORT']) : false,
                     items: [{
                         label: 'Rapports Clients et Groupes',
                         icon: 'pi pi-file',
@@ -113,7 +77,7 @@ const AppMenu = () => {
                 },
 
 
-                {
+                /*{
                     label: 'Gestion des services divers',
                     icon: 'pi pi-wallet',
                     visible: appUser ? hasAnyAuthority(appUser, [
@@ -154,7 +118,7 @@ const AppMenu = () => {
                         icon: 'pi pi-chart-bar',
                         to: '/entryMagasin/remorquage'
                     },]
-                },
+                }*/
 
 
 
@@ -167,45 +131,56 @@ const AppMenu = () => {
         {
             label: ' MODULE PRODUITS FINANCIERS',
             icon: 'pi pi-money-bill',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'FINANCIAL_PRODUCT_VIEW', 'FINANCIAL_PRODUCT_CREATE', 'FINANCIAL_PRODUCT_UPDATE',
+                'FINANCIAL_PRODUCT_DELETE', 'FINANCIAL_PRODUCT_APPROVE', 'FINANCIAL_PRODUCT_SETTINGS'
+            ]) : false,
             items: [
-                
+
                  {
                             label: ' Devises',
                             icon: 'pi pi-dollar',
-                            to: '/financialProducts/reference-data/currencies'
+                            to: '/financialProducts/reference-data/currencies',
+                            visible: appUser ? hasAnyAuthority(appUser, ['FINANCIAL_PRODUCT_SETTINGS']) : false
                         },
                         {
                             label: 'Product Types',
                             icon: 'pi pi-briefcase',
-                            to: '/financialProducts/reference-data/loan-product-types'
+                            to: '/financialProducts/reference-data/loan-product-types',
+                            visible: appUser ? hasAnyAuthority(appUser, ['FINANCIAL_PRODUCT_SETTINGS']) : false
                         },
-                      
-                    
+
+
                         {
                             label: 'Types de Frais',
                             icon: 'pi pi-money-bill',
-                            to: '/financialProducts/reference-data/fee-types'
+                            to: '/financialProducts/reference-data/fee-types',
+                            visible: appUser ? hasAnyAuthority(appUser, ['FINANCIAL_PRODUCT_SETTINGS']) : false
                         },
                         {
                             label: 'Frequences de Payment ',
                             icon: 'pi pi-calendar',
-                            to: '/financialProducts/reference-data/payment-frequencies'
+                            to: '/financialProducts/reference-data/payment-frequencies',
+                            visible: appUser ? hasAnyAuthority(appUser, ['FINANCIAL_PRODUCT_SETTINGS']) : false
                         },
 
                          {
                             label: 'Interest Calculation Methods',
                             icon: 'pi pi-percentage',
-                            to: '/financialProducts/reference-data/interest-calculation-methods'
+                            to: '/financialProducts/reference-data/interest-calculation-methods',
+                            visible: appUser ? hasAnyAuthority(appUser, ['FINANCIAL_PRODUCT_SETTINGS']) : false
                         },
                          {
                             label: 'Tous les Produits',
                             icon: 'pi pi-list',
-                            to: '/financialProducts/loan-products'
+                            to: '/financialProducts/loan-products',
+                            visible: appUser ? hasAnyAuthority(appUser, ['FINANCIAL_PRODUCT_VIEW']) : false
                         },
                          {
                             label: 'New Application / Nouvelle Demande',
                             icon: 'pi pi-plus-circle',
-                            to: '/financialProducts/loan-applications'
+                            to: '/financialProducts/loan-applications',
+                            visible: appUser ? hasAnyAuthority(appUser, ['FINANCIAL_PRODUCT_CREATE']) : false
                         }
                        
                         
@@ -383,10 +358,20 @@ const AppMenu = () => {
         {
             label: 'MODULE ÉPARGNE',
             icon: 'pi pi-wallet',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'EPARGNE_VIEW', 'EPARGNE_CREATE', 'EPARGNE_UPDATE', 'EPARGNE_DELETE',
+                'EPARGNE_VALIDATE', 'EPARGNE_CLOSE', 'EPARGNE_REPORT', 'EPARGNE_SETTINGS', 'EPARGNE_DAILY_CLOSING',
+                'EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_SECOND_VERIFY',
+                'EPARGNE_WITHDRAWAL_MANAGER_APPROVE', 'EPARGNE_WITHDRAWAL_DISBURSE', 'EPARGNE_WITHDRAWAL_REJECT',
+                'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE', 'EPARGNE_DEPOSIT_CANCEL',
+                'EPARGNE_TERM_DEPOSIT_CREATE', 'EPARGNE_TERM_DEPOSIT_MANAGE', 'EPARGNE_TERM_DEPOSIT_CLOSE',
+                'EPARGNE_COMPULSORY_CREATE', 'EPARGNE_COMPULSORY_RELEASE'
+            ]) : false,
             items: [
                 {
                     label: 'Données de Référence',
                     icon: 'pi pi-database',
+                    visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_SETTINGS']) : false,
                     items: [
                         {
                             label: 'Types d\'Opérations',
@@ -413,6 +398,11 @@ const AppMenu = () => {
                 {
                     label: 'Épargne Libre',
                     icon: 'pi pi-book',
+                    visible: appUser ? hasAnyAuthority(appUser, [
+                        'EPARGNE_VIEW', 'EPARGNE_CREATE',
+                        'EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE',
+                        'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE'
+                    ]) : false,
                     items: [
                         {
                             label: 'Comptes d\'Épargne',
@@ -433,6 +423,21 @@ const AppMenu = () => {
                             label: 'Demandes de Retrait',
                             icon: 'pi pi-file-export',
                             to: '/epargne/demandes-retrait'
+                        },
+                        {
+                            label: 'Carnet de Chèques',
+                            icon: 'pi pi-book',
+                            to: '/epargne/carnet-cheque'
+                        },
+                        {
+                            label: 'Demande de Situation',
+                            icon: 'pi pi-file',
+                            to: '/epargne/demande-situation'
+                        },
+                        {
+                            label: 'Demande d\'Historique',
+                            icon: 'pi pi-history',
+                            to: '/epargne/demande-historique'
                         }
                     ]
                 },
@@ -470,8 +475,15 @@ const AppMenu = () => {
                     ]
                 },*/
                 {
+                    label: 'Clôture Journalière',
+                    icon: 'pi pi-lock',
+                    to: '/epargne/cloture-journaliere',
+                    visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DAILY_CLOSING']) : false
+                },
+                {
                     label: 'Rapports Épargne',
                     icon: 'pi pi-chart-bar',
+                    visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_REPORT']) : false,
                     items: [
                         {
                             label: 'Rapport des Livrets',
@@ -507,6 +519,31 @@ const AppMenu = () => {
                             label: 'Synthèse Générale',
                             icon: 'pi pi-chart-pie',
                             to: '/epargne/rapports/synthese'
+                        },
+                        {
+                            label: 'Rapport Carnets de Chèques',
+                            icon: 'pi pi-credit-card',
+                            to: '/epargne/rapports/carnets-cheque'
+                        },
+                        {
+                            label: 'Rapport Demandes Situation',
+                            icon: 'pi pi-file',
+                            to: '/epargne/rapports/demandes-situation'
+                        },
+                        {
+                            label: 'Rapport Demandes Historique',
+                            icon: 'pi pi-history',
+                            to: '/epargne/rapports/demandes-historique'
+                        },
+                        {
+                            label: 'Rapport Frais de Tenue',
+                            icon: 'pi pi-money-bill',
+                            to: '/epargne/rapports/frais-tenue-compte'
+                        },
+                        {
+                            label: 'Rapport Virements',
+                            icon: 'pi pi-arrows-h',
+                            to: '/epargne/rapports/virements'
                         }
                     ]
                 }
@@ -516,10 +553,19 @@ const AppMenu = () => {
         {
             label: 'MODULE CRÉDIT',
             icon: 'pi pi-briefcase',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'CREDIT_VIEW', 'CREDIT_CREATE', 'CREDIT_UPDATE', 'CREDIT_DELETE',
+                'CREDIT_ANALYZE', 'CREDIT_COMMITTEE', 'CREDIT_DISBURSE', 'CREDIT_REPORT',
+                'CREDIT_SETTINGS', 'CREDIT_DAILY_CLOSING',
+                'CREDIT_APPLICATION_CREATE', 'CREDIT_APPLICATION_UPDATE', 'CREDIT_APPLICATION_CHANGE_STATUS',
+                'CREDIT_DISBURSE_CREATE', 'CREDIT_DISBURSE_EXECUTE', 'CREDIT_DISBURSE_CANCEL',
+                'CREDIT_COMMITTEE_CREATE', 'CREDIT_COMMITTEE_START', 'CREDIT_COMMITTEE_CLOSE'
+            ]) : false,
             items: [
                 {
                     label: 'Données de Référence',
                     icon: 'pi pi-database',
+                    visible: appUser ? hasAnyAuthority(appUser, ['CREDIT_SETTINGS']) : false,
                     items: [
                         {
                             label: 'Statuts de Demande',
@@ -621,6 +667,10 @@ const AppMenu = () => {
                 {
                     label: 'Gestion des Demandes',
                     icon: 'pi pi-file-edit',
+                    visible: appUser ? hasAnyAuthority(appUser, [
+                        'CREDIT_VIEW', 'CREDIT_CREATE',
+                        'CREDIT_APPLICATION_CREATE', 'CREDIT_APPLICATION_UPDATE', 'CREDIT_APPLICATION_CHANGE_STATUS'
+                    ]) : false,
                     items: [
                         {
                             label: 'Toutes les Demandes',
@@ -652,6 +702,7 @@ const AppMenu = () => {
                 {
                     label: 'Analyses Financières',
                     icon: 'pi pi-chart-line',
+                    visible: appUser ? hasAnyAuthority(appUser, ['CREDIT_ANALYZE']) : false,
                     items: [
                         {
                             label: 'Analyses en Cours',
@@ -695,6 +746,10 @@ const AppMenu = () => {
                 {
                     label: 'Décaissements',
                     icon: 'pi pi-money-bill',
+                    visible: appUser ? hasAnyAuthority(appUser, [
+                        'CREDIT_DISBURSE',
+                        'CREDIT_DISBURSE_CREATE', 'CREDIT_DISBURSE_EXECUTE', 'CREDIT_DISBURSE_CANCEL'
+                    ]) : false,
                     items: [
                         {
                             label: 'Demandes Approuvées',
@@ -709,8 +764,15 @@ const AppMenu = () => {
                     ]
                 },
                 {
+                    label: 'Clôture Journalière',
+                    icon: 'pi pi-lock',
+                    to: '/credit/cloture-journaliere',
+                    visible: appUser ? hasAnyAuthority(appUser, ['CREDIT_DAILY_CLOSING']) : false
+                },
+                {
                     label: 'Rapports Crédit',
                     icon: 'pi pi-chart-bar',
+                    visible: appUser ? hasAnyAuthority(appUser, ['CREDIT_REPORT']) : false,
                     items: [
                         {
                             label: 'Rapport des Demandes',
@@ -750,10 +812,21 @@ const AppMenu = () => {
         {
             label: 'MODULE REMBOURSEMENT',
             icon: 'pi pi-replay',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'REMBOURSEMENT_VIEW', 'REMBOURSEMENT_CREATE', 'REMBOURSEMENT_UPDATE', 'REMBOURSEMENT_DELETE',
+                'REMBOURSEMENT_VALIDATE', 'REMBOURSEMENT_RECOVERY', 'REMBOURSEMENT_RESTRUCTURE',
+                'REMBOURSEMENT_REPORT', 'REMBOURSEMENT_SETTINGS', 'REMBOURSEMENT_DAILY_CLOSING',
+                'REMBOURSEMENT_PAYMENT_CREATE', 'REMBOURSEMENT_PAYMENT_PROCESS', 'REMBOURSEMENT_PAYMENT_UPDATE',
+                'REMBOURSEMENT_EARLY_CREATE', 'REMBOURSEMENT_EARLY_APPROVE', 'REMBOURSEMENT_EARLY_PROCESS',
+                'REMBOURSEMENT_RESTRUCTURE_CREATE', 'REMBOURSEMENT_RESTRUCTURE_APPROVE',
+                'REMBOURSEMENT_RECOVERY_CREATE', 'REMBOURSEMENT_RECOVERY_ASSIGN',
+                'REMBOURSEMENT_RECOVERY_ESCALATE', 'REMBOURSEMENT_RECOVERY_CLOSE'
+            ]) : false,
             items: [
                 {
                     label: 'Données de Référence',
                     icon: 'pi pi-database',
+                    visible: appUser ? hasAnyAuthority(appUser, ['REMBOURSEMENT_SETTINGS']) : false,
                     items: [
                         {
                             label: 'Modes de Remboursement',
@@ -795,6 +868,7 @@ const AppMenu = () => {
                 {
                     label: 'Échéanciers',
                     icon: 'pi pi-calendar',
+                    visible: appUser ? hasAnyAuthority(appUser, ['REMBOURSEMENT_VIEW']) : false,
                     items: [
                         {
                             label: 'Gestion des Échéanciers',
@@ -806,6 +880,11 @@ const AppMenu = () => {
                 {
                     label: 'Paiements',
                     icon: 'pi pi-money-bill',
+                    visible: appUser ? hasAnyAuthority(appUser, [
+                        'REMBOURSEMENT_VIEW', 'REMBOURSEMENT_CREATE', 'REMBOURSEMENT_VALIDATE',
+                        'REMBOURSEMENT_PAYMENT_CREATE', 'REMBOURSEMENT_PAYMENT_PROCESS',
+                        'REMBOURSEMENT_EARLY_CREATE', 'REMBOURSEMENT_EARLY_APPROVE', 'REMBOURSEMENT_EARLY_PROCESS'
+                    ]) : false,
                     items: [
                         {
                             label: 'Saisie des Paiements',
@@ -816,39 +895,50 @@ const AppMenu = () => {
                             label: 'Remboursement Anticipé',
                             icon: 'pi pi-forward',
                             to: '/remboursement/remboursement-anticipe'
+                        },
+                        {
+                            label: 'Prélèvement Automatique',
+                            icon: 'pi pi-sync',
+                            to: '/remboursement/prelevement-automatique'
+                        },
+                        {
+                            label: 'Calcul Automatique Pénalités',
+                            icon: 'pi pi-calculator',
+                            to: '/remboursement/calcul-penalites'
                         }
                     ]
                 },
                 {
                     label: 'Recouvrement',
                     icon: 'pi pi-users',
+                    visible: appUser ? hasAnyAuthority(appUser, [
+                        'REMBOURSEMENT_RECOVERY',
+                        'REMBOURSEMENT_RECOVERY_CREATE', 'REMBOURSEMENT_RECOVERY_ASSIGN',
+                        'REMBOURSEMENT_RECOVERY_ESCALATE', 'REMBOURSEMENT_RECOVERY_CLOSE'
+                    ]) : false,
                     items: [
                         {
                             label: 'Dossiers de Recouvrement',
                             icon: 'pi pi-folder',
                             to: '/remboursement/recouvrement'
                         },
-                        {
+                        /*{
                             label: 'Restructuration',
                             icon: 'pi pi-refresh',
                             to: '/remboursement/restructuration'
-                        }
+                        }*/
                     ]
                 },
                 {
-                    label: 'Contentieux',
-                    icon: 'pi pi-briefcase',
-                    items: [
-                        {
-                            label: 'Dossiers Contentieux',
-                            icon: 'pi pi-file',
-                            to: '/remboursement/contentieux'
-                        }
-                    ]
+                    label: 'Clôture Journalière',
+                    icon: 'pi pi-lock',
+                    to: '/remboursement/cloture-journaliere',
+                    visible: appUser ? hasAnyAuthority(appUser, ['REMBOURSEMENT_DAILY_CLOSING']) : false
                 },
                 {
                     label: 'Rapports Remboursement',
                     icon: 'pi pi-chart-bar',
+                    visible: appUser ? hasAnyAuthority(appUser, ['REMBOURSEMENT_REPORT']) : false,
                     items: [
                         {
                             label: 'Rapport des Paiements',
@@ -874,24 +964,245 @@ const AppMenu = () => {
                             label: 'Synthèse Remboursement',
                             icon: 'pi pi-chart-pie',
                             to: '/remboursement/rapports/synthese'
+                        },
+                        {
+                            label: 'Rapport Échéanciers',
+                            icon: 'pi pi-calendar',
+                            to: '/remboursement/rapports/echeanciers'
+                        },
+                        {
+                            label: 'Rapport Remb. Anticipé',
+                            icon: 'pi pi-fast-forward',
+                            to: '/remboursement/rapports/remboursement-anticipe'
+                        },
+                        {
+                            label: 'Rapport Pénalités',
+                            icon: 'pi pi-calculator',
+                            to: '/remboursement/rapports/penalites'
+                        },
+                        {
+                            label: 'Rapport Prélèvements Auto.',
+                            icon: 'pi pi-sync',
+                            to: '/remboursement/rapports/prelevements-automatiques'
+                        },
+                        {
+                            label: 'Rapport Restructurations',
+                            icon: 'pi pi-refresh',
+                            to: '/remboursement/rapports/restructurations'
                         }
                     ]
                 }
             ]
         },
 
+          
+
+
         {
+            label: 'MODULE COMPTABILITÉ',
+            icon: 'pi pi-calculator',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'ACCOUNTING_VIEW', 'ACCOUNTING_ENTRY_CREATE', 'ACCOUNTING_ENTRY_VALIDATE',
+                'ACCOUNTING_DELETE', 'ACCOUNTING_DAILY_CLOSING', 'ACCOUNTING_SETTINGS',
+                'ACCOUNTING_CLOSING_EXECUTE', 'ACCOUNTING_CLOSING_REVERSE'
+            ]) : false,
+            items: [
+                {
+                    label: 'Paramètres',
+                    icon: 'pi pi-cog',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_SETTINGS']) : false,
+                    items: [
+                        {
+                            label: 'Taux de change',
+                            icon: 'pi pi-dollar',
+                            to: '/comptability/settings/tauxChange'
+                        }
+                    ]
+                },
+                {
+                    label: 'Plan comptable SYSCOHADA',
+                    icon: 'pi pi-list',
+                    to: '/comptability/compte',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false
+                },
+                {
+                    label: 'Journaux',
+                    icon: 'pi pi-book',
+                    to: '/comptability/journal',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false
+                },
+                {
+                    label: 'Exercice',
+                    icon: 'pi pi-calendar',
+                    to: '/comptability/exercice',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW', 'ACCOUNTING_ENTRY_CREATE']) : false
+                },
+                {
+                    label: 'Brouillard',
+                    icon: 'pi pi-file-edit',
+                    to: '/comptability/brouillard',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW', 'ACCOUNTING_ENTRY_CREATE']) : false
+                },
+                {
+                    label: 'Écritures',
+                    icon: 'pi pi-pencil',
+                    to: '/comptability/ecriture',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_ENTRY_CREATE']) : false
+                },
+                {
+                    label: 'Contrôle d\'intégrité',
+                    icon: 'pi pi-check-circle',
+                    to: '/comptability/control',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false
+                },
+                {
+                    label: 'Clôture Journalière',
+                    icon: 'pi pi-lock',
+                    to: '/comptability/cloture-journaliere',
+                    visible: appUser ? hasAnyAuthority(appUser, [
+                        'ACCOUNTING_DAILY_CLOSING', 'ACCOUNTING_CLOSING_EXECUTE', 'ACCOUNTING_CLOSING_REVERSE'
+                    ]) : false
+                },
+                {
+                    label: 'Frais de Tenue de Compte',
+                    icon: 'pi pi-money-bill',
+                    to: '/epargne/frais-tenue-compte',
+                    visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_SETTINGS', 'EPARGNE_FEE_EXECUTE']) : false
+                },
+                {
+                    label: 'Comptes Internes',
+                    icon: 'pi pi-building',
+                    to: '/comptability/comptes-internes',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_INTERNAL_ACCOUNTS']) : false
+                }
+            ]
+        },
+
+        {
+            label: 'RAPPORTS COMPTABILITÉ',
+            icon: 'pi pi-chart-bar',
+            visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_REPORT_VIEW', 'ACCOUNTING_REPORT_EXPORT']) : false,
+            items: [
+                {
+                    label: 'Consultation compte',
+                    icon: 'pi pi-search',
+                    to: '/comptability/rapportcompte'
+                },
+                {
+                    label: 'Édition journal',
+                    icon: 'pi pi-folder-plus',
+                    to: '/comptability/editionJournal'
+                },
+                {
+                    label: 'Grand livre',
+                    icon: 'pi pi-book',
+                    to: '/comptability/grandlivre'
+                },
+                {
+                    label: 'Balance',
+                    icon: 'pi pi-gauge',
+                    to: '/comptability/balance'
+                },
+                {
+                    label: 'Bilan',
+                    icon: 'pi pi-file',
+                    to: '/comptability/bilan'
+                },
+                {
+                    label: 'Compte de résultat',
+                    icon: 'pi pi-calculator',
+                    to: '/comptability/compteResultat'
+                },
+                {
+                    label: 'Flux de trésorerie',
+                    icon: 'pi pi-credit-card',
+                    to: '/comptability/fluxTresorerie'
+                },
+                {
+                    label: 'Variation des capitaux',
+                    icon: 'pi pi-chart-line',
+                    to: '/comptability/variationCapitaux'
+                }
+            ]
+        },
+
+        {
+            label: 'MODULE RAPPROCHEMENT',
+            icon: 'pi pi-check-square',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'RAPPROCHEMENT_VIEW', 'RAPPROCHEMENT_CREATE', 'RAPPROCHEMENT_UPDATE',
+                'RAPPROCHEMENT_DELETE', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE',
+                'RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_REPORT',
+                'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH'
+            ]) : false,
+            items: [
+                {
+                    label: 'Tableau de Bord',
+                    icon: 'pi pi-th-large',
+                    to: '/rapprochement',
+                    visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false
+                },
+                {
+                    label: 'Relevés Bancaires',
+                    icon: 'pi pi-file-import',
+                    to: '/rapprochement/releves',
+                    visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_CREATE']) : false
+                },
+                {
+                    label: 'Rapprochements',
+                    icon: 'pi pi-check-circle',
+                    to: '/rapprochement/rapprochements',
+                    visible: appUser ? hasAnyAuthority(appUser, [
+                        'RAPPROCHEMENT_RECONCILE',
+                        'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH',
+                        'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE'
+                    ]) : false
+                },
+                {
+                    label: 'Gestion des Écarts',
+                    icon: 'pi pi-exclamation-triangle',
+                    to: '/rapprochement/ecarts',
+                    visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false
+                },
+                {
+                    label: 'Rapports',
+                    icon: 'pi pi-print',
+                    to: '/rapprochement/rapports',
+                    visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_REPORT']) : false
+                }
+            ]
+        },
+
+
+        
+
+        {
+            label: 'ADMINISTRATION',
+            icon: 'pi pi-home',
+            visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_VIEW', 'USER_CREATE', 'TRACKING_VIEW']) : false,
+            items: [{
+                label: 'Créer un Utilisateur',
+                icon: 'pi pi-user-plus',
+                to: '/usermanagement/create-user',
+                visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_CREATE']) : false
+            },
+            {
+                label: 'Gestion des utilisateurs',
+                icon: 'pi pi-users',
+                to: '/usermanagement',
+                visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_VIEW']) : false
+            },
+            {
+                label: 'Journal d\'Audit',
+                icon: 'pi pi-history',
+                to: '/tracking',
+                visible: appUser ? hasAnyAuthority(appUser, ['TRACKING_VIEW']) : false
+            }]
+        },
+
+       {
             label: 'MANUEL UTILISATEUR',
             icon: 'pi pi-home',
-           /* visible: appUser ? hasAnyAuthority(appUser, [
-                'PONT_BASCULE_CREATE',
-                'PONT_BASCULE_UPDATE',
-                'PONT_BASCULE_CONSULTATION',
-                'STORAGE_EXIT_WITH_RSP',
-                'STORAGE_EXIT_WITH_GPS',
-                'PORT_EXIT_WITH_RSP',
-                'PORT_EXIT_WITH_GPS'
-            ]) : false, */
 
             items: [
 
@@ -899,611 +1210,10 @@ const AppMenu = () => {
                     label: 'Manuel',
 
                         icon: 'pi pi-chart-bar',
-                        to: '/moduleCostumerGroup/user-manual'
-
+                        to: '/user-manual'
                 },
-                // {
-                //         label: 'Service presté',
-                //         icon: 'pi pi-chart-bar',
-                //         to: '/entryMagasin/factServicePreste'
-                //     },
-                {
-                    label: 'Gestion des Sorties',
-                    icon: 'pi pi-wallet',
-                    visible: appUser ? hasAnyAuthority(appUser, [
-                        'STORAGE_EXIT_WITH_RSP',
-                        'STORAGE_EXIT_WITH_GPS',
-                        'PORT_EXIT_WITH_RSP',
-                        'PORT_EXIT_WITH_GPS'
-                    ]) : false,
-                    items: [{
-                        label: 'Sortie Magasin avec RSP',
-                        icon: 'pi pi-chart-bar',
-                        to: '/sortie/sortieMagasinRsp'
-                        // to: '/storage/exitStockOther'
-                    }, {
-                        label: 'Sortie Magasin Autre',
-                        icon: 'pi pi-chart-bar',
-                        to: '/sortie/sortieMagasinAutre'
-                        // to: '/storage/exitStockOther'
-                    }, {
-                        label: 'Sortie Port avec RSP',
-                        icon: 'pi pi-chart-bar',
-                        to: '/sortie/sortiePortRsp',
-                        visible: appUser ? hasAuthority(appUser, 'PORT_EXIT_WITH_RSP') : false
-                    }, {
-                        label: 'Sortie Port avec GPS',
-                        icon: 'pi pi-map-marker',
-                        to: '/sortie/sortiePortGps',
-                        visible: appUser ? hasAuthority(appUser, 'PORT_EXIT_WITH_GPS') : false
-                    }]
-                },
-
-                {
-                    label: 'Gestion Pont Bascule',
-                    icon: 'pi pi-home',
-                    visible: appUser ? hasAnyAuthority(appUser, [
-                        'PONT_BASCULE_CREATE',
-                        'PONT_BASCULE_UPDATE',
-                        'PONT_BASCULE_CONSULTATION'
-                    ]) : false,
-                    items: [
-                        {
-                            label: 'Pont Bascule',
-                            icon: 'pi pi-home',
-                            to: '/storage/pontBascule'
-                        }]
-                }]
+             ]
         },
-
-
-
-       
-
-
-
-        
-
-
-          
-
-
-        {
-            label: 'Comptabilite',
-            icon: 'pi pi-home',
-            visible: appUser ? hasAnyAuthority(appUser, [
-                'ACCOUNTING_VIEW',
-                'ACCOUNTING_ENTRY_CREATE',
-                'ACCOUNTING_ENTRY_VALIDATE',
-                'ACCOUNTING_REPORT_VIEW',
-                'ACCOUNTING_REPORT_EXPORT'
-            ]) : false,
-            items:
-                [
-                    {
-                        label: 'Paramètrse',
-                        icon: 'pi pi-users',
-                        items: [
-                            {
-                                label: 'Taux de change',
-                                icon: 'pi pi-users',
-                                to: '/comptabilite/settings/tauxChange'
-                            }
-                        ]
-                    },
-                    {
-                        label: 'Plan comptable',
-                        icon: 'pi pi-users',
-                        to: '/comptabilite/compte'
-                    },
-                    {
-                        label: 'Journaux',
-                        icon: 'pi pi-users',
-                        to: '/comptabilite/journal'
-                    }
-                    ,
-                    {
-                        label: 'Exercice',
-                        icon: 'pi pi-users',
-                        to: '/comptabilite/exercice'
-                    }
-                    ,
-                    {
-                        label: 'Brouillard',
-                        icon: 'pi pi-users',
-                        to: '/comptabilite/brouillard'
-                    }
-                    ,
-                    {
-                        label: 'Ecritures',
-                        icon: 'pi pi-users',
-                        to: '/comptabilite/ecriture'
-                    }
-                    ,
-                     
-                    {
-                        label: `Control d'intégrité`,
-                        icon: 'pi pi-users',
-                        to: '/comptabilite/control'
-                    }
-                ]
-        },
-
-        {
-            label: 'Rapport Compta',
-            icon: 'pi pi-chart-bar',
-            visible: appUser ? hasAnyAuthority(appUser, [
-                'ACCOUNTING_VIEW',
-                'ACCOUNTING_ENTRY_CREATE',
-                'ACCOUNTING_ENTRY_VALIDATE',
-                'ACCOUNTING_REPORT_VIEW',
-                'ACCOUNTING_REPORT_EXPORT'
-            ]) : false,
-            items: [
-                {
-                    label: 'Consultation compte',
-                    icon: 'pi pi-search',
-                    to: '/comptabilite/rapportcompte'
-                },
-                {
-                    label: 'Edition journal',
-                    icon: 'pi pi-folder-plus',
-                    to: '/comptabilite/editionJournal'
-                },
-                {
-                    label: 'Grand livre',
-                    icon: 'pi pi-book',
-                    to: '/comptabilite/grandlivre'
-                },
-                {
-                    label: 'Balance',
-                    icon: 'pi pi-gauge',
-                    to: '/comptabilite/balance'
-                },
-                {
-                    label: 'Bilan',
-                    icon: 'pi pi-file',
-                    to: '/comptabilite/bilan'
-                },
-                {
-                    label: 'Compte resultat',
-                    icon: 'pi pi-calculator',
-                    to: '/comptabilite/compteResultat'
-                }
-                ,
-                {
-                    label: 'Flux de trésorerie',
-                    icon: 'pi pi-credit-card',
-                    to: '/comptabilite/fluxTresorerie'
-                }
-                ,
-                {
-                    label: 'Variation des capitaux',
-                    icon: 'pi pi-chart-line',
-                    to: '/comptabilite/variationCapitaux'
-                }
-            ]
-        },
-
-        
-
-
-
-        {
-
-            label: 'Ressources Humaines',
-            icon: 'pi pi-home',
-            visible: appUser ? hasAnyAuthority(appUser, ['RH_MANAGER', 'RH_OPERATEUR_SAISIE']) : false,
-            items: [
-                {
-
-                    label: 'Gestion des carrières',
-                    icon: 'pi pi-wallet',
-                    items: [
-                        {
-                            label: 'Gestion des renseignements',
-                            icon: 'pi pi-wallet',
-                            items: [{
-                                label: 'Identification',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/identification'
-                            }, {
-                                label: 'Administrations',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/administration'
-                            }, {
-                                label: 'Carrières',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/carriere'
-                            }, {
-                                label: 'Logistiques',
-                                icon: 'pi pi-check-square',
-                                to: '/approvisionnement/parametrage/unite'
-                            },
-                            {
-                                label: 'Les ayants droits',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/ayantDroit'
-                            },]
-                        }
-                        ,
-                        {
-                            label: 'Gestion des mouvements',
-                            icon: 'pi pi-wallet',
-                            visible: true,
-                            items: [{
-                                label: 'Absences',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/absence'
-                            }, {
-                                label: 'Congés',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/conge'
-                            },
-                            {
-                                label: 'Sorties',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/sortie'
-                            }, {
-                                label: 'Diplomes',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/diplome'
-                            }, {
-                                label: 'Formation-Stage',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/formationStage'
-                            }, {
-                                label: 'Cotation',
-                                icon: 'pi pi-check-square',
-                                items: [{
-                                    label: 'Création',
-                                    icon: 'pi pi-check-square',
-                                    to: '/grh/ficheEmploye/cotation'
-                                }]
-                            }, {
-                                label: 'Mutation',
-                                icon: 'pi pi-check-square',
-                                to: '/approvisionnement/mouvement/sortiearticle'
-                            }, {
-                                label: 'Actions Disciplinaires',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/ficheEmploye/actionDisciplinaire'
-                            },]
-                        }
-                        ,
-                        {
-                            label: 'Gestion des parametres',
-                            icon: 'pi pi-home',
-                            items: [{
-                                label: 'Départements',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/department'
-                            }, {
-                                label: 'Services',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/service'
-                            }, {
-                                label: 'Fonctions',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/fonction'
-                            }, {
-                                label: 'Catégories',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/categorie'
-                            }, {
-                                label: 'Grade',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/grade'
-                            }, {
-                                label: 'Banques',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/banque'
-                            },
-                            {
-                                label: 'Type de congés',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/typeConge'
-                            }, {
-                                label: 'Type de diplome',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/typeDiplome'
-                            }, {
-                                label: 'Situation',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/situation'
-                            }, {
-                                label: 'Notation',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/notation'
-                            }, {
-                                label: 'Pays',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/pays'
-                            }, {
-                                label: 'Province',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/province'
-                            }, {
-                                label: 'Commune',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/commune'
-                            }, {
-                                label: 'Colline',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/colline'
-                            }, {
-                                label: 'Postes',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/poste'
-                            }, {
-                                label: 'Domaines de formation',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/domaineFormation'
-                            }]
-                        }, {
-                            label: 'Edition',
-                            icon: 'pi pi-home',
-                            to: '/grh/ficheEmploye/edition'
-                        }]
-
-                }, {
-
-                    label: 'Gestion de la paie',
-                    icon: 'pi pi-wallet',
-                    visible: appUser ? hasAuthority(appUser, 'RH_MANAGER') : false,
-                    items: [
-                        {
-                            label: 'Saisie',
-                            icon: 'pi pi-wallet',
-                            items: [{
-                                label: 'Indemnités',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/saisie/indemnite'
-                            }, {
-                                label: 'Prime',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/saisie/prime'
-                            }, {
-                                label: 'Retenue',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/saisie/retenue'
-                            }, {
-                                label: 'Paie',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/saisie/paie'
-                            },
-                            ]
-                        }
-                        ,
-                        {
-                            label: 'FingerPrint',
-                            icon: 'pi pi-wallet',
-                            visible: true,
-                            items: [{
-                                label: 'Parametrage des groupes',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/fingerPrint/shiftGroupe'
-                            }, {
-                                label: 'Horaire pour tout le monde',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/fingerPrint/horaire'
-                            },
-                            {
-                                label: 'Pointage',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/fingerPrint/attendance'
-                            }, {
-                                label: 'Heure Supplémentaire',
-                                icon: 'pi pi-clock',
-                                to: '/grh/paie/fingerPrint/heureSupplementaire'
-                            }, {
-                                label: 'actions Disciplinaire',
-                                icon: 'pi pi-check-square',
-                                to: '/approvisionnement/mouvement/sortiearticle'
-                            }]
-                        }
-                        ,
-                        {
-                            label: 'Gestion des parametres',
-                            icon: 'pi pi-home',
-                            items: [{
-                                label: 'Période',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/periodePaie'
-                            }, {
-                                label: 'Rubrique de paie',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/paieRubrique'
-                            }, {
-                                label: 'Indemnité',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/indemniteParametre'
-                            }, {
-                                label: 'Prime',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/primeParametre'
-                            }, {
-                                label: 'Retenue',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/retenueParametre'
-                            }, {
-                                label: 'Tranche Impôts',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/trancheImpotParametre'
-                            }, {
-                                label: 'Tranche Impôts Annuel',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/paie/trancheImpotAnnuelParametre'
-                            }, {
-                                label: 'Banque',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/banque'
-                            },
-                            {
-                                label: 'Type de congés',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/typeConge'
-                            }, {
-                                label: 'Type de diplome',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/typeDiplome'
-                            }, {
-                                label: 'Situation',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/situation'
-                            }, {
-                                label: 'Notation',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/notation'
-                            }, {
-                                label: 'Pays',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/pays'
-                            }, {
-                                label: 'Province',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/province'
-                            }, {
-                                label: 'Commune',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/commune'
-                            }, {
-                                label: 'Colline',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/colline'
-                            }, {
-                                label: 'Postes',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/poste'
-                            }, {
-                                label: 'Domaines de formation',
-                                icon: 'pi pi-check-square',
-                                to: '/grh/settings/domaineFormation'
-                            }]
-                        }, {
-                            label: 'Consultation de la paie',
-                            icon: 'pi pi-eye',
-                            to: '/grh/paie/consultation'
-                        }, {
-                            label: 'Comptabilisation',
-                            icon: 'pi pi-calculator',
-                            to: '/grh/paie/comptabilisation'
-                        }]
-
-                },
-                {
-                    label: 'Editions Paie',
-                    icon: 'pi pi-print',
-                    visible: appUser ? hasAuthority(appUser, 'RH_MANAGER') : false,
-                    items: [{
-                        label: 'Bulletin de paie',
-                        icon: 'pi pi-file',
-                        to: '/grh/paie/editions/bulletinPaie'
-                    }, {
-                        label: 'Journal de paie',
-                        icon: 'pi pi-book',
-                        to: '/grh/paie/editions/journalPaie'
-                    }, {
-                        label: 'Paiement a effectuer',
-                        icon: 'pi pi-money-bill',
-                        to: '/grh/paie/editions/paiementAEffectuer'
-                    }, {
-                        label: 'Virement bancaire',
-                        icon: 'pi pi-credit-card',
-                        to: '/grh/paie/editions/virementBancaire'
-                    }, {
-                        label: 'Listing IRE',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingIre'
-                    }, {
-                        label: 'Listing IRE par tranche',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingIREParTranche'
-                    }, {
-                        label: 'Listing IRE Recapitulatif',
-                        icon: 'pi pi-file-excel',
-                        to: '/grh/paie/editions/listingIreRecapitulatif'
-                    }, {
-                        label: 'Listing Inss',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingInss'
-                    }, {
-                        label: 'Listing Jubilée',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingJubile'
-                    }, {
-                        label: 'Fond de pension',
-                        icon: 'pi pi-wallet',
-                        to: '/grh/paie/editions/fondPensionComplementaire'
-                    }, {
-                        label: 'Listing des retenues',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingRetenue'
-                    }, {
-                        label: 'Listing Retenues BHB',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingRetenueBhb'
-                    }, {
-                        label: 'Synthése',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/syntheseConsolidE'
-                    }, {
-                        label: 'Listing de Participation Restauration',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingParticipationRestauration'
-                    }, {
-                        label: 'Listing des indemnités diverses',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingIndemnitesDiverses'
-                    }, {
-                        label: 'Listing des heures supplémentaire',
-                        icon: 'pi pi-clock',
-                        to: '/grh/paie/editions/listingHeuresSupplementaire'
-                    }, {
-                        label: "Listing de l'Inss Trimestriel",
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingInssTrimestriel'
-                    }, {
-                        label: 'Listing des retenues par an',
-                        icon: 'pi pi-list',
-                        to: '/grh/paie/editions/listingRetenuesParAn'
-                    }, {
-                        label: 'IRE groupé par Mois',
-                        icon: 'pi pi-calendar',
-                        to: '/grh/paie/editions/ireGroupeParMois'
-                    }, {
-                        label: 'IRE Annuel',
-                        icon: 'pi pi-calendar-plus',
-                        to: '/grh/paie/editions/ireAnnuel'
-                    }, {
-                        label: 'Masse salariale Brut',
-                        icon: 'pi pi-money-bill',
-                        to: '/grh/paie/editions/masseSalarialeBrut'
-                    }, {
-                        label: 'Masse salariale Brut Global',
-                        icon: 'pi pi-money-bill',
-                        to: '/grh/paie/editions/masseSalarialeBrutGlobal'
-                    }]
-                }]
-        },
-
-        {
-            label: 'ADMINISTRATION',
-            icon: 'pi pi-home',
-            //visible: appUser ? hasAuthority(appUser, 'ADMIN') : false,
-            items: [{
-                label: 'Gestion des utilisateurs',
-                icon: 'pi pi-users',
-                to: '/usermanagement'
-            },
-            {
-                label: 'Journal d\'Audit',
-                icon: 'pi pi-history',
-                to: '/tracking'
-            }]
-        },
-
-
 
 
        

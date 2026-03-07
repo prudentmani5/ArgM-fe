@@ -13,13 +13,11 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { TabView, TabPanel } from 'primereact/tabview';
-import { Divider } from 'primereact/divider';
 import { buildApiUrl } from '../../../utils/apiConfig';
 import useConsumApi from '../../../hooks/fetchData/useConsumApi';
 import {
     TrackAuditTrail,
     TrackAuditTrailSearchCriteria,
-    PaginatedResponse,
     AuditTrailStats,
     ActionTypeOptions,
     ModuleOptions,
@@ -39,51 +37,72 @@ function TrackingPage() {
     const [selectedAudit, setSelectedAudit] = useState<TrackAuditTrail | null>(null);
     const [detailDialogVisible, setDetailDialogVisible] = useState(false);
 
-    // Filters
+    // Filters - default to 90 days to capture more audit data
     const [filters, setFilters] = useState<TrackAuditTrailSearchCriteria>({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
         page: 0,
         size: 20,
         sortBy: 'actionTimestamp',
         sortDirection: 'DESC'
     });
 
-    const [startDate, setStartDate] = useState<Date>(new Date(new Date().setDate(new Date().getDate() - 7)));
-    const [endDate, setEndDate] = useState<Date>(new Date());
+    const [startDate, setStartDate] = useState<Date | null>(null);
+    const [endDate, setEndDate] = useState<Date | null>(null);
     const [usernameFilter, setUsernameFilter] = useState('');
     const [entityTableFilter, setEntityTableFilter] = useState('');
+
+    // Users for dropdown
+    const [users, setUsers] = useState<{ label: string; value: string }[]>([]);
 
     // API hooks
     const { data, error, fetchData, callType } = useConsumApi('');
     const { data: statsData, fetchData: fetchStats, callType: statsCallType } = useConsumApi('');
+    const { data: usersData, fetchData: fetchUsers, callType: usersCallType } = useConsumApi('');
     const toast = useRef<Toast>(null);
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
         toast.current?.show({ severity, summary, detail, life: 3000 });
     };
 
-    // Load data on mount
+    // Track if this is the initial mount
+    const isInitialMount = useRef(true);
+
+    // Load all data on mount
     useEffect(() => {
         loadAuditTrails();
         loadStats();
+        loadUsers();
     }, []);
+
+    // Reload audit trails when filters change (skip initial mount to avoid double-load)
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+        loadAuditTrails();
+    }, [filters]);
 
     // Handle API responses
     useEffect(() => {
         if (data && callType === 'loadAuditTrails') {
+            console.log('Audit trail response:', data);
             if (data.content) {
                 setAuditTrails(data.content);
                 setTotalRecords(data.totalElements || 0);
             } else if (Array.isArray(data)) {
                 setAuditTrails(data);
                 setTotalRecords(data.length);
+            } else {
+                console.warn('Unexpected response format:', data);
+                setAuditTrails([]);
+                setTotalRecords(0);
             }
             setLoading(false);
         }
         if (error && callType === 'loadAuditTrails') {
+            console.error('Audit trail error:', error);
             setLoading(false);
-            showToast('error', 'Erreur', 'Erreur lors du chargement des données');
+            showToast('error', 'Erreur', error?.message || 'Erreur lors du chargement des données');
         }
     }, [data, error, callType]);
 
@@ -92,6 +111,18 @@ function TrackingPage() {
             setStats(statsData);
         }
     }, [statsData, statsCallType]);
+
+    useEffect(() => {
+        if (usersData && usersCallType === 'loadUsers') {
+            if (Array.isArray(usersData)) {
+                const userOptions = usersData.map((user: any) => ({
+                    label: `${user.firstname} ${user.lastname}`,
+                    value: `${user.firstname} ${user.lastname}`
+                }));
+                setUsers(userOptions);
+            }
+        }
+    }, [usersData, usersCallType]);
 
     const loadAuditTrails = () => {
         setLoading(true);
@@ -102,6 +133,7 @@ function TrackingPage() {
             startDate: startDate ? startDate.toISOString().split('T')[0] : null,
             endDate: endDate ? endDate.toISOString().split('T')[0] : null
         };
+        console.log('Loading audit trails with criteria:', searchCriteria);
         fetchData(searchCriteria, 'POST', buildApiUrl('/api/audit-trail/search'), 'loadAuditTrails');
     };
 
@@ -112,20 +144,21 @@ function TrackingPage() {
         fetchStats(null, 'GET', buildApiUrl(`/api/audit-trail/stats?${params.toString()}`), 'loadStats');
     };
 
+    const loadUsers = () => {
+        fetchUsers(null, 'GET', buildApiUrl('/api/users'), 'loadUsers');
+    };
+
     const handleSearch = () => {
         setFilters({ ...filters, page: 0 });
-        loadAuditTrails();
         loadStats();
     };
 
     const handleReset = () => {
-        setStartDate(new Date(new Date().setDate(new Date().getDate() - 7)));
-        setEndDate(new Date());
+        setStartDate(null);
+        setEndDate(null);
         setUsernameFilter('');
         setEntityTableFilter('');
         setFilters({
-            startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
-            endDate: new Date().toISOString().split('T')[0],
             actionTypeId: null,
             moduleId: null,
             status: null,
@@ -134,10 +167,7 @@ function TrackingPage() {
             sortBy: 'actionTimestamp',
             sortDirection: 'DESC'
         });
-        setTimeout(() => {
-            loadAuditTrails();
-            loadStats();
-        }, 100);
+        loadStats();
     };
 
     const onPage = (event: DataTablePageEvent) => {
@@ -146,7 +176,6 @@ function TrackingPage() {
             page: event.page || 0,
             size: event.rows || 20
         });
-        setTimeout(() => loadAuditTrails(), 100);
     };
 
     const onSort = (event: DataTableSortEvent) => {
@@ -155,7 +184,6 @@ function TrackingPage() {
             sortBy: event.sortField as string || 'actionTimestamp',
             sortDirection: event.sortOrder === 1 ? 'ASC' : 'DESC'
         });
-        setTimeout(() => loadAuditTrails(), 100);
     };
 
     const viewDetails = (audit: TrackAuditTrail) => {
@@ -564,9 +592,10 @@ function TrackingPage() {
                                 <Calendar
                                     id="startDate"
                                     value={startDate}
-                                    onChange={(e) => setStartDate(e.value as Date)}
+                                    onChange={(e) => setStartDate(e.value as Date | null)}
                                     dateFormat="dd/mm/yy"
                                     showIcon
+                                    placeholder="Toutes les dates"
                                     className="w-full"
                                 />
                             </div>
@@ -577,9 +606,10 @@ function TrackingPage() {
                                 <Calendar
                                     id="endDate"
                                     value={endDate}
-                                    onChange={(e) => setEndDate(e.value as Date)}
+                                    onChange={(e) => setEndDate(e.value as Date | null)}
                                     dateFormat="dd/mm/yy"
                                     showIcon
+                                    placeholder="Toutes les dates"
                                     className="w-full"
                                 />
                             </div>
@@ -587,12 +617,17 @@ function TrackingPage() {
                         <div className="col-12 md:col-3">
                             <div className="field">
                                 <label htmlFor="username" className="font-bold">Utilisateur</label>
-                                <InputText
+                                <Dropdown
                                     id="username"
-                                    value={usernameFilter}
-                                    onChange={(e) => setUsernameFilter(e.target.value)}
-                                    placeholder="Rechercher par utilisateur"
+                                    value={usernameFilter || null}
+                                    options={users}
+                                    onChange={(e) => setUsernameFilter(e.value || '')}
+                                    placeholder="Tous les utilisateurs"
                                     className="w-full"
+                                    filter
+                                    filterPlaceholder="Rechercher un utilisateur"
+                                    showClear
+                                    emptyFilterMessage="Aucun utilisateur trouvé"
                                 />
                             </div>
                         </div>

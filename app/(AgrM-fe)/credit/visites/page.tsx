@@ -10,10 +10,11 @@ import { InputText } from 'primereact/inputtext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/field-visits');
 
-export default function VisitesListPage() {
+function VisitesListPageContent() {
     const [visites, setVisites] = useState<any[]>([]);
     const [globalFilter, setGlobalFilter] = useState('');
     const toast = useRef<Toast>(null);
@@ -133,5 +134,13 @@ export default function VisitesListPage() {
                 <Column header="Actions" body={actionsBodyTemplate} style={{ width: '100px' }} />
             </DataTable>
         </div>
+    );
+}
+
+export default function VisitesListPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <VisitesListPageContent />
+        </ProtectedPage>
     );
 }

@@ -8,10 +8,23 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { OperationType, OperationTypeClass, OperationClass } from './OperationType';
 import OperationTypeForm from './OperationTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
+
+const getCurrentUser = (): string => {
+    try {
+        const userCookie = Cookies.get('appUser');
+        if (userCookie) {
+            const user = JSON.parse(userCookie);
+            return user?.email || user?.username || 'system';
+        }
+    } catch (e) {}
+    return 'system';
+};
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/operation-types`;
 
@@ -33,6 +46,7 @@ function OperationTypePage() {
             switch (callType) {
                 case 'loadOperationTypes':
                     setOperationTypes(Array.isArray(data) ? data : []);
+                    setLoading(false);
                     break;
                 case 'createOperationType':
                     showToast('success', 'Succès', 'Type d\'opération créé avec succès');
@@ -54,13 +68,13 @@ function OperationTypePage() {
         }
         if (error) {
             showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
+            setLoading(false);
         }
     }, [data, error, callType]);
 
     const loadOperationTypes = () => {
         setLoading(true);
         fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadOperationTypes');
-        setLoading(false);
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -102,11 +116,12 @@ function OperationTypePage() {
 
     const handleSubmit = () => {
         if (!validateForm()) return;
+        const dataToSend = { ...operationType, userAction: getCurrentUser() };
 
         if (operationType.id) {
-            fetchData(operationType, 'PUT', `${BASE_URL}/update/${operationType.id}`, 'updateOperationType');
+            fetchData(dataToSend, 'PUT', `${BASE_URL}/update/${operationType.id}`, 'updateOperationType');
         } else {
-            fetchData(operationType, 'POST', `${BASE_URL}/new`, 'createOperationType');
+            fetchData(dataToSend, 'POST', `${BASE_URL}/new`, 'createOperationType');
         }
     };
 
@@ -128,7 +143,7 @@ function OperationTypePage() {
             acceptLabel: 'Oui, supprimer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'deleteOperationType');
+                fetchData({ userAction: getCurrentUser() }, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'deleteOperationType');
             }
         });
     };
@@ -255,4 +270,11 @@ function OperationTypePage() {
     );
 }
 
-export default OperationTypePage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_SETTINGS']}>
+            <OperationTypePage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

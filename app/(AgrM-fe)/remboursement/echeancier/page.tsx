@@ -18,6 +18,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../utils/branchFilter';
 
 import EcheancierForm from './EcheancierForm';
 import {
@@ -114,8 +115,12 @@ const EcheancierPage = () => {
                     });
 
                     setFullyPaidLoanIds(paidLoanIds);
-                    // Now load disbursements
-                    fetchData(null, 'GET', `${DISBURSEMENTS_URL}/findbystatus/COMPLETED/paginated?page=0&size=100&sortBy=disbursementDate&sortDir=desc`, 'loadDisbursements');
+                    // Now load disbursements (filtered by branch if applicable)
+                    const { filter: filterBranch, branchId: userBranchId } = shouldFilterByBranch();
+                    const disbUrl = filterBranch
+                        ? `${DISBURSEMENTS_URL}/findbybranch/${userBranchId}`
+                        : `${DISBURSEMENTS_URL}/findbystatus/COMPLETED/paginated?page=0&size=100&sortBy=disbursementDate&sortDir=desc`;
+                    fetchData(null, 'GET', disbUrl, 'loadDisbursements');
                     break;
                 case 'create':
                 case 'update':
@@ -144,7 +149,9 @@ const EcheancierPage = () => {
     // This effect is no longer needed as we handle mapping in the loadLoanProducts case
 
     const loadEcheanciers = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadEcheanciers');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadEcheanciers');
     };
 
     const loadDisbursements = () => {

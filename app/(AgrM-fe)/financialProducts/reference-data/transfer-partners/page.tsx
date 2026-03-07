@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { TransferPartner } from './TransferPartner';
 import TransferPartnerForm from './TransferPartnerForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const TransferPartnersPage = () => {
     const [transferPartners, setTransferPartners] = useState<TransferPartner[]>([]);
@@ -206,4 +207,11 @@ const TransferPartnersPage = () => {
     );
 };
 
-export default TransferPartnersPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <TransferPartnersPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

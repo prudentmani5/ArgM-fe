@@ -10,6 +10,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { Badge } from 'primereact/badge';
 import { Loan } from './Loan';
 import LoanForm from './LoanForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanPage = () => {
     const [entities, setEntities] = useState<Loan[]>([]);
@@ -185,4 +186,11 @@ const LoanPage = () => {
     );
 };
 
-export default LoanPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_VIEW']}>
+            <LoanPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

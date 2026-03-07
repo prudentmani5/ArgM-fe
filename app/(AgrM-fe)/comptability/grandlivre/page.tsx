@@ -8,6 +8,7 @@ import { InputText } from 'primereact/inputtext';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice } from '../types';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const GrandLivreReport: React.FC = () => {
     const toast = useRef<Toast>(null);
@@ -149,4 +150,11 @@ const GrandLivreReport: React.FC = () => {
     );
 };
 
-export default GrandLivreReport;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_REPORT_VIEW']}>
+            <GrandLivreReport />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -14,6 +14,10 @@ import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { TermDeposit, TermDepositClass } from './TermDeposit';
 import TermDepositForm from './TermDepositForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
+import { getClientDisplayName } from '@/utils/clientUtils';
+import Cookies from 'js-cookie';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/term-deposits`;
 const CLIENTS_URL = `${API_BASE_URL}/api/clients`;
@@ -23,7 +27,22 @@ const DURATIONS_URL = `${API_BASE_URL}/api/epargne/term-durations`;
 const INSTRUCTIONS_URL = `${API_BASE_URL}/api/epargne/maturity-instructions`;
 const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currencies`;
 
+// Get current user from cookies
+const getCurrentUser = (): string => {
+    try {
+        const appUserCookie = Cookies.get('appUser');
+        if (appUserCookie) {
+            const appUser = JSON.parse(appUserCookie);
+            return `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || appUser.email || 'Unknown';
+        }
+    } catch (e) {
+        console.error('Error parsing appUser cookie:', e);
+    }
+    return 'Unknown';
+};
+
 function TermDepositPage() {
+    const { can } = useAuthorizedAction();
     const [termDeposit, setTermDeposit] = useState<TermDeposit>(new TermDepositClass());
     const [termDeposits, setTermDeposits] = useState<TermDeposit[]>([]);
     const [maturedDeposits, setMaturedDeposits] = useState<TermDeposit[]>([]);
@@ -41,40 +60,106 @@ function TermDepositPage() {
     const [selectedDeposit, setSelectedDeposit] = useState<TermDeposit | null>(null);
     const [newTermDurationId, setNewTermDurationId] = useState<number | null>(null);
     const toast = useRef<Toast>(null);
-    const { data, error, fetchData, callType } = useConsumApi('');
+
+    // Separate hook instances for each data type to avoid race conditions
+    const clientsApi = useConsumApi('');
+    const branchesApi = useConsumApi('');
+    const durationsApi = useConsumApi('');
+    const instructionsApi = useConsumApi('');
+    const currenciesApi = useConsumApi('');
+    const savingsApi = useConsumApi('');
+    const depositsApi = useConsumApi('');
+    const maturedApi = useConsumApi('');
+    const actionsApi = useConsumApi('');
 
     useEffect(() => {
         loadReferenceData();
         loadDeposits();
     }, []);
 
+    // Handle clients data
     useEffect(() => {
-        if (data) {
-            switch (callType) {
-                case 'loadDeposits':
-                    setTermDeposits(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadMatured':
-                    setMaturedDeposits(Array.isArray(data) ? data : []);
-                    break;
-                case 'loadClients':
-                    setClients(Array.isArray(data) ? data : data.content || []);
-                    break;
-                case 'loadBranches':
-                    setBranches(Array.isArray(data) ? data : []);
-                    break;
-                case 'loadDurations':
-                    setTermDurations(Array.isArray(data) ? data : []);
-                    break;
-                case 'loadInstructions':
-                    setMaturityInstructions(Array.isArray(data) ? data : []);
-                    break;
-                case 'loadCurrencies':
-                    setCurrencies(Array.isArray(data) ? data : []);
-                    break;
-                case 'loadSavingsAccounts':
-                    setSavingsAccounts(Array.isArray(data) ? data : []);
-                    break;
+        if (clientsApi.data) {
+            setClients(Array.isArray(clientsApi.data) ? clientsApi.data : clientsApi.data.content || []);
+        }
+        if (clientsApi.error) {
+            showToast('error', 'Erreur', 'Erreur lors du chargement des clients');
+        }
+    }, [clientsApi.data, clientsApi.error]);
+
+    // Handle branches data
+    useEffect(() => {
+        if (branchesApi.data) {
+            setBranches(Array.isArray(branchesApi.data) ? branchesApi.data : []);
+        }
+        if (branchesApi.error) {
+            showToast('error', 'Erreur', 'Erreur lors du chargement des agences');
+        }
+    }, [branchesApi.data, branchesApi.error]);
+
+    // Handle durations data (silently ignore 403 for users without settings authority)
+    useEffect(() => {
+        if (durationsApi.data) {
+            setTermDurations(Array.isArray(durationsApi.data) ? durationsApi.data : []);
+        }
+        if (durationsApi.error && durationsApi.error.status !== 403 && durationsApi.error.status !== 0) {
+            showToast('error', 'Erreur', 'Erreur lors du chargement des durées');
+        }
+    }, [durationsApi.data, durationsApi.error]);
+
+    // Handle instructions data (silently ignore 403)
+    useEffect(() => {
+        if (instructionsApi.data) {
+            setMaturityInstructions(Array.isArray(instructionsApi.data) ? instructionsApi.data : []);
+        }
+        if (instructionsApi.error && instructionsApi.error.status !== 403 && instructionsApi.error.status !== 0) {
+            showToast('error', 'Erreur', 'Erreur lors du chargement des instructions');
+        }
+    }, [instructionsApi.data, instructionsApi.error]);
+
+    // Handle currencies data (silently ignore 403)
+    useEffect(() => {
+        if (currenciesApi.data) {
+            setCurrencies(Array.isArray(currenciesApi.data) ? currenciesApi.data : []);
+        }
+        if (currenciesApi.error && currenciesApi.error.status !== 403 && currenciesApi.error.status !== 0) {
+            showToast('error', 'Erreur', 'Erreur lors du chargement des devises');
+        }
+    }, [currenciesApi.data, currenciesApi.error]);
+
+    // Handle savings accounts data
+    useEffect(() => {
+        if (savingsApi.data) {
+            setSavingsAccounts(Array.isArray(savingsApi.data) ? savingsApi.data : []);
+        }
+        if (savingsApi.error) {
+            showToast('error', 'Erreur', 'Erreur lors du chargement des comptes');
+        }
+    }, [savingsApi.data, savingsApi.error]);
+
+    // Handle deposits data
+    useEffect(() => {
+        if (depositsApi.data) {
+            setTermDeposits(Array.isArray(depositsApi.data) ? depositsApi.data : depositsApi.data.content || []);
+            setLoading(false);
+        }
+        if (depositsApi.error) {
+            showToast('error', 'Erreur', 'Erreur lors du chargement des dépôts');
+            setLoading(false);
+        }
+    }, [depositsApi.data, depositsApi.error]);
+
+    // Handle matured deposits data
+    useEffect(() => {
+        if (maturedApi.data) {
+            setMaturedDeposits(Array.isArray(maturedApi.data) ? maturedApi.data : []);
+        }
+    }, [maturedApi.data]);
+
+    // Handle actions (create, issue certificate, process maturity, renew, close, delete)
+    useEffect(() => {
+        if (actionsApi.data) {
+            switch (actionsApi.callType) {
                 case 'create':
                     showToast('success', 'Succès', 'Dépôt à terme créé avec succès');
                     resetForm();
@@ -104,29 +189,28 @@ function TermDepositPage() {
                     break;
             }
         }
-        if (error) {
-            showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
+        if (actionsApi.error) {
+            showToast('error', 'Erreur', actionsApi.error.message || 'Une erreur est survenue');
         }
-    }, [data, error, callType]);
+    }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
 
     const loadReferenceData = () => {
-        fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
-        fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
-        fetchData(null, 'GET', `${DURATIONS_URL}/findall`, 'loadDurations');
-        fetchData(null, 'GET', `${INSTRUCTIONS_URL}/findall`, 'loadInstructions');
-        fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
+        clientsApi.fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
+        branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
+        durationsApi.fetchData(null, 'GET', `${DURATIONS_URL}/findall`, 'loadDurations');
+        instructionsApi.fetchData(null, 'GET', `${INSTRUCTIONS_URL}/findall`, 'loadInstructions');
+        currenciesApi.fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
     };
 
     const loadDeposits = () => {
         setLoading(true);
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDeposits');
-        fetchData(null, 'GET', `${BASE_URL}/findmaturedandunprocessed`, 'loadMatured');
-        setLoading(false);
+        depositsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDeposits');
+        maturedApi.fetchData(null, 'GET', `${BASE_URL}/findmaturedandunprocessed`, 'loadMatured');
     };
 
     const loadSavingsAccountsByClient = (clientId: number) => {
         if (clientId) {
-            fetchData(null, 'GET', `${SAVINGS_URL}/findbyclient/${clientId}`, 'loadSavingsAccounts');
+            savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/findbyclient/${clientId}`, 'loadSavingsAccounts');
         }
     };
 
@@ -191,7 +275,11 @@ function TermDepositPage() {
 
     const handleSubmit = () => {
         if (!validateForm()) return;
-        fetchData(termDeposit, 'POST', `${BASE_URL}/new`, 'create');
+        const depositData = {
+            ...termDeposit,
+            userAction: getCurrentUser()
+        };
+        actionsApi.fetchData(depositData, 'POST', `${BASE_URL}/new`, 'create');
     };
 
     const resetForm = () => {
@@ -213,7 +301,7 @@ function TermDepositPage() {
             acceptLabel: 'Émettre',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData({}, 'POST', `${BASE_URL}/issuecertificate/${rowData.id}`, 'issueCertificate');
+                actionsApi.fetchData({ userAction: getCurrentUser() }, 'POST', `${BASE_URL}/issuecertificate/${rowData.id}`, 'issueCertificate');
             }
         });
     };
@@ -227,7 +315,7 @@ function TermDepositPage() {
             acceptLabel: 'Traiter',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData({}, 'POST', `${BASE_URL}/processmaturity/${rowData.id}`, 'processMaturity');
+                actionsApi.fetchData({ userAction: getCurrentUser() }, 'POST', `${BASE_URL}/processmaturity/${rowData.id}`, 'processMaturity');
             }
         });
     };
@@ -240,8 +328,8 @@ function TermDepositPage() {
 
     const handleRenew = () => {
         if (selectedDeposit && newTermDurationId) {
-            fetchData(
-                { newTermDurationId },
+            actionsApi.fetchData(
+                { newTermDurationId, userAction: getCurrentUser() },
                 'POST',
                 `${BASE_URL}/renew/${selectedDeposit.id}`,
                 'renew'
@@ -258,8 +346,8 @@ function TermDepositPage() {
             acceptLabel: 'Clôturer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData(
-                    { closureReason: 'Clôture à la demande du client' },
+                actionsApi.fetchData(
+                    { closureReason: 'Clôture à la demande du client', userAction: getCurrentUser() },
                     'POST',
                     `${BASE_URL}/close/${rowData.id}`,
                     'close'
@@ -309,7 +397,7 @@ function TermDepositPage() {
                     onClick={() => viewDeposit(rowData)}
                     tooltip="Voir"
                 />
-                {isActive && !hasCertificate && (
+                {isActive && !hasCertificate && can('EPARGNE_TERM_DEPOSIT_MANAGE') && (
                     <Button
                         icon="pi pi-file"
                         className="p-button-rounded p-button-success p-button-sm"
@@ -317,7 +405,7 @@ function TermDepositPage() {
                         tooltip="Émettre certificat"
                     />
                 )}
-                {isMatured && (
+                {isMatured && can('EPARGNE_TERM_DEPOSIT_MANAGE') && (
                     <>
                         <Button
                             icon="pi pi-check"
@@ -333,7 +421,7 @@ function TermDepositPage() {
                         />
                     </>
                 )}
-                {(isActive || isMatured) && (
+                {(isActive || isMatured) && can('EPARGNE_TERM_DEPOSIT_CLOSE') && (
                     <Button
                         icon="pi pi-times"
                         className="p-button-rounded p-button-danger p-button-sm"
@@ -351,7 +439,7 @@ function TermDepositPage() {
                                 header: 'Suppression',
                                 icon: 'pi pi-trash',
                                 acceptClassName: 'p-button-danger',
-                                accept: () => fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete')
+                                accept: () => actionsApi.fetchData({ userAction: getCurrentUser() }, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete')
                             });
                         }}
                         tooltip="Supprimer"
@@ -408,7 +496,7 @@ function TermDepositPage() {
                             icon="pi pi-save"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={termDeposit.principalAmount < 50000}
+                            disabled={termDeposit.principalAmount < 50000 || !can('EPARGNE_TERM_DEPOSIT_CREATE')}
                         />
                         <Button
                             label="Réinitialiser"
@@ -439,7 +527,7 @@ function TermDepositPage() {
                         <Column
                             field="client"
                             header="Client"
-                            body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                            body={(row) => getClientDisplayName(row.client)}
                         />
                         <Column
                             field="principalAmount"
@@ -477,7 +565,7 @@ function TermDepositPage() {
                         <Column
                             field="client"
                             header="Client"
-                            body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                            body={(row) => getClientDisplayName(row.client)}
                         />
                         <Column
                             field="principalAmount"
@@ -524,9 +612,9 @@ function TermDepositPage() {
                         <Dropdown
                             id="newTermDurationId"
                             value={newTermDurationId}
-                            options={termDurations}
+                            options={termDurations.map((d: any) => ({ ...d, _label: `${d.name} - ${d.interestRate}% annuel` }))}
                             onChange={(e) => setNewTermDurationId(e.value)}
-                            optionLabel={(item) => `${item.name} - ${item.interestRate}% annuel`}
+                            optionLabel="_label"
                             optionValue="id"
                             placeholder="Sélectionner la durée"
                             className="w-full"
@@ -563,4 +651,11 @@ function TermDepositPage() {
     );
 }
 
-export default TermDepositPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+            <TermDepositPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

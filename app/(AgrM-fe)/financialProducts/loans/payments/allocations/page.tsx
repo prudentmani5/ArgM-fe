@@ -9,6 +9,7 @@ import { Dialog } from 'primereact/dialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { LoanPaymentAllocation } from './LoanPaymentAllocation';
 import LoanPaymentAllocationForm from './LoanPaymentAllocationForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanPaymentAllocationPage = () => {
     const [entities, setEntities] = useState<LoanPaymentAllocation[]>([]);
@@ -143,4 +144,11 @@ const LoanPaymentAllocationPage = () => {
     );
 };
 
-export default LoanPaymentAllocationPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['REMBOURSEMENT_VIEW']}>
+            <LoanPaymentAllocationPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

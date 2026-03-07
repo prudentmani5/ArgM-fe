@@ -13,6 +13,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/disbursement-modes');
 
@@ -26,7 +27,7 @@ interface ModeDecaissement {
     isActive?: boolean;
 }
 
-export default function ModesDecaissementPage() {
+function ModesDecaissementPageContent() {
     const [mode, setMode] = useState<ModeDecaissement>({ isActive: true });
     const [modes, setModes] = useState<ModeDecaissement[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -222,5 +223,13 @@ export default function ModesDecaissementPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function ModesDecaissementPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <ModesDecaissementPageContent />
+        </ProtectedPage>
     );
 }

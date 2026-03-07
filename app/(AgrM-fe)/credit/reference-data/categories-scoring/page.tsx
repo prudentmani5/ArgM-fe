@@ -14,6 +14,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/scoring-categories');
 
@@ -29,7 +30,7 @@ interface CategorieScoring {
     isActive?: boolean;
 }
 
-export default function CategoriesScoringPage() {
+function CategoriesScoringPageContent() {
     const [categorie, setCategorie] = useState<CategorieScoring>({ isActive: true });
     const [categories, setCategories] = useState<CategorieScoring[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -264,5 +265,13 @@ export default function CategoriesScoringPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function CategoriesScoringPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <CategoriesScoringPageContent />
+        </ProtectedPage>
     );
 }

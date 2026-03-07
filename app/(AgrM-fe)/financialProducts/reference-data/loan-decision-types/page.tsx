@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { LoanDecisionType } from './LoanDecisionType';
 import LoanDecisionTypeForm from './LoanDecisionTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanDecisionTypesPage = () => {
     const [loanDecisionTypes, setLoanDecisionTypes] = useState<LoanDecisionType[]>([]);
@@ -199,4 +200,11 @@ const LoanDecisionTypesPage = () => {
     );
 };
 
-export default LoanDecisionTypesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <LoanDecisionTypesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

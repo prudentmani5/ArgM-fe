@@ -1,6 +1,7 @@
 'use client';
 
 import { TabPanel, TabView, TabViewTabChangeEvent } from 'primereact/tabview';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { useEffect, useRef, useState } from 'react';
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import { SolidarityGroup, GroupStatus, GroupMember, MemberStatus, GroupType, GuaranteeType, Province, Commune, Zone, ActivitySector, Branch, GroupRole, ClientInfo, MeetingFrequency } from './SolidarityGroup';
@@ -1622,4 +1623,11 @@ function SolidarityGroupComponent() {
     );
 }
 
-export default SolidarityGroupComponent;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CUSTOMER_GROUP_VIEW']}>
+            <SolidarityGroupComponent />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

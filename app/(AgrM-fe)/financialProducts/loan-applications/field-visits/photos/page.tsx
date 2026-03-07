@@ -11,6 +11,7 @@ import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useSearchParams } from 'next/navigation';
 import { LoanFieldVisitPhoto } from './LoanFieldVisitPhoto';
 import LoanFieldVisitPhotoForm from './LoanFieldVisitPhotoForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanFieldVisitPhotoPage = () => {
     const [photos, setPhotos] = useState<LoanFieldVisitPhoto[]>([]);
@@ -209,4 +210,11 @@ const LoanFieldVisitPhotoPage = () => {
     );
 };
 
-export default LoanFieldVisitPhotoPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanFieldVisitPhotoPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

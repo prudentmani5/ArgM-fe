@@ -68,11 +68,15 @@ export default function DocumentsCreditPage() {
     const toast = useRef<Toast>(null);
     const fileUploadRef = useRef<FileUpload>(null);
 
-    // Fetch helper
+    // Fetch helper with JWT token
     const fetchWithAuth = async (url: string, options?: RequestInit) => {
+        const token = Cookies.get('token');
         const response = await fetch(url, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
             credentials: 'include',
             ...options
         });
@@ -84,10 +88,14 @@ export default function DocumentsCreditPage() {
     useEffect(() => {
         const loadDropdownData = async () => {
             try {
+                const token = Cookies.get('token');
                 // Load document types
                 const typesResponse = await fetch(`${DOCUMENT_TYPES_URL}/findall`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
                     credentials: 'include'
                 });
                 if (typesResponse.ok) {
@@ -109,8 +117,8 @@ export default function DocumentsCreditPage() {
         }
     }, [applicationId]);
 
-    const loadAllData = async () => {
-        setLoading(true);
+    const loadAllData = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const [appData, docsData] = await Promise.all([
                 fetchWithAuth(`${APP_URL}/findbyid/${applicationId}`).catch((err) => {
@@ -119,17 +127,19 @@ export default function DocumentsCreditPage() {
                 }),
                 fetchWithAuth(`${DOCUMENTS_URL}/findbyapplication/${applicationId}`).catch((err) => {
                     console.error('Error loading documents:', err);
-                    return [];
+                    return null;
                 })
             ]);
 
-            setApplication(appData);
-            setDocuments(Array.isArray(docsData) ? docsData : docsData?.content || []);
+            if (appData) setApplication(appData);
+            if (docsData !== null) {
+                setDocuments(Array.isArray(docsData) ? docsData : docsData?.content || []);
+            }
         } catch (err) {
             console.error('Error loading data:', err);
             showToast('error', 'Erreur', 'Erreur lors du chargement des données');
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -143,9 +153,13 @@ export default function DocumentsCreditPage() {
         formData.append('file', file);
         formData.append('folder', folder);
 
+        const token = Cookies.get('token');
         const response = await fetch(buildApiUrl('/api/files/upload'), {
             method: 'POST',
             credentials: 'include',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
             body: formData
         });
 
@@ -179,9 +193,6 @@ export default function DocumentsCreditPage() {
     const handleFileClear = () => {
         setSelectedFile(null);
         setNewDocument(prev => ({ ...prev, fileSizeKb: undefined, mimeType: undefined }));
-        if (fileUploadRef.current) {
-            fileUploadRef.current.clear();
-        }
     };
 
     // Add document
@@ -216,9 +227,13 @@ export default function DocumentsCreditPage() {
                 userAction: getUserAction()
             };
 
+            const tokenSave = Cookies.get('token');
             const response = await fetch(`${DOCUMENTS_URL}/new`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(tokenSave ? { 'Authorization': `Bearer ${tokenSave}` } : {})
+                },
                 credentials: 'include',
                 body: JSON.stringify(documentToSave)
             });
@@ -231,7 +246,7 @@ export default function DocumentsCreditPage() {
                 if (fileUploadRef.current) {
                     fileUploadRef.current.clear();
                 }
-                loadAllData();
+                loadAllData(false);
             } else {
                 throw new Error('Failed to add document');
             }
@@ -245,9 +260,13 @@ export default function DocumentsCreditPage() {
     // Mark as received
     const handleMarkReceived = async (doc: ApplicationDocument) => {
         try {
+            const tokenR = Cookies.get('token');
             const response = await fetch(`${DOCUMENTS_URL}/update/${doc.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(tokenR ? { 'Authorization': `Bearer ${tokenR}` } : {})
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     ...doc,
@@ -259,7 +278,7 @@ export default function DocumentsCreditPage() {
 
             if (response.ok) {
                 showToast('success', 'Succès', 'Document marqué comme reçu');
-                loadAllData();
+                loadAllData(false);
             }
         } catch (err) {
             showToast('error', 'Erreur', 'Erreur lors de la mise à jour');
@@ -271,9 +290,13 @@ export default function DocumentsCreditPage() {
         if (!selectedDocument) return;
 
         try {
+            const tokenV = Cookies.get('token');
             const response = await fetch(`${DOCUMENTS_URL}/update/${selectedDocument.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(tokenV ? { 'Authorization': `Bearer ${tokenV}` } : {})
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     ...selectedDocument,
@@ -289,7 +312,7 @@ export default function DocumentsCreditPage() {
                 setShowValidateDialog(false);
                 setSelectedDocument(null);
                 setValidationNotes('');
-                loadAllData();
+                loadAllData(false);
             }
         } catch (err) {
             showToast('error', 'Erreur', 'Erreur lors de la validation');
@@ -306,13 +329,17 @@ export default function DocumentsCreditPage() {
             rejectLabel: 'Non',
             accept: async () => {
                 try {
+                    const tokenD = Cookies.get('token');
                     const response = await fetch(`${DOCUMENTS_URL}/delete/${doc.id}`, {
                         method: 'DELETE',
-                        credentials: 'include'
+                        credentials: 'include',
+                        headers: {
+                            ...(tokenD ? { 'Authorization': `Bearer ${tokenD}` } : {})
+                        }
                     });
                     if (response.ok) {
                         showToast('success', 'Succès', 'Document supprimé');
-                        loadAllData();
+                        loadAllData(false);
                     }
                 } catch (err) {
                     showToast('error', 'Erreur', 'Erreur lors de la suppression');
@@ -501,6 +528,7 @@ export default function DocumentsCreditPage() {
             {/* Documents Table */}
             <DataTable
                 value={documents}
+                dataKey="id"
                 emptyMessage="Aucun document enregistré"
                 className="p-datatable-sm"
                 paginator

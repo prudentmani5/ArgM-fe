@@ -6,7 +6,6 @@ import type { Page } from '../../../../types/types';
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import Cookies from 'js-cookie';
 import { Toast } from 'primereact/toast';
-import { Dialog } from 'primereact/dialog';
 import { Password } from 'primereact/password';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 
@@ -15,17 +14,7 @@ const Login: Page = () => {
         email: '',
         password: ''
     });
-    const [showRegisterDialog, setShowRegisterDialog] = useState(false);
-    const [registerData, setRegisterData] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phoneNumber: '',
-        password: '',
-        confirmPassword: ''
-    });
     const { data, loading, error, fetchData, callType } = useConsumApi('/api/auth/login');
-    const { data: registerResponse, loading: registerLoading, error: registerError, fetchData: registerFetchData, callType: registerCallType } = useConsumApi('/api/auth/register');
     const messageRef = useRef<Toast>(null);
 
     const showMessage = (severity: 'success' | 'error', summary: string, detail: string) => {
@@ -46,55 +35,6 @@ const Login: Page = () => {
             ...prev,
             [name]: value
         }));
-    };
-
-    const handleRegisterInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setRegisterData(prev => ({
-            ...prev,
-            [name]: name === 'lastName' ? value.toUpperCase() : value
-        }));
-    };
-
-    const handleRegister = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        // Validation
-        if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.password) {
-            showMessage('error', 'Erreur de validation', 'Veuillez remplir tous les champs obligatoires');
-            return;
-        }
-
-        if (registerData.password !== registerData.confirmPassword) {
-            showMessage('error', 'Erreur de validation', 'Les mots de passe ne correspondent pas');
-            return;
-        }
-
-        if (registerData.password.length < 6) {
-            showMessage('error', 'Erreur de validation', 'Le mot de passe doit contenir au moins 6 caractères');
-            return;
-        }
-
-        // Prepare data for backend - matching AppUserCreateRequest DTO
-        // Note: roleId is intentionally not set - will be assigned by admin after approval
-        const registrationData = {
-            firstname: registerData.firstName,
-            lastname: registerData.lastName,
-            email: registerData.email,
-            phoneNumber: registerData.phoneNumber,
-            password: registerData.password,
-            // roleId: null, // No role assigned - admin will assign after approval
-            enabled: true,
-            approved: false
-        };
-
-        await registerFetchData(
-            registrationData,
-            'POST',
-            buildApiUrl('/api/users'),
-            'register',
-            true
-        );
     };
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -129,29 +69,6 @@ const Login: Page = () => {
             showMessage('error', 'A votre attention', errorMessage);
         }
     }, [data, error]);
-
-    // Handle registration response
-    useEffect(() => {
-        if (registerResponse && registerCallType === 'register') {
-            showMessage('success', 'Succès', 'Votre compte a été créé avec succès! Il sera activé après validation par un administrateur.');
-            setShowRegisterDialog(false);
-            // Reset form
-            setRegisterData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                phoneNumber: '',
-                password: '',
-                confirmPassword: ''
-            });
-        }
-        if (registerError && registerCallType === 'register') {
-            const errorMessage = registerError.message !== 'Failed to fetch'
-                ? registerError.message
-                : 'Une erreur s\'est produite lors de l\'inscription. Veuillez réessayer.';
-            showMessage('error', 'Erreur d\'inscription', errorMessage);
-        }
-    }, [registerResponse, registerError, registerCallType]);
 
     return (
         <>
@@ -188,19 +105,10 @@ const Login: Page = () => {
                             </div>
                             <div className="text-center mt-2">
                                 <span className="text-white mr-2">Vous n'avez pas de compte?</span>
-                                <Button
-                                    type="button"
-                                    className="p-0"
-                                    link
-                                    label="Créer un compte"
-                                    icon="pi pi-user-plus"
-                                    onClick={() => setShowRegisterDialog(true)}
-                                    style={{
-                                        color: '#60a5fa',
-                                        fontWeight: '600',
-                                        textDecoration: 'underline'
-                                    }}
-                                ></Button>
+                                <span style={{ color: '#60a5fa', fontWeight: '600' }}>
+                                    <i className="pi pi-phone mr-1"></i>
+                                    Contactez Administrateur
+                                </span>
                             </div>
                         </form>
                     </div>
@@ -215,121 +123,6 @@ const Login: Page = () => {
                 </div>
             </div>
 
-            {/* Registration Dialog */}
-            <Dialog
-                header="Créer un nouveau compte"
-                visible={showRegisterDialog}
-                style={{ width: '650px' }}
-                onHide={() => setShowRegisterDialog(false)}
-                modal
-            >
-                <form onSubmit={handleRegister} className="flex flex-column gap-3">
-                    <div className="flex flex-column gap-2">
-                        <label htmlFor="firstName" className="font-semibold">
-                            Prénom <span className="text-red-500">*</span>
-                        </label>
-                        <InputText
-                            id="firstName"
-                            name="firstName"
-                            value={registerData.firstName}
-                            onChange={handleRegisterInputChange}
-                            placeholder="Entrez votre prénom"
-                            required
-                        />
-                    </div>
-
-                    <div className="flex flex-column gap-2">
-                        <label htmlFor="lastName" className="font-semibold">
-                            Nom <span className="text-red-500">*</span>
-                        </label>
-                        <InputText
-                            id="lastName"
-                            name="lastName"
-                            value={registerData.lastName}
-                            onChange={handleRegisterInputChange}
-                            placeholder="Entrez votre nom"
-                            required
-                        />
-                    </div>
-
-                    <div className="flex flex-column gap-2">
-                        <label htmlFor="registerEmail" className="font-semibold">
-                            Nom d'utilisateur <span className="text-red-500">*</span>
-                        </label>
-                        <InputText
-                            id="registerEmail"
-                            name="email"
-                            type="text"
-                            value={registerData.email}
-                            onChange={handleRegisterInputChange}
-                            placeholder="Entrez votre nom d'utilisateur"
-                            required
-                        />
-                    </div>
-
-                    <div className="flex flex-column gap-2">
-                        <label htmlFor="phoneNumber" className="font-semibold">
-                            Numéro de téléphone
-                        </label>
-                        <InputText
-                            id="phoneNumber"
-                            name="phoneNumber"
-                            type="tel"
-                            value={registerData.phoneNumber}
-                            onChange={handleRegisterInputChange}
-                            placeholder="+257 XX XX XX XX"
-                        />
-                    </div>
-
-                    <div className="flex flex-column gap-2">
-                        <label htmlFor="registerPassword" className="font-semibold">
-                            Mot de passe <span className="text-red-500">*</span>
-                        </label>
-                        <Password
-                            id="registerPassword"
-                            name="password"
-                            value={registerData.password}
-                            onChange={handleRegisterInputChange}
-                            placeholder="Mot de passe (min. 6 caractères)"
-                            toggleMask
-                            feedback={false}
-                            required
-                        />
-                    </div>
-
-                    <div className="flex flex-column gap-2">
-                        <label htmlFor="confirmPassword" className="font-semibold">
-                            Confirmer le mot de passe <span className="text-red-500">*</span>
-                        </label>
-                        <Password
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            value={registerData.confirmPassword}
-                            onChange={handleRegisterInputChange}
-                            placeholder="Confirmez votre mot de passe"
-                            toggleMask
-                            feedback={false}
-                            required
-                        />
-                    </div>
-
-                    <div className="flex gap-2 justify-content-end mt-3">
-                        <Button
-                            type="button"
-                            label="Annuler"
-                            severity="secondary"
-                            outlined
-                            onClick={() => setShowRegisterDialog(false)}
-                        />
-                        <Button
-                            type="submit"
-                            label="Créer le compte"
-                            icon="pi pi-user-plus"
-                            loading={registerLoading}
-                        />
-                    </div>
-                </form>
-            </Dialog>
         </>
     );
 };

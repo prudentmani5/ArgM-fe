@@ -11,6 +11,7 @@ import { Badge } from 'primereact/badge';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { LoanWriteOff } from './LoanWriteOff';
 import LoanWriteOffForm from './LoanWriteOffForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanWriteOffPage = () => {
     const [entities, setEntities] = useState<LoanWriteOff[]>([]);
@@ -306,4 +307,11 @@ const LoanWriteOffPage = () => {
     );
 };
 
-export default LoanWriteOffPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_VIEW']}>
+            <LoanWriteOffPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

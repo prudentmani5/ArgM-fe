@@ -14,6 +14,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/committee-sessions');
 
@@ -41,6 +43,7 @@ const SessionStatuts = [
 ];
 
 export default function ComiteSessionsPage() {
+    const { can } = useAuthorizedAction();
     const [session, setSession] = useState<Session>({});
     const [sessions, setSessions] = useState<Session[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
@@ -89,7 +92,9 @@ export default function ComiteSessionsPage() {
     }, [data, error, callType]);
 
     const loadSessions = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadSessions');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadSessions');
     };
 
     const loadBranches = () => {
@@ -249,7 +254,7 @@ export default function ComiteSessionsPage() {
 
                     <div className="flex justify-content-end gap-2 mt-4">
                         <Button label="Réinitialiser" icon="pi pi-refresh" severity="secondary" onClick={resetForm} />
-                        {!isViewMode && (
+                        {!isViewMode && can('CREDIT_COMMITTEE_CREATE') && (
                             <Button label={session.id ? 'Modifier' : 'Créer la Session'} icon={session.id ? 'pi pi-check' : 'pi pi-save'} onClick={handleSubmit} loading={loading} />
                         )}
                     </div>

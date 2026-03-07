@@ -50,6 +50,8 @@ export interface AppUserCreateRequest {
     phoneNumber?: string;
     enabled?: boolean;
     approved?: boolean;
+    compteComptable?: string;
+    branchId?: number;
 }
 
 export interface AppUserUpdateRequest {
@@ -61,6 +63,8 @@ export interface AppUserUpdateRequest {
     phoneNumber?: string;
     enabled?: boolean;
     approved?: boolean;
+    compteComptable?: string;
+    branchId?: number;
 }
 
 export interface AppUserResponse {
@@ -85,6 +89,9 @@ export interface AppUserResponse {
     approvedBy?: string;
     createdBy?: string;
     updatedBy?: string;
+    compteComptable?: string;
+    branchId?: number;
+    branchName?: string;
 }
 
 // ============================================
@@ -99,19 +106,24 @@ export const getFullName = (user: AppUserResponse): string => {
 };
 
 /**
+ * Check if user has SUPER_ADMIN (handles both 'SUPER_ADMIN' and 'ROLE_SUPER_ADMIN')
+ */
+const checkSuperAdmin = (authorities: string[]): boolean => {
+    return authorities.includes('SUPER_ADMIN') || authorities.includes('ROLE_SUPER_ADMIN');
+};
+
+/**
  * Check if user has a specific authority
  * SUPER_ADMIN has access to all authorities automatically
  */
 export const hasAuthority = (user: AppUserResponse, authority: string): boolean => {
-    // Handle undefined or null authorities
     if (!user.authorities || !Array.isArray(user.authorities)) {
         return false;
     }
-    // SUPER_ADMIN has access to everything
-    if (user.authorities.includes('SUPER_ADMIN')) {
+    if (checkSuperAdmin(user.authorities)) {
         return true;
     }
-    return user.authorities.includes(authority);
+    return user.authorities.includes(authority) || user.authorities.includes('ROLE_' + authority);
 };
 
 /**
@@ -119,26 +131,25 @@ export const hasAuthority = (user: AppUserResponse, authority: string): boolean 
  * SUPER_ADMIN has access to all authorities automatically
  */
 export const hasAnyAuthority = (user: AppUserResponse, authorities: string[]): boolean => {
-    // Handle undefined or null authorities
     if (!user.authorities || !Array.isArray(user.authorities)) {
         return false;
     }
-    // SUPER_ADMIN has access to everything
-    if (user.authorities.includes('SUPER_ADMIN')) {
+    if (checkSuperAdmin(user.authorities)) {
         return true;
     }
-    return authorities.some(authority => user.authorities.includes(authority));
+    return authorities.some(authority =>
+        user.authorities.includes(authority) || user.authorities.includes('ROLE_' + authority)
+    );
 };
 
 /**
  * Check if user is a super admin
  */
 export const isSuperAdmin = (user: AppUserResponse): boolean => {
-    // Handle undefined or null authorities
     if (!user.authorities || !Array.isArray(user.authorities)) {
         return false;
     }
-    return user.authorities.includes('SUPER_ADMIN');
+    return checkSuperAdmin(user.authorities);
 };
 
 /**

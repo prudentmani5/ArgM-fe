@@ -235,6 +235,9 @@ export interface DailyClosing {
   penaltiesCount: number;
   earlyRepaymentsCount: number;
   treasuryCount: number;
+  statementRequestsCount: number;
+  checkbookOrdersCount: number;
+  fraisCompteCount: number;
   totalEntriesGenerated: number;
   totalDebit: number;
   totalCredit: number;
@@ -286,9 +289,367 @@ export interface DailyClosingPreview {
   creditEntries: PreviewEntry[];
   remboursementEntries: PreviewEntry[];
   tresorerieEntries: PreviewEntry[];
+  fraisEpargneEntries: PreviewEntry[];
   depositsCount: number;
   withdrawalsCount: number;
   disbursementsCount: number;
   repaymentsCount: number;
   earlyRepaymentsCount: number;
+  virementsCount: number;
+  dotationsCount: number;
+  statementRequestsCount: number;
+  checkbookOrdersCount: number;
+  fraisCompteCount: number;
+}
+
+// ============================================================================
+// Types pour les Périodes Comptables (Accounting Periods)
+// ============================================================================
+
+export class CptAccountingPeriod {
+  periodId: string;
+  exerciceId: string;
+  month: number;
+  year: number;
+  startDate: string;
+  endDate: string;
+  status: string;
+  closedBy: string;
+  closedAt: string;
+  userAction: string;
+
+  constructor() {
+    this.periodId = '';
+    this.exerciceId = '';
+    this.month = 1;
+    this.year = new Date().getFullYear();
+    this.startDate = '';
+    this.endDate = '';
+    this.status = 'OPEN';
+    this.closedBy = '';
+    this.closedAt = '';
+    this.userAction = '';
+  }
+}
+
+// ============================================================================
+// Types pour la Clôture Mensuelle (Monthly Closing)
+// ============================================================================
+
+export interface ChecklistItem {
+  step: string;
+  description: string;
+  status: string;
+  details: string;
+}
+
+export interface MonthlyClosing {
+  closingId: number;
+  exerciceId: number;
+  month: number;
+  year: number;
+  status: string;
+  checklistJson: string;
+  totalDebit: number;
+  totalCredit: number;
+  executedBy: string;
+  executedAt: string;
+  approvedBy: string;
+  approvedAt: string;
+  notes: string;
+  userAction: string;
+}
+
+export interface MonthlyClosingPreview {
+  month: number;
+  year: number;
+  exerciceId: number;
+  allDailyClosingsDone: boolean;
+  periodExists: boolean;
+  periodOpen: boolean;
+  dailyClosingsCount: number;
+  dailyClosingsExpected: number;
+  canClose: boolean;
+  checklist: ChecklistItem[];
+}
+
+// ============================================================================
+// Types pour la Clôture Annuelle (Annual Closing)
+// ============================================================================
+
+export interface AnnualClosing {
+  closingId: number;
+  exerciceId: number;
+  status: string;
+  resultNet: number;
+  resultCompte: string;
+  anouveauGenerated: boolean;
+  newExerciceId: number;
+  executedBy: string;
+  executedAt: string;
+  approvedBy: string;
+  approvedAt: string;
+  notes: string;
+  userAction: string;
+}
+
+export interface AnnualClosingPreview {
+  exerciceId: number;
+  allMonthsClosed: boolean;
+  monthlyClosingsCount: number;
+  resultNet: number;
+  canClose: boolean;
+  checklist: ChecklistItem[];
+}
+
+// ============================================================================
+// Types pour la Gestion de Caisse (Cash Management)
+// ============================================================================
+
+export class CptCaisse {
+  caisseId: string;
+  codeCaisse: string;
+  libelle: string;
+  branchId: string;
+  agentId: string;
+  agentName: string;
+  plafond: number;
+  soldeActuel: number;
+  status: string;
+  compteComptable: string;
+  parentCaisseId: string;
+  typeCaisse: string;
+  actif: boolean;
+  closingStatus: string;
+  userAction: string;
+
+  constructor() {
+    this.caisseId = '';
+    this.codeCaisse = '';
+    this.libelle = '';
+    this.branchId = '';
+    this.agentId = '';
+    this.agentName = '';
+    this.plafond = 0;
+    this.soldeActuel = 0;
+    this.status = 'CLOSED';
+    this.compteComptable = '571';
+    this.parentCaisseId = '';
+    this.typeCaisse = 'GUICHET';
+    this.actif = true;
+    this.closingStatus = '';
+    this.userAction = '';
+  }
+}
+
+export class CptCashCount {
+  cashCountId: string;
+  caisseId: string;
+  countDate: string;
+  countType: string;
+  bill10000: number;
+  bill5000: number;
+  bill2000: number;
+  bill1000: number;
+  bill500: number;
+  coin100: number;
+  coin50: number;
+  coin10: number;
+  coin5: number;
+  coin1: number;
+  totalPhysique: number;
+  totalTheorique: number;
+  ecart: number;
+  countedBy: string;
+  validatedBy: string;
+  validatedAt: string;
+  validationStatus: string;
+  notes: string;
+  userAction: string;
+
+  constructor() {
+    this.cashCountId = '';
+    this.caisseId = '';
+    this.countDate = '';
+    this.countType = 'OPENING';
+    this.bill10000 = 0;
+    this.bill5000 = 0;
+    this.bill2000 = 0;
+    this.bill1000 = 0;
+    this.bill500 = 0;
+    this.coin100 = 0;
+    this.coin50 = 0;
+    this.coin10 = 0;
+    this.coin5 = 0;
+    this.coin1 = 0;
+    this.totalPhysique = 0;
+    this.totalTheorique = 0;
+    this.ecart = 0;
+    this.countedBy = '';
+    this.validatedBy = '';
+    this.validatedAt = '';
+    this.validationStatus = 'PENDING';
+    this.notes = '';
+    this.userAction = '';
+  }
+}
+
+// ============================================================================
+// Types pour les Virements Internes (Internal Transfers)
+// ============================================================================
+
+export class VirementInterne {
+  virementId: string;
+  reference: string;
+  caisseSourceId: string;
+  caisseDestId: string;
+  montant: number;
+  libelle: string;
+  dateVirement: string;
+  status: string;
+  pieceId: string;
+  exerciceId: string;
+  executedBy: string;
+  executedAt: string;
+  userAction: string;
+  codeCaisseSource: string;
+  codeCaisseDest: string;
+  libelleCaisseSource: string;
+  libelleCaisseDest: string;
+  validatedBy: string;
+  validatedAt: string;
+
+  constructor() {
+    this.virementId = '';
+    this.reference = '';
+    this.caisseSourceId = '';
+    this.caisseDestId = '';
+    this.montant = 0;
+    this.libelle = '';
+    this.dateVirement = '';
+    this.status = 'COMPLETED';
+    this.pieceId = '';
+    this.exerciceId = '';
+    this.executedBy = '';
+    this.executedAt = '';
+    this.userAction = '';
+    this.codeCaisseSource = '';
+    this.codeCaisseDest = '';
+    this.libelleCaisseSource = '';
+    this.libelleCaisseDest = '';
+    this.validatedBy = '';
+    this.validatedAt = '';
+  }
+}
+
+// ============================================================================
+// Types pour la Validation de Fermeture (Daily Closing Validation Workflow)
+// ============================================================================
+
+export interface ClosingComparison {
+  caisseId: number;
+  codeCaisse: string;
+  libelle: string;
+  date: string;
+  openingCount: CptCashCount | null;
+  closingCount: CptCashCount | null;
+  soldeOuverture: number;
+  soldeFermetureTheorique: number;
+  soldeFermeturePhysique: number;
+  ecart: number;
+  closingStatus: string;
+  validationStatus: string;
+}
+
+export interface GuichetClosingStatus {
+  caisseId: number;
+  codeCaisse: string;
+  libelle: string;
+  agentName: string;
+  status: string;
+  closingStatus: string;
+  soldeActuel: number;
+  soldeOuverture: number;
+  soldeFermeture: number;
+  ecart: number;
+  validationStatus: string;
+}
+
+export interface BranchClosingStatus {
+  parentCaisseId: number;
+  date: string;
+  guichets: GuichetClosingStatus[];
+  totalGuichets: number;
+  guichetsFermes: number;
+  guichetsValides: number;
+  allClosed: boolean;
+  allValidated: boolean;
+  readyForAccounting: boolean;
+}
+
+// ============================================================================
+// Types pour les Comptes Internes (Internal Accounts)
+// ============================================================================
+
+export interface InternalAccount {
+  accountId?: number;
+  codeCompte: string;
+  accountNumber?: string;
+  libelle: string;
+  compteComptableId: number | null;
+  soldeActuel: number;
+  actif: boolean;
+  notes: string | null;
+  userAction: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export class InternalAccountClass implements InternalAccount {
+  accountId?: number;
+  codeCompte: string = '';
+  accountNumber?: string;
+  libelle: string = '';
+  compteComptableId: number | null = null;
+  soldeActuel: number = 0;
+  actif: boolean = true;
+  notes: string | null = null;
+  userAction: string | null = null;
+}
+
+export interface InternalAccountOperation {
+  operationId?: number;
+  operationType: string;
+  sourceAccountId: number;
+  destAccountId: number | null;
+  montant: number;
+  libelle: string;
+  status: string;
+  createdBy: string;
+  validatedBy: string | null;
+  rejectedBy: string | null;
+  rejectionReason: string | null;
+  userAction: string;
+  createdAt?: string;
+  validatedAt?: string;
+  rejectedAt?: string;
+}
+
+export interface InternalAccountMovement {
+  mouvementId?: number;
+  accountId: number;
+  branchId: number | null;
+  dateOperation: string;
+  heureOperation: string;
+  operationType: string;
+  sens: string;
+  montant: number;
+  reference: string;
+  libelle: string;
+  soldeAvant: number;
+  soldeApres: number;
+  compteContrepartieId: number | null;
+  libelleContrepartie?: string;
+  userAction: string | null;
+  createdAt?: string;
 }

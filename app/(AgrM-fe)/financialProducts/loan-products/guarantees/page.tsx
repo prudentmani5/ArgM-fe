@@ -13,6 +13,9 @@ import { LoanProductGuarantee } from "./LoanProductGuarantee";
 import LoanProductGuaranteeForm from "./LoanProductGuaranteeForm";
 import useConsumApi from "@/hooks/fetchData/useConsumApi";
 import { useSearchParams } from "next/navigation";
+import { buildApiUrl } from "@/utils/apiConfig";
+
+const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts');
 
 const LoanProductGuaranteePage = () => {
   const [loanProductGuarantees, setLoanProductGuarantees] = useState<LoanProductGuarantee[]>([]);
@@ -22,6 +25,7 @@ const LoanProductGuaranteePage = () => {
   const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
   const toast = useRef<Toast>(null);
   const dt = useRef<DataTable<LoanProductGuarantee[]>>(null);
   const searchParams = useSearchParams();
@@ -31,12 +35,24 @@ const LoanProductGuaranteePage = () => {
   const { processRequest: createLoanProductGuarantee } = useConsumApi();
   const { processRequest: updateLoanProductGuarantee } = useConsumApi();
   const { processRequest: deleteLoanProductGuarantee } = useConsumApi();
+  const { data: accountsData, fetchData: fetchAccounts } = useConsumApi('');
 
   useEffect(() => {
     if (productId) {
       loadLoanProductGuarantees();
     }
+    fetchAccounts(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findall`, 'loadAccounts');
   }, [productId]);
+
+  useEffect(() => {
+    if (accountsData) {
+      const items = Array.isArray(accountsData) ? accountsData : (accountsData as any).content || [];
+      setInternalAccounts(items.map((a: any) => ({
+        value: a.accountId,
+        label: `${a.accountNumber} - ${a.libelle}`
+      })));
+    }
+  }, [accountsData]);
 
   const loadLoanProductGuarantees = async () => {
     setLoading(true);
@@ -302,6 +318,7 @@ const LoanProductGuaranteePage = () => {
               loanProductGuarantee={selectedLoanProductGuarantee}
               onSave={saveLoanProductGuarantee}
               productId={productId}
+              internalAccounts={internalAccounts}
             />
             <Button
               label="Ajouter Garantie"
@@ -336,6 +353,11 @@ const LoanProductGuaranteePage = () => {
                 filter
               />
               <Column header="Plage de Valeur" body={valueBodyTemplate} />
+              <Column header="Compte Interne" body={(row: LoanProductGuarantee) => {
+                if (!row.internalAccountId) return <span className="text-500">—</span>;
+                const acc = internalAccounts.find(a => a.value === row.internalAccountId);
+                return <span>{acc?.label || row.internalAccountId}</span>;
+              }} sortable />
               <Column header="Requis" body={requiredBodyTemplate} sortable />
               <Column field="description" header="Description" sortable />
               <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: "8rem" }} />

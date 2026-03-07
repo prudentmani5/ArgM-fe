@@ -9,6 +9,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice } from '../types';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const typeOptions = [
     { label: 'Générale', value: 'G' },
@@ -163,4 +164,11 @@ const BalanceReport: React.FC = () => {
     );
 };
 
-export default BalanceReport;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_REPORT_VIEW']}>
+            <BalanceReport />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

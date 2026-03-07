@@ -14,11 +14,12 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { TypeGarantie, TypeGarantieClass } from '../../types/CreditTypes';
 
 const BASE_URL = buildApiUrl('/api/credit/guarantee-types');
 
-export default function TypesGarantiesPage() {
+function TypesGarantiesPageContent() {
     const [typeGarantie, setTypeGarantie] = useState<TypeGarantie>(new TypeGarantieClass());
     const [typesGaranties, setTypesGaranties] = useState<TypeGarantie[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -220,5 +221,13 @@ export default function TypesGarantiesPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function TypesGarantiesPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <TypesGarantiesPageContent />
+        </ProtectedPage>
     );
 }

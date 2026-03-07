@@ -39,6 +39,7 @@ function UserManualComponent() {
                     <li><strong>Le Module Épargne :</strong> Gestion des livrets d'épargne, dépôts à terme, tontine et épargne obligatoire.</li>
                     <li><strong>Le Module Crédit :</strong> Cycle complet de gestion des demandes de crédit avec analyse financière, visites terrain, comité et décaissement.</li>
                     <li><strong>Les Données de Référence :</strong> Configuration des listes de valeurs utilisées dans le système.</li>
+                    <li><strong>Le Rapprochement Bancaire :</strong> Comparaison des relevés bancaires avec les écritures comptables, détection des écarts et validation.</li>
                 </ul>
             </Card>
 
@@ -3874,6 +3875,352 @@ function UserManualComponent() {
                         </Accordion>
                     </div>
                 </AccordionTab>
+
+                {/* Rapprochement Bancaire */}
+                <AccordionTab
+                    header={
+                        <span className="flex align-items-center gap-2">
+                            <i className="pi pi-check-square"></i>
+                            <span className="font-bold">12. Rapprochement Bancaire</span>
+                        </span>
+                    }
+                >
+                    <div className="p-3">
+                        <h5 className="text-primary">12.1 Vue d'Ensemble</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le module <strong>Rapprochement Bancaire</strong> permet de comparer les opérations enregistrées dans la comptabilité
+                                avec les relevés bancaires afin de détecter les écarts, erreurs et opérations en transit.
+                                Il assure la fiabilité des soldes bancaires et contribue au contrôle interne de l'institution.
+                            </p>
+                            <p><strong>Objectifs principaux :</strong></p>
+                            <ul className="line-height-3">
+                                <li>Vérifier la concordance entre le solde bancaire et le solde comptable</li>
+                                <li>Identifier les chèques émis non encore débités par la banque</li>
+                                <li>Détecter les frais bancaires et commissions non comptabilisés</li>
+                                <li>Repérer les virements en transit entre comptes</li>
+                                <li>Produire un état de rapprochement validé par la comptabilité et la direction</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">12.2 Workflow du Rapprochement</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le processus de rapprochement bancaire suit 5 étapes :</p>
+                            <ol className="line-height-3">
+                                <li>
+                                    <Tag value="Étape 1" severity="info" className="mr-2" />
+                                    <strong>Importation du Relevé Bancaire</strong>
+                                    <p className="ml-4 mt-1">
+                                        Créer un relevé bancaire en saisissant le nom de la banque, le numéro de compte,
+                                        le mois/année, le solde de début et le solde de fin.
+                                        Puis ajouter les lignes du relevé (date, référence, description, débit/crédit).
+                                    </p>
+                                </li>
+                                <li>
+                                    <Tag value="Étape 2" severity="info" className="mr-2" />
+                                    <strong>Création du Rapprochement</strong>
+                                    <p className="ml-4 mt-1">
+                                        Créer un nouveau rapprochement en sélectionnant le relevé bancaire et le compte comptable correspondant.
+                                        Le système génère automatiquement une référence unique (ex: <Tag value="RAP-2026-01-001" />).
+                                    </p>
+                                </li>
+                                <li>
+                                    <Tag value="Étape 3" severity="warning" className="mr-2" />
+                                    <strong>Rapprochement Automatique</strong>
+                                    <p className="ml-4 mt-1">
+                                        Lancer le rapprochement automatique qui compare les lignes du relevé avec les écritures comptables selon 3 niveaux :
+                                    </p>
+                                    <ul className="ml-4">
+                                        <li><Tag value="100%" severity="success" className="mr-1" /> <strong>Correspondance exacte :</strong> même montant ET même référence</li>
+                                        <li><Tag value="75%" severity="warning" className="mr-1" /> <strong>Correspondance partielle :</strong> même montant ET date proche (±2 jours)</li>
+                                        <li><Tag value="50%" severity="danger" className="mr-1" /> <strong>Correspondance faible :</strong> même montant uniquement</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <Tag value="Étape 4" severity="warning" className="mr-2" />
+                                    <strong>Rapprochement Manuel et Gestion des Écarts</strong>
+                                    <p className="ml-4 mt-1">
+                                        Vérifier les correspondances automatiques, effectuer des rapprochements manuels pour les lignes
+                                        non rapprochées, et documenter les écarts identifiés (frais bancaires, virements en transit, erreurs de saisie).
+                                    </p>
+                                </li>
+                                <li>
+                                    <Tag value="Étape 5" severity="success" className="mr-2" />
+                                    <strong>Validation et Approbation</strong>
+                                    <p className="ml-4 mt-1">
+                                        Le comptable valide le rapprochement (statut <Tag value="VALIDÉ" severity="success" />),
+                                        puis le directeur approuve en apposant sa signature.
+                                    </p>
+                                </li>
+                            </ol>
+                        </div>
+
+                        <h5 className="text-primary">12.3 Gestion des Relevés Bancaires</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <h6 className="text-blue-500">Créer un Relevé Bancaire</h6>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Rapprochement" /> → <Tag value="Relevés Bancaires" severity="info" /></li>
+                                <li>Cliquer sur <Tag value="+ Nouveau Relevé" severity="success" /></li>
+                                <li>Remplir les informations :
+                                    <ul>
+                                        <li><strong>Nom de la Banque :</strong> ex. BANCOBU, INTERBANK, BCB</li>
+                                        <li><strong>Numéro de Compte :</strong> numéro du compte bancaire</li>
+                                        <li><strong>Mois / Année :</strong> période du relevé</li>
+                                        <li><strong>Solde Début :</strong> solde d'ouverture du relevé</li>
+                                        <li><strong>Solde Fin :</strong> solde de clôture du relevé</li>
+                                        <li><strong>Notes :</strong> observations éventuelles</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /></li>
+                            </ol>
+
+                            <h6 className="text-blue-500 mt-3">Ajouter les Lignes du Relevé</h6>
+                            <p>Après la création du relevé, ajouter les opérations bancaires :</p>
+                            <ol className="line-height-3">
+                                <li>Ouvrir le relevé créé</li>
+                                <li>Cliquer sur <Tag value="+ Nouvelle Ligne" severity="info" /></li>
+                                <li>Saisir pour chaque opération :
+                                    <ul>
+                                        <li><strong>Date Opération :</strong> date effective de l'opération bancaire</li>
+                                        <li><strong>Référence :</strong> numéro de chèque, virement, etc.</li>
+                                        <li><strong>Description :</strong> libellé de l'opération</li>
+                                        <li><strong>Montant Débit :</strong> pour les sorties d'argent</li>
+                                        <li><strong>Montant Crédit :</strong> pour les entrées d'argent</li>
+                                    </ul>
+                                </li>
+                                <li>Répéter pour chaque ligne du relevé</li>
+                            </ol>
+                            <div className="mt-2 p-2 border-round" style={{ backgroundColor: '#fff3cd' }}>
+                                <i className="pi pi-exclamation-triangle mr-2 text-yellow-700"></i>
+                                <strong>Conseil :</strong> Vérifiez que le total des débits et crédits correspond au solde de fin du relevé.
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">12.4 Créer un Rapprochement</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Rapprochement" /> → <Tag value="Rapprochements" severity="info" /></li>
+                                <li>Cliquer sur <Tag value="+ Nouveau Rapprochement" severity="success" /></li>
+                                <li>Sélectionner :
+                                    <ul>
+                                        <li><strong>Relevé Bancaire :</strong> choisir le relevé à rapprocher</li>
+                                        <li><strong>Compte Comptable :</strong> sélectionner le compte de banque dans le plan comptable (ex: 512 - Banque principale FBU)</li>
+                                        <li><strong>Mois / Année :</strong> période du rapprochement</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /> → le statut est <Tag value="BROUILLON" /></li>
+                            </ol>
+                        </div>
+
+                        <h5 className="text-primary">12.5 Rapprochement Automatique</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le système compare automatiquement les lignes du relevé bancaire avec les écritures comptables :</p>
+                            <ol className="line-height-3">
+                                <li>Ouvrir un rapprochement en statut <Tag value="BROUILLON" /> ou <Tag value="EN_COURS" severity="warning" /></li>
+                                <li>Cliquer sur <Tag value="Rapprochement Automatique" severity="info" /></li>
+                                <li>Le système effectue 3 passes successives :
+                                    <ul>
+                                        <li><strong>Passe 1 :</strong> Recherche des correspondances exactes (référence + montant identiques) → confiance <Tag value="100%" severity="success" /></li>
+                                        <li><strong>Passe 2 :</strong> Recherche par montant et date proche (±2 jours) → confiance <Tag value="75%" severity="warning" /></li>
+                                        <li><strong>Passe 3 :</strong> Recherche par montant uniquement → confiance <Tag value="50%" severity="danger" /></li>
+                                    </ul>
+                                </li>
+                                <li>Les résultats s'affichent :
+                                    <ul>
+                                        <li><strong>Lignes rapprochées :</strong> nombre de correspondances trouvées</li>
+                                        <li><strong>Lignes non rapprochées :</strong> opérations sans correspondance</li>
+                                        <li><strong>Écarts détectés :</strong> opérations bancaires sans écriture comptable correspondante</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                            <div className="mt-2 p-2 border-round" style={{ backgroundColor: '#d4edda' }}>
+                                <i className="pi pi-check-circle mr-2 text-green-700"></i>
+                                <strong>Astuce :</strong> Lancez le rapprochement automatique en premier, puis traitez manuellement les lignes restantes.
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">12.6 Rapprochement Manuel</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Pour les lignes non rapprochées automatiquement :</p>
+                            <ol className="line-height-3">
+                                <li>Consulter la liste des lignes non rapprochées du relevé bancaire</li>
+                                <li>Consulter la liste des écritures comptables non rapprochées</li>
+                                <li>Sélectionner une ligne du relevé et l'écriture comptable correspondante</li>
+                                <li>Cliquer sur <Tag value="Rapprocher Manuellement" severity="info" /></li>
+                                <li>Le système crée la correspondance avec le type <Tag value="MANUEL" /></li>
+                            </ol>
+                            <p className="mt-2"><strong>Pour annuler un rapprochement :</strong></p>
+                            <ul>
+                                <li>Cliquer sur <Tag value="Dé-rapprocher" severity="danger" /> sur une ligne rapprochée</li>
+                                <li>La ligne du relevé et l'écriture redeviennent disponibles pour un nouveau rapprochement</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">12.7 Gestion des Écarts</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Les écarts représentent les différences entre le relevé bancaire et la comptabilité. Types d'écarts courants :</p>
+                            <div className="grid mt-2">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="text-orange-500 mt-0">
+                                            <i className="pi pi-exclamation-circle mr-2"></i>
+                                            Types d'Écarts
+                                        </h6>
+                                        <ul className="line-height-3">
+                                            <li><Tag value="Chèque non débité" severity="warning" className="mr-1" /> Chèque émis mais pas encore encaissé par le bénéficiaire</li>
+                                            <li><Tag value="Virement en cours" severity="info" className="mr-1" /> Virement initié mais pas encore reçu</li>
+                                            <li><Tag value="Frais bancaires" severity="danger" className="mr-1" /> Commissions et frais prélevés par la banque</li>
+                                            <li><Tag value="Erreur de saisie" className="mr-1" /> Erreur dans la comptabilisation d'une opération</li>
+                                            <li><Tag value="Autre" className="mr-1" /> Toute autre différence à justifier</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="text-green-500 mt-0">
+                                            <i className="pi pi-check-circle mr-2"></i>
+                                            Traitement d'un Écart
+                                        </h6>
+                                        <ol className="line-height-3">
+                                            <li>Identifier le type d'écart</li>
+                                            <li>Saisir le montant de l'écart</li>
+                                            <li>Rédiger une justification claire</li>
+                                            <li>Lier à la ligne du relevé ou l'écriture concernée</li>
+                                            <li>Créer une écriture corrective si nécessaire</li>
+                                            <li>Marquer comme <Tag value="Résolu" severity="success" /> une fois traité</li>
+                                        </ol>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">12.8 Validation et Approbation</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le processus de validation comprend deux niveaux :</p>
+                            <div className="grid mt-2">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-blue-500">
+                                        <h6 className="text-blue-500 mt-0">
+                                            <i className="pi pi-verified mr-2"></i>
+                                            Validation par le Comptable
+                                        </h6>
+                                        <ol className="line-height-3">
+                                            <li>Vérifier que toutes les lignes sont rapprochées ou documentées</li>
+                                            <li>Vérifier que tous les écarts sont justifiés</li>
+                                            <li>Confirmer le solde bancaire et le solde comptable</li>
+                                            <li>Apposer la signature comptable</li>
+                                            <li>Le statut passe à <Tag value="VALIDÉ" severity="success" /></li>
+                                        </ol>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-green-500">
+                                        <h6 className="text-green-500 mt-0">
+                                            <i className="pi pi-shield mr-2"></i>
+                                            Approbation par le Directeur
+                                        </h6>
+                                        <ol className="line-height-3">
+                                            <li>Examiner l'état de rapprochement validé</li>
+                                            <li>Vérifier les écarts et justifications</li>
+                                            <li>Apposer la signature de direction</li>
+                                            <li>Le rapprochement est finalisé et archivé</li>
+                                        </ol>
+                                    </Card>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 border-round" style={{ backgroundColor: '#cce5ff' }}>
+                                <i className="pi pi-info-circle mr-2 text-blue-700"></i>
+                                <strong>Note :</strong> Un rapprochement validé ne peut plus être modifié. Seul le directeur peut rouvrir un rapprochement en cas de besoin.
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">12.9 Statuts du Rapprochement</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <div className="grid">
+                                <div className="col-6 md:col-3 text-center p-3">
+                                    <Tag value="BROUILLON" className="mb-2" style={{ fontSize: '0.9rem' }} />
+                                    <p className="text-sm">Rapprochement créé, en attente de traitement</p>
+                                </div>
+                                <div className="col-6 md:col-3 text-center p-3">
+                                    <Tag value="EN COURS" severity="warning" className="mb-2" style={{ fontSize: '0.9rem' }} />
+                                    <p className="text-sm">Rapprochement automatique/manuel en cours</p>
+                                </div>
+                                <div className="col-6 md:col-3 text-center p-3">
+                                    <Tag value="TERMINÉ" severity="info" className="mb-2" style={{ fontSize: '0.9rem' }} />
+                                    <p className="text-sm">Toutes les lignes traitées, prêt pour validation</p>
+                                </div>
+                                <div className="col-6 md:col-3 text-center p-3">
+                                    <Tag value="VALIDÉ" severity="success" className="mb-2" style={{ fontSize: '0.9rem' }} />
+                                    <p className="text-sm">Validé par le comptable et approuvé par la direction</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">12.10 Bonnes Pratiques</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="text-primary mt-0">
+                                            <i className="pi pi-thumbs-up mr-2"></i>
+                                            À Faire
+                                        </h6>
+                                        <ul className="line-height-3">
+                                            <li>Effectuer le rapprochement <strong>mensuellement</strong>, idéalement dans les 5 jours suivant la réception du relevé</li>
+                                            <li>Vérifier les soldes de début et de fin du relevé avant de commencer</li>
+                                            <li>Utiliser d'abord le rapprochement automatique, puis traiter les écarts manuellement</li>
+                                            <li>Documenter chaque écart avec une justification détaillée</li>
+                                            <li>Conserver les relevés bancaires originaux en pièces justificatives</li>
+                                            <li>Faire valider par le directeur dans les meilleurs délais</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="text-red-500 mt-0">
+                                            <i className="pi pi-thumbs-down mr-2"></i>
+                                            À Éviter
+                                        </h6>
+                                        <ul className="line-height-3">
+                                            <li>Ne pas accumuler plusieurs mois sans rapprochement</li>
+                                            <li>Ne pas ignorer les petits écarts (frais bancaires, commissions)</li>
+                                            <li>Ne pas valider un rapprochement avec des écarts non justifiés</li>
+                                            <li>Ne pas modifier les écritures comptables sans créer d'écriture corrective</li>
+                                            <li>Ne pas confondre la date de valeur bancaire et la date comptable</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">12.11 FAQ - Questions Fréquentes</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <Accordion>
+                                <AccordionTab header="Comment importer un relevé bancaire ?">
+                                    <p>Accédez au menu Rapprochement → Relevés Bancaires, cliquez sur "Nouveau Relevé", remplissez les informations du relevé (banque, compte, mois, soldes), puis ajoutez les lignes une par une. Vous pouvez également utiliser la fonction "Générer données démo" depuis le tableau de bord pour créer un relevé d'exemple.</p>
+                                </AccordionTab>
+                                <AccordionTab header="Que faire si le rapprochement automatique ne trouve pas de correspondance ?">
+                                    <p>Si une ligne du relevé n'a pas de correspondance automatique, vérifiez d'abord que l'écriture comptable existe et qu'elle n'est pas déjà rapprochée. Ensuite, utilisez le rapprochement manuel pour associer la ligne à l'écriture correcte. Si l'écriture n'existe pas en comptabilité, créez un écart avec la justification appropriée.</p>
+                                </AccordionTab>
+                                <AccordionTab header="Comment traiter les frais bancaires détectés comme écarts ?">
+                                    <p>Créez un écart de type "Frais bancaires" avec le montant prélevé par la banque. Dans la justification, précisez la nature des frais (commission de tenue de compte, frais de virement, etc.). Ensuite, passez une écriture comptable corrective pour enregistrer ces frais, puis marquez l'écart comme "Résolu".</p>
+                                </AccordionTab>
+                                <AccordionTab header="Quelle est la différence entre un chèque non débité et un virement en transit ?">
+                                    <p>Un <strong>chèque non débité</strong> est un chèque que vous avez émis et comptabilisé, mais qui n'a pas encore été encaissé par le bénéficiaire (il apparaît en comptabilité mais pas sur le relevé bancaire). Un <strong>virement en transit</strong> est un virement initié mais pas encore crédité ou débité sur le compte (il peut apparaître d'un côté mais pas de l'autre selon le délai de traitement).</p>
+                                </AccordionTab>
+                                <AccordionTab header="Peut-on modifier un rapprochement déjà validé ?">
+                                    <p>Non, un rapprochement validé est verrouillé. Si une erreur est détectée après validation, le directeur doit rouvrir le rapprochement pour permettre les corrections. Il est donc important de bien vérifier avant de valider.</p>
+                                </AccordionTab>
+                                <AccordionTab header="À quelle fréquence faut-il faire le rapprochement ?">
+                                    <p>Le rapprochement bancaire doit être effectué <strong>mensuellement</strong>, idéalement dans les 5 jours ouvrables suivant la réception du relevé bancaire. Pour les institutions avec un volume d'opérations élevé, un rapprochement hebdomadaire est recommandé.</p>
+                                </AccordionTab>
+                                <AccordionTab header="Comment générer des données de démonstration ?">
+                                    <p>Depuis le tableau de bord du rapprochement, cliquez sur le bouton "Générer données démo". Le système créera automatiquement un relevé bancaire d'exemple avec 12 lignes d'opérations typiques d'une institution de microfinance au Burundi (versements, retraits, virements, frais bancaires).</p>
+                                </AccordionTab>
+                            </Accordion>
+                        </div>
+                    </div>
+                </AccordionTab>
             </Accordion>
 
             {/* Footer */}
@@ -3883,7 +4230,7 @@ function UserManualComponent() {
                     <i className="pi pi-info-circle mr-2"></i>
                     Pour toute assistance supplémentaire, veuillez contacter l'administrateur système.
                 </p>
-                <p>Version 7.0 - Système AgrM - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Comptabilité, Traçabilité</p>
+                <p>Version 8.0 - Système AgrM - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Comptabilité, Traçabilité, Rapprochement Bancaire</p>
             </div>
         </div>
     );

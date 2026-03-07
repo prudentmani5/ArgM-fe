@@ -11,6 +11,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { exportToPDF, formatCurrency as formatCurrencyPDF } from '@/utils/pdfExport';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/capacity-analysis');
 
@@ -61,7 +62,9 @@ export default function RapportAnalysesPage() {
                 riskAssessment: getRiskAssessment(item.newDebtRatio),
                 analystName: item.analyst ? `${item.analyst.firstName || ''} ${item.analyst.lastName || ''}`.trim() : '-'
             }));
-            setAnalyses(mappedData);
+            // Filter by branch if user is restricted to a specific branch
+            const { filter, branchId } = shouldFilterByBranch();
+            setAnalyses(filter ? mappedData.filter((a: any) => a.branchId === branchId) : mappedData);
         }
         if (analysesApi.error) {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: analysesApi.error.message, life: 3000 });

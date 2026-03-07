@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { CapitalizationFrequency } from './CapitalizationFrequency';
 import CapitalizationFrequencyForm from './CapitalizationFrequencyForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const CapitalizationFrequenciesPage = () => {
     const [capitalizationFrequencies, setCapitalizationFrequencies] = useState<CapitalizationFrequency[]>([]);
@@ -205,4 +206,11 @@ const CapitalizationFrequenciesPage = () => {
     );
 };
 
-export default CapitalizationFrequenciesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <CapitalizationFrequenciesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

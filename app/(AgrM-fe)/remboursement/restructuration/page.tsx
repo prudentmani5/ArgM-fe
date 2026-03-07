@@ -19,6 +19,8 @@ import { Message } from 'primereact/message';
 
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../utils/branchFilter';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 
 import {
     RestructurationCredit,
@@ -28,6 +30,7 @@ import {
 } from '../types/RemboursementTypes';
 
 const RestructurationPage = () => {
+    const { can } = useAuthorizedAction();
     const [restructurations, setRestructurations] = useState<RestructurationCredit[]>([]);
     const [restructuration, setRestructuration] = useState<RestructurationCredit>(new RestructurationCreditClass());
     const [activeIndex, setActiveIndex] = useState(0);
@@ -79,7 +82,9 @@ const RestructurationPage = () => {
     }, [data, error, callType]);
 
     const loadRestructurations = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadRestructurations');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadRestructurations');
     };
 
     const checkCanRestructure = (loanId: number) => {
@@ -240,7 +245,7 @@ const RestructurationPage = () => {
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => handleView(rowData)}
             />
-            {rowData.status === 'PENDING' && (
+            {rowData.status === 'PENDING' && can('REMBOURSEMENT_RESTRUCTURE_APPROVE') && (
                 <>
                     <Button
                         icon="pi pi-check"
@@ -260,16 +265,18 @@ const RestructurationPage = () => {
                         tooltipOptions={{ position: 'top' }}
                         onClick={() => handleReject(rowData)}
                     />
-                    <Button
-                        icon="pi pi-pencil"
-                        rounded
-                        text
-                        severity="warning"
-                        tooltip="Modifier"
-                        tooltipOptions={{ position: 'top' }}
-                        onClick={() => handleEdit(rowData)}
-                    />
                 </>
+            )}
+            {rowData.status === 'PENDING' && (
+                <Button
+                    icon="pi pi-pencil"
+                    rounded
+                    text
+                    severity="warning"
+                    tooltip="Modifier"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleEdit(rowData)}
+                />
             )}
         </div>
     );

@@ -19,6 +19,9 @@ export interface ConnectedUser {
     fullName?: string;
     roleId?: number;
     roleName?: string;
+    compteComptable?: string;
+    branchId?: number;
+    branchName?: string;
 }
 
 /**
@@ -170,10 +173,11 @@ const useConsumApi = (initialUrl: string) => {
         }
 
         // Merge with existing options
+        // Auth is via Authorization header (not browser cookies), so credentials: 'include' is not needed
+        // Removing it fixes CORS issues with @CrossOrigin(origins = "*") controllers
         const mergedOptions: RequestInit = {
             ...options,
-            headers,
-            credentials: 'include' // Important for cookies
+            headers
         };
 
         try {
@@ -259,9 +263,18 @@ const useConsumApi = (initialUrl: string) => {
                 dataLength: Array.isArray(jsonData) ? jsonData.length : 'N/A'
             });
             return jsonData;
-        } catch (err) {
+        } catch (err: any) {
             console.error('🔴 authFetch error:', err);
-            throw err;
+            // If it's already a structured error (from our throw above), re-throw as-is
+            if (err && err.status) {
+                throw err;
+            }
+            // CORS-blocked 403 or network error - show permission message
+            throw {
+                message: 'Vous n\'avez pas le droit d\'acceder a cette ressource.',
+                status: 403,
+                data: null
+            };
         }
     };
 

@@ -13,11 +13,12 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { TypeDocument, TypeDocumentClass } from '../../types/CreditTypes';
 
 const BASE_URL = buildApiUrl('/api/credit/document-types');
 
-export default function TypesDocumentsPage() {
+function TypesDocumentsPageContent() {
     const [typeDoc, setTypeDoc] = useState<TypeDocument>(new TypeDocumentClass());
     const [typeDocs, setTypeDocs] = useState<TypeDocument[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -317,5 +318,13 @@ export default function TypesDocumentsPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function TypesDocumentsPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <TypesDocumentsPageContent />
+        </ProtectedPage>
     );
 }

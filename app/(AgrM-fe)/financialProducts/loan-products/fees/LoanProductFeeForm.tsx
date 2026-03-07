@@ -76,6 +76,12 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
     }
   };
 
+  // Determine selected calculation method for conditional field rendering
+  const selectedMethod = calculationMethods.find(m => m.id === formData.calculationMethodId);
+  const methodKey = `${selectedMethod?.code || ''} ${selectedMethod?.name || ''} ${selectedMethod?.nameFr || ''}`.toUpperCase();
+  const isFixed = methodKey.includes('FIXED') || methodKey.includes('FIXE') || methodKey.includes('FLAT');
+  const isPercentage = methodKey.includes('PERCENT') || methodKey.includes('POURCENTAGE');
+
   const handleChange = (field: keyof LoanProductFee, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -175,69 +181,77 @@ const LoanProductFeeForm: React.FC<LoanProductFeeFormProps> = ({
           <span className="p-tag">Configuration du Montant</span>
         </Divider>
 
-        <div className="field grid">
-          <label htmlFor="fixedAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Montant Fixe
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="fixedAmount"
-              value={formData.fixedAmount || 0}
-              onValueChange={(e) => handleChange("fixedAmount", e.value || 0)}
-              mode="currency"
-              currency="BIF"
-              locale="fr-BI"
-            />
+        {!isPercentage && (
+          <div className="field grid">
+            <label htmlFor="fixedAmount" className="col-12 mb-2 md:col-3 md:mb-0">
+              Montant Fixe
+            </label>
+            <div className="col-12 md:col-9">
+              <InputNumber
+                id="fixedAmount"
+                value={formData.fixedAmount || 0}
+                onValueChange={(e) => handleChange("fixedAmount", e.value || 0)}
+                mode="currency"
+                currency="BIF"
+                locale="fr-BI"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="field grid">
-          <label htmlFor="percentageRate" className="col-12 mb-2 md:col-3 md:mb-0">
-            Taux de Pourcentage
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="percentageRate"
-              value={formData.percentageRate || 0}
-              onValueChange={(e) => handleChange("percentageRate", e.value || 0)}
-              suffix="%"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-            />
+        {!isFixed && (
+          <div className="field grid">
+            <label htmlFor="percentageRate" className="col-12 mb-2 md:col-3 md:mb-0">
+              Taux de Pourcentage
+            </label>
+            <div className="col-12 md:col-9">
+              <InputNumber
+                id="percentageRate"
+                value={formData.percentageRate || 0}
+                onValueChange={(e) => handleChange("percentageRate", e.value || 0)}
+                suffix="%"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="field grid">
-          <label htmlFor="minAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Montant Minimum
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="minAmount"
-              value={formData.minAmount || 0}
-              onValueChange={(e) => handleChange("minAmount", e.value || 0)}
-              mode="currency"
-              currency="BIF"
-              locale="fr-BI"
-            />
-          </div>
-        </div>
+        {!isPercentage && (
+          <>
+            <div className="field grid">
+              <label htmlFor="minAmount" className="col-12 mb-2 md:col-3 md:mb-0">
+                Montant Minimum
+              </label>
+              <div className="col-12 md:col-9">
+                <InputNumber
+                  id="minAmount"
+                  value={formData.minAmount || 0}
+                  onValueChange={(e) => handleChange("minAmount", e.value || 0)}
+                  mode="currency"
+                  currency="BIF"
+                  locale="fr-BI"
+                />
+              </div>
+            </div>
 
-        <div className="field grid">
-          <label htmlFor="maxAmount" className="col-12 mb-2 md:col-3 md:mb-0">
-            Montant Maximum
-          </label>
-          <div className="col-12 md:col-9">
-            <InputNumber
-              id="maxAmount"
-              value={formData.maxAmount || 0}
-              onValueChange={(e) => handleChange("maxAmount", e.value || 0)}
-              mode="currency"
-              currency="BIF"
-              locale="fr-BI"
-            />
-          </div>
-        </div>
+            <div className="field grid">
+              <label htmlFor="maxAmount" className="col-12 mb-2 md:col-3 md:mb-0">
+                Montant Maximum
+              </label>
+              <div className="col-12 md:col-9">
+                <InputNumber
+                  id="maxAmount"
+                  value={formData.maxAmount || 0}
+                  onValueChange={(e) => handleChange("maxAmount", e.value || 0)}
+                  mode="currency"
+                  currency="BIF"
+                  locale="fr-BI"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Section 3: Configuration de Collecte */}
         <Divider>

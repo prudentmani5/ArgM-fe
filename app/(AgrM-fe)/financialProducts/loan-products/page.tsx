@@ -56,7 +56,7 @@ const LoanProductPage = () => {
   const [deleteWorkflowDialog, setDeleteWorkflowDialog] = useState(false);
 
   const [globalFilter, setGlobalFilter] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(1);
   const toast = useRef<Toast>(null);
   const dt = useRef<DataTable<LoanProduct[]>>(null);
   const router = useRouter();
@@ -171,9 +171,12 @@ const LoanProductPage = () => {
     setDeleteDialog(true);
   };
 
-  const showDetails = (loanProduct: LoanProduct) => {
+  const showDetails = async (loanProduct: LoanProduct) => {
     setSelectedLoanProduct(loanProduct);
     setDetailsDialog(true);
+    await loadFees(loanProduct.id!);
+    await loadGuarantees(loanProduct.id!);
+    await loadWorkflows(loanProduct.id!);
   };
 
   const hideDetailsDialog = () => {
@@ -1149,6 +1152,78 @@ const LoanProductPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Frais */}
+            <div className="col-12">
+              <div className="surface-100 border-round p-3 mb-3">
+                <h5 className="m-0 mb-3 text-primary">
+                  <i className="pi pi-money-bill mr-2"></i>Frais
+                </h5>
+                <DataTable
+                  value={fees}
+                  loading={feesLoading}
+                  emptyMessage="Aucun frais configuré"
+                  className="p-datatable-sm"
+                  size="small"
+                >
+                  <Column field="feeType.nameFr" header="Type de Frais" body={(row: LoanProductFee) => row.feeType?.nameFr || row.feeType?.name || "-"} />
+                  <Column field="calculationMethod.nameFr" header="Méthode" body={(row: LoanProductFee) => row.calculationMethod?.nameFr || row.calculationMethod?.name || "-"} />
+                  <Column header="Montant / Taux" body={(row: LoanProductFee) => {
+                    if (row.percentageRate != null && row.percentageRate !== 0) return `${row.percentageRate}%`;
+                    if (row.fixedAmount != null && row.fixedAmount !== 0) return `${row.fixedAmount.toLocaleString()} BIF`;
+                    return "-";
+                  }} />
+                  <Column field="collectionTime" header="Moment" body={(row: LoanProductFee) => {
+                    const map: Record<string, string> = { APPLICATION: "Demande", APPROVAL: "Approbation", DISBURSEMENT: "Décaissement", MONTHLY: "Mensuel", CLOSURE: "Clôture", ANNUALLY: "Annuel" };
+                    return map[row.collectionTime] || row.collectionTime;
+                  }} />
+                  <Column header="Obligatoire" body={(row: LoanProductFee) => <Tag value={row.isMandatory ? "Oui" : "Non"} severity={row.isMandatory ? "warning" : "info"} />} />
+                  <Column header="Statut" body={(row: LoanProductFee) => <Tag value={row.isActive ? "Actif" : "Inactif"} severity={row.isActive ? "success" : "danger"} />} />
+                </DataTable>
+              </div>
+            </div>
+
+            {/* Garanties */}
+            <div className="col-12">
+              <div className="surface-100 border-round p-3 mb-3">
+                <h5 className="m-0 mb-3 text-primary">
+                  <i className="pi pi-shield mr-2"></i>Garanties
+                </h5>
+                <DataTable
+                  value={guarantees}
+                  loading={guaranteesLoading}
+                  emptyMessage="Aucune garantie configurée"
+                  className="p-datatable-sm"
+                  size="small"
+                >
+                  <Column header="Type de Garantie" body={(row: LoanProductGuarantee) => row.guaranteeType?.nameFr || row.guaranteeType?.name || "-"} />
+                  <Column field="minCoveragePercentage" header="Couverture Min." body={(row: LoanProductGuarantee) => row.minCoveragePercentage != null ? `${row.minCoveragePercentage}%` : "-"} />
+                  <Column header="Obligatoire" body={(row: LoanProductGuarantee) => <Tag value={row.isMandatory ? "Oui" : "Non"} severity={row.isMandatory ? "warning" : "info"} />} />
+                  <Column header="Statut" body={(row: LoanProductGuarantee) => <Tag value={row.isActive ? "Actif" : "Inactif"} severity={row.isActive ? "success" : "danger"} />} />
+                </DataTable>
+              </div>
+            </div>
+
+            {/* Flux d'Approbation */}
+            <div className="col-12">
+              <div className="surface-100 border-round p-3">
+                <h5 className="m-0 mb-3 text-primary">
+                  <i className="pi pi-sitemap mr-2"></i>Flux d&apos;Approbation
+                </h5>
+                <DataTable
+                  value={workflows}
+                  loading={workflowsLoading}
+                  emptyMessage="Aucun flux d'approbation configuré"
+                  className="p-datatable-sm"
+                  size="small"
+                >
+                  <Column field="sequenceOrder" header="Séquence" sortable />
+                  <Column header="Niveau d'Approbation" body={(row: LoanApprovalWorkflow) => row.approvalLevel?.nameFr || row.approvalLevel?.name || "-"} />
+                  <Column header="Plage de Montant" body={workflowAmountRangeBodyTemplate} />
+                  <Column header="Statut" body={(row: LoanApprovalWorkflow) => <Tag value={row.isActive ? "Actif" : "Inactif"} severity={row.isActive ? "success" : "danger"} />} />
+                </DataTable>
+              </div>
+            </div>
           </div>
         )}
       </Dialog>

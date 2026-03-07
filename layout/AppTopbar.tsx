@@ -4,7 +4,7 @@ import { LayoutContext } from './context/layoutcontext';
 import type { AppTopbarRef } from '../types/types';
 import { Button } from 'primereact/button';
 import Link from 'next/link';
-import { MegaMenu } from 'primereact/megamenu';
+
 import { StyleClass } from 'primereact/styleclass';
 import { useRouter } from 'next/navigation';
 import { classNames } from 'primereact/utils';
@@ -13,7 +13,7 @@ import Cookies from 'js-cookie';
 import { Dialog } from 'primereact/dialog';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { CptExercice } from '../app/(AgrM-fe)/comptabilite/exercice/CptExercice';
+import { CptExercice } from '../app/(AgrM-fe)/comptability/types';
 import { Toast } from 'primereact/toast';
 import { useCurrentUser } from '../hooks/fetchData/useCurrentUser';
 import { Password } from 'primereact/password';
@@ -82,7 +82,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
         setLoadingExercices(true);
         try {
             const authToken = Cookies.get('token');
-            const response = await fetch(buildApiUrl('/exercices/findall'), {
+            const response = await fetch(buildApiUrl('/api/comptability/exercices/findall'), {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -243,137 +243,6 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
     useImperativeHandle(ref, () => ({
         menubutton: menubuttonRef.current
     }));
-
-    const model = [
-          
-        // {
-        //     label: 'GLOBAL PORT SERVICES',
-        //     items: [
-        //         [
-        //             {
-        //                 label: 'UI KIT 1',
-        //                 items: [
-        //                     {
-        //                         label: 'Form Layout',
-        //                         icon: 'pi pi-fw pi-id-card',
-        //                         command: () => router.push('/uikit/formlayout')
-        //                     },
-        //                     {
-        //                         label: 'Input',
-        //                         icon: 'pi pi-fw pi-check-square',
-        //                         command: () => router.push('/uikit/input')
-        //                     },
-        //                     {
-        //                         label: 'Float Label',
-        //                         icon: 'pi pi-fw pi-bookmark',
-        //                         command: () => router.push('/uikit/floatlabel')
-        //                     },
-        //                     {
-        //                         label: 'Button',
-        //                         icon: 'pi pi-fw pi-mobile',
-        //                         command: () => router.push('/uikit/button')
-        //                     },
-        //                     {
-        //                         label: 'File',
-        //                         icon: 'pi pi-fw pi-file',
-        //                         command: () => router.push('/uikit/file')
-        //                     }
-        //                 ]
-        //             }
-        //         ],
-        //         [
-        //             {
-        //                 label: 'UI KIT 2',
-        //                 items: [
-        //                     {
-        //                         label: 'Table',
-        //                         icon: 'pi pi-fw pi-table',
-        //                         command: () => router.push('/uikit/table')
-        //                     },
-        //                     {
-        //                         label: 'List',
-        //                         icon: 'pi pi-fw pi-list',
-        //                         command: () => router.push('/uikit/list')
-        //                     },
-        //                     {
-        //                         label: 'Tree',
-        //                         icon: 'pi pi-fw pi-share-alt',
-        //                         command: () => router.push('/uikit/tree')
-        //                     },
-        //                     {
-        //                         label: 'Panel',
-        //                         icon: 'pi pi-fw pi-tablet',
-        //                         command: () => router.push('/uikit/panel')
-        //                     },
-        //                     {
-        //                         label: 'Chart',
-        //                         icon: 'pi pi-fw pi-chart-bar',
-        //                         command: () => router.push('/uikit/charts')
-        //                     }
-        //                 ]
-        //             }
-        //         ],
-        //         [
-        //             {
-        //                 label: 'UI KIT 3',
-        //                 items: [
-        //                     {
-        //                         label: 'Overlay',
-        //                         icon: 'pi pi-fw pi-clone',
-        //                         command: () => router.push('/uikit/overlay')
-        //                     },
-        //                     {
-        //                         label: 'Media',
-        //                         icon: 'pi pi-fw pi-image',
-        //                         command: () => router.push('/uikit/media')
-        //                     },
-        //                     {
-        //                         label: 'Menu',
-        //                         icon: 'pi pi-fw pi-bars',
-        //                         command: () => router.push('/uikit/menu')
-        //                     },
-        //                     {
-        //                         label: 'Message',
-        //                         icon: 'pi pi-fw pi-comment',
-        //                         command: () => router.push('/uikit/message')
-        //                     },
-        //                     {
-        //                         label: 'Misc',
-        //                         icon: 'pi pi-fw pi-circle-off',
-        //                         command: () => router.push('/uikit/misc')
-        //                     }
-        //                 ]
-        //             }
-        //         ]
-        //     ]
-        // },
-        {
-            //label: 'GLOBAL PORT SERVICES-ERP'
-            
-            label: <span style={{ fontSize: '1.75rem', fontWeight: 'bold',textAlign: 'center' }}>MMMMMM- MMM</span>,
-          
-            // items: [
-            //     [
-            //         {
-            //             label: 'UTILITIES 1',
-            //             items: [
-            //                 {
-            //                     label: 'PrimeIcons',
-            //                     icon: 'pi pi-fw pi-prime',
-            //                     command: () => router.push('/utilities/icons')
-            //                 },
-            //                 {
-            //                     label: 'PrimeFlex',
-            //                     icon: 'pi pi-fw pi-directions',
-            //                     url: 'https://www.primeflex.org',
-            //                     target: '_blank'
-            //                 }
-            //             ]
-            //         }
-            //     ]
-            // ]
-        }
-    ];
 
     const formatDate = (value?: string, includeTime: boolean = false) => {
         if (!value) return includeTime ? 'N/A' : '';
@@ -611,8 +480,8 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
             </div>
 
             <div className="layout-topbar-end">
-                <div className="layout-topbar-actions-start" id="gps_title">
-                    <MegaMenu model={model} className="layout-megamenu" />
+                <div className="layout-topbar-actions-start" id="gps_title" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <span className="font-bold text-xl" style={{ color: 'var(--topbar-item-text-color)', whiteSpace: 'nowrap' }}>AgrM - MM</span>
                 </div>
                 <div className="layout-topbar-actions-end">
                     <ul className="layout-topbar-items">
@@ -734,8 +603,15 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
                         </li>
                         <li>
                             <StyleClass nodeRef={avatarRef} selector="@next" enterClassName="hidden" enterActiveClassName="px-scalein" leaveToClassName="hidden" leaveActiveClassName="px-fadeout" hideOnOutsideClick>
-                                <a className="p-ripple" ref={avatarRef}>
-                                    <img src="/layout/images/avatar/user_gps.png" alt="avatar" className="w-2rem h-2rem" />
+                                <a className="p-ripple flex align-items-center cursor-pointer" ref={avatarRef} style={{ width: 'auto', height: 'auto', borderRadius: '2rem', padding: '0.4rem 0.75rem' }}>
+                                    <img src="/layout/images/avatar/user_gps.png" alt="avatar" className="w-2rem h-2rem border-circle" style={{ flexShrink: 0 }} />
+                                    {user && (
+                                        <span className="ml-2 hidden md:inline-flex flex-column" style={{ lineHeight: '1.3' }}>
+                                            <span className="font-bold" style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{user.firstname} {user.lastname}</span>
+                                            <span className="text-500" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{user.roleName}</span>
+                                        </span>
+                                    )}
+                                    <i className="pi pi-angle-down ml-2"></i>
                                     <Ripple />
                                 </a>
                             </StyleClass>

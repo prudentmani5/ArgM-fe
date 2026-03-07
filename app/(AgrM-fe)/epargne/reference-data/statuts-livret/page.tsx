@@ -11,9 +11,22 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { ColorPicker } from 'primereact/colorpicker';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { PassbookStatus, PassbookStatusClass } from './PassbookStatus';
+import { ProtectedPage } from '@/components/ProtectedPage';
+
+const getCurrentUser = (): string => {
+    try {
+        const userCookie = Cookies.get('appUser');
+        if (userCookie) {
+            const user = JSON.parse(userCookie);
+            return user?.email || user?.username || 'system';
+        }
+    } catch (e) {}
+    return 'system';
+};
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/passbook-statuses`;
 
@@ -35,6 +48,7 @@ function PassbookStatusPage() {
             switch (callType) {
                 case 'loadData':
                     setPassbookStatuses(Array.isArray(data) ? data : []);
+                    setLoading(false);
                     break;
                 case 'create':
                     showToast('success', 'Succès', 'Statut créé avec succès');
@@ -56,13 +70,13 @@ function PassbookStatusPage() {
         }
         if (error) {
             showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
+            setLoading(false);
         }
     }, [data, error, callType]);
 
     const loadData = () => {
         setLoading(true);
         fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadData');
-        setLoading(false);
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -100,11 +114,12 @@ function PassbookStatusPage() {
 
     const handleSubmit = () => {
         if (!validateForm()) return;
+        const dataToSend = { ...passbookStatus, userAction: getCurrentUser() };
 
         if (passbookStatus.id) {
-            fetchData(passbookStatus, 'PUT', `${BASE_URL}/update/${passbookStatus.id}`, 'update');
+            fetchData(dataToSend, 'PUT', `${BASE_URL}/update/${passbookStatus.id}`, 'update');
         } else {
-            fetchData(passbookStatus, 'POST', `${BASE_URL}/new`, 'create');
+            fetchData(dataToSend, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
@@ -126,7 +141,7 @@ function PassbookStatusPage() {
             acceptLabel: 'Oui, supprimer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
+                fetchData({ userAction: getCurrentUser() }, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
             }
         });
     };
@@ -332,4 +347,11 @@ function PassbookStatusPage() {
     );
 }
 
-export default PassbookStatusPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_SETTINGS']}>
+            <PassbookStatusPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

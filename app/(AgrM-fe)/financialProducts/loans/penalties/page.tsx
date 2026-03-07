@@ -11,6 +11,7 @@ import { Badge } from 'primereact/badge';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { LoanPenalty } from './LoanPenalty';
 import LoanPenaltyForm from './LoanPenaltyForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanPenaltyPage = () => {
     const [entities, setEntities] = useState<LoanPenalty[]>([]);
@@ -360,4 +361,11 @@ const LoanPenaltyPage = () => {
     );
 };
 
-export default LoanPenaltyPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['REMBOURSEMENT_VIEW']}>
+            <LoanPenaltyPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

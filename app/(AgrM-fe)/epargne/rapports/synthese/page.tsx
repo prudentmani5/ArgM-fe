@@ -11,11 +11,15 @@ import { Divider } from 'primereact/divider';
 import { Chart } from 'primereact/chart';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
-import { API_BASE_URL } from '../../../../../utils/apiConfig';
+import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { API_BASE_URL } from '@/utils/apiConfig';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const REPORTS_URL = `${API_BASE_URL}/api/epargne/reports`;
+const CHECKBOOK_URL = `${API_BASE_URL}/api/epargne/checkbook-orders`;
+const STATEMENT_URL = `${API_BASE_URL}/api/epargne/statement-requests`;
+const VIREMENT_URL = `${API_BASE_URL}/api/epargne/virements`;
 
 interface SynthesisData {
     // Totaux généraux
@@ -67,6 +71,9 @@ const RapportSynthesePage = () => {
     // Separate hook instances for each data type to avoid race conditions
     const branchesApi = useConsumApi('');
     const reportApi = useConsumApi('');
+    const checkbookApi = useConsumApi('');
+    const statementApi = useConsumApi('');
+    const virementApi = useConsumApi('');
 
     const [dateFrom, setDateFrom] = useState<Date | null>(null);
     const [dateTo, setDateTo] = useState<Date | null>(null);
@@ -74,6 +81,12 @@ const RapportSynthesePage = () => {
     const [branches, setBranches] = useState<any[]>([]);
     const [data, setData] = useState<SynthesisData | null>(null);
     const [loading, setLoading] = useState(false);
+
+    // Additional KPI data
+    const [checkbookSummary, setCheckbookSummary] = useState({ count: 0, totalAmount: 0 });
+    const [statementSoldeSummary, setStatementSoldeSummary] = useState({ count: 0, totalAmount: 0 });
+    const [statementHistoriqueSummary, setStatementHistoriqueSummary] = useState({ count: 0, totalAmount: 0 });
+    const [virementSummary, setVirementSummary] = useState({ count: 0, totalAmount: 0 });
 
     useEffect(() => {
         loadReferenceData();
@@ -103,6 +116,45 @@ const RapportSynthesePage = () => {
         }
     }, [reportApi.data, reportApi.error]);
 
+    // Handle checkbook orders data
+    useEffect(() => {
+        if (checkbookApi.data) {
+            const items = Array.isArray(checkbookApi.data) ? checkbookApi.data : [];
+            setCheckbookSummary({
+                count: items.length,
+                totalAmount: items.reduce((sum: number, item: any) => sum + (item.totalAmount || item.feeAmount || 0), 0)
+            });
+        }
+    }, [checkbookApi.data]);
+
+    // Handle statement requests data
+    useEffect(() => {
+        if (statementApi.data) {
+            const items = Array.isArray(statementApi.data) ? statementApi.data : [];
+            const soldeItems = items.filter((item: any) => item.requestType === 'SITUATION');
+            const historiqueItems = items.filter((item: any) => item.requestType === 'HISTORIQUE');
+            setStatementSoldeSummary({
+                count: soldeItems.length,
+                totalAmount: soldeItems.reduce((sum: number, item: any) => sum + (item.feeAmount || 0), 0)
+            });
+            setStatementHistoriqueSummary({
+                count: historiqueItems.length,
+                totalAmount: historiqueItems.reduce((sum: number, item: any) => sum + (item.feeAmount || 0), 0)
+            });
+        }
+    }, [statementApi.data]);
+
+    // Handle virements data
+    useEffect(() => {
+        if (virementApi.data) {
+            const items = Array.isArray(virementApi.data) ? virementApi.data : [];
+            setVirementSummary({
+                count: items.length,
+                totalAmount: items.reduce((sum: number, item: any) => sum + (item.montant || 0), 0)
+            });
+        }
+    }, [virementApi.data]);
+
     const loadReferenceData = () => {
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
     };
@@ -114,7 +166,11 @@ const RapportSynthesePage = () => {
         if (dateTo) params.append('dateTo', dateTo.toISOString().split('T')[0]);
         if (branchId) params.append('branchId', branchId.toString());
 
-        reportApi.fetchData(null, 'GET', `${REPORTS_URL}/synthesis?${params.toString()}`, 'generateReport');
+        const queryStr = params.toString();
+        reportApi.fetchData(null, 'GET', `${REPORTS_URL}/synthesis?${queryStr}`, 'generateReport');
+        checkbookApi.fetchData(null, 'GET', `${CHECKBOOK_URL}/findall?${queryStr}`, 'loadCheckbooks');
+        statementApi.fetchData(null, 'GET', `${STATEMENT_URL}/findall?${queryStr}`, 'loadStatements');
+        virementApi.fetchData(null, 'GET', `${VIREMENT_URL}/findall?${queryStr}`, 'loadVirements');
     };
 
     const exportToPdf = () => {
@@ -159,9 +215,12 @@ const RapportSynthesePage = () => {
                 <title>${reportTitle}</title>
                 <style>
                     body { font-family: Arial, sans-serif; margin: 20px; }
-                    h1 { color: #333; text-align: center; }
+                    .header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #4a90a4; padding-bottom:10px; margin-bottom:20px; }
+                    .logo-section { display:flex; align-items:center; gap:10px; }
+                    .company-name { font-size:16px; font-weight:bold; color:#1e3a5f; margin:0; }
+                    .company-info { font-size:10px; color:#64748b; margin:2px 0 0 0; }
+                    .doc-title { font-size:14px; font-weight:bold; color:#1e3a5f; }
                     h2 { color: #666; font-size: 16px; margin-top: 30px; }
-                    .date-range { text-align: center; color: #666; margin-bottom: 20px; }
                     .kpi-container { display: flex; justify-content: space-around; margin-bottom: 30px; flex-wrap: wrap; }
                     .kpi-box { padding: 15px; border-radius: 8px; text-align: center; min-width: 200px; margin: 10px; }
                     .kpi-box.blue { background: #e3f2fd; }
@@ -185,8 +244,19 @@ const RapportSynthesePage = () => {
                 </style>
             </head>
             <body>
-                <h1>${reportTitle}</h1>
-                <p class="date-range">${dateRange}</p>
+                <div class="header">
+                    <div class="logo-section">
+                        <img src="/layout/images/logo/logoAgrinova.PNG" alt="Logo" style="height:60px;width:60px;object-fit:contain" />
+                        <div>
+                            <h1 class="company-name">AgrM MICROFINANCE</h1>
+                            <p class="company-info">Bujumbura, Burundi</p>
+                        </div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="doc-title">${reportTitle}</div>
+                        <p style="font-size:9px;color:#64748b;margin-top:4px">${dateRange}</p>
+                    </div>
+                </div>
 
                 <h2>Indicateurs Clés</h2>
                 <div class="kpi-container">
@@ -209,6 +279,30 @@ const RapportSynthesePage = () => {
                         <div class="kpi-title">Épargne Obligatoire</div>
                         <div class="kpi-value">${data.totalCompulsorySavings} comptes</div>
                         <div class="kpi-amount">${formatCurrency(data.totalCompulsorySavingsBlocked)}</div>
+                    </div>
+                </div>
+
+                <h2>Services & Opérations</h2>
+                <div class="kpi-container">
+                    <div class="kpi-box" style="background: #e0f7fa;">
+                        <div class="kpi-title">Carnet de Chèques</div>
+                        <div class="kpi-value">${checkbookSummary.count} demandes</div>
+                        <div class="kpi-amount">${formatCurrency(checkbookSummary.totalAmount)}</div>
+                    </div>
+                    <div class="kpi-box" style="background: #e0f2f1;">
+                        <div class="kpi-title">Demande Solde</div>
+                        <div class="kpi-value">${statementSoldeSummary.count} demandes</div>
+                        <div class="kpi-amount">${formatCurrency(statementSoldeSummary.totalAmount)}</div>
+                    </div>
+                    <div class="kpi-box" style="background: #e8eaf6;">
+                        <div class="kpi-title">Demande Historique</div>
+                        <div class="kpi-value">${statementHistoriqueSummary.count} demandes</div>
+                        <div class="kpi-amount">${formatCurrency(statementHistoriqueSummary.totalAmount)}</div>
+                    </div>
+                    <div class="kpi-box" style="background: #fce4ec;">
+                        <div class="kpi-title">Virements</div>
+                        <div class="kpi-value">${virementSummary.count} virements</div>
+                        <div class="kpi-amount">${formatCurrency(virementSummary.totalAmount)}</div>
                     </div>
                 </div>
 
@@ -271,6 +365,15 @@ const RapportSynthesePage = () => {
         csvContent += `"Dépôts à Terme";"${data.totalTermDeposits} DAT";"${data.totalTermDepositsAmount}"\n`;
         csvContent += `"Tontine";"${data.totalTontineGroups} groupes / ${data.totalTontineMembers} membres";"${data.totalTontineCollected}"\n`;
         csvContent += `"Épargne Obligatoire";"${data.totalCompulsorySavings} comptes";"${data.totalCompulsorySavingsBlocked}"\n`;
+        csvContent += '\n';
+
+        // Services & Opérations section
+        csvContent += 'SERVICES & OPERATIONS\n';
+        csvContent += 'Type;Nombre;Montant\n';
+        csvContent += `"Carnet de Chèques";"${checkbookSummary.count} demandes";"${checkbookSummary.totalAmount}"\n`;
+        csvContent += `"Demande Solde";"${statementSoldeSummary.count} demandes";"${statementSoldeSummary.totalAmount}"\n`;
+        csvContent += `"Demande Historique";"${statementHistoriqueSummary.count} demandes";"${statementHistoriqueSummary.totalAmount}"\n`;
+        csvContent += `"Virements";"${virementSummary.count} virements";"${virementSummary.totalAmount}"\n`;
         csvContent += '\n';
 
         // Mouvements section
@@ -477,6 +580,58 @@ const RapportSynthesePage = () => {
                         </div>
                     </div>
 
+                    {/* KPIs Secondaires: Carnet, Demande Solde, Demande Historique, Virement */}
+                    <div className="grid mb-4">
+                        <div className="col-12 md:col-3">
+                            <Card className="h-full bg-cyan-50 border-left-3 border-cyan-500">
+                                <div className="flex align-items-center gap-3">
+                                    <i className="pi pi-id-card text-4xl text-cyan-500"></i>
+                                    <div>
+                                        <p className="text-500 m-0 text-sm">Carnet de Chèques</p>
+                                        <p className="text-xl font-bold m-0">{checkbookSummary.count} demandes</p>
+                                        <p className="text-cyan-600 font-bold m-0">{formatCurrency(checkbookSummary.totalAmount)}</p>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <Card className="h-full bg-teal-50 border-left-3 border-teal-500">
+                                <div className="flex align-items-center gap-3">
+                                    <i className="pi pi-file text-4xl text-teal-500"></i>
+                                    <div>
+                                        <p className="text-500 m-0 text-sm">Demande Solde</p>
+                                        <p className="text-xl font-bold m-0">{statementSoldeSummary.count} demandes</p>
+                                        <p className="text-teal-600 font-bold m-0">{formatCurrency(statementSoldeSummary.totalAmount)}</p>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <Card className="h-full bg-indigo-50 border-left-3 border-indigo-500">
+                                <div className="flex align-items-center gap-3">
+                                    <i className="pi pi-history text-4xl text-indigo-500"></i>
+                                    <div>
+                                        <p className="text-500 m-0 text-sm">Demande Historique</p>
+                                        <p className="text-xl font-bold m-0">{statementHistoriqueSummary.count} demandes</p>
+                                        <p className="text-indigo-600 font-bold m-0">{formatCurrency(statementHistoriqueSummary.totalAmount)}</p>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                        <div className="col-12 md:col-3">
+                            <Card className="h-full bg-pink-50 border-left-3 border-pink-500">
+                                <div className="flex align-items-center gap-3">
+                                    <i className="pi pi-send text-4xl text-pink-500"></i>
+                                    <div>
+                                        <p className="text-500 m-0 text-sm">Virements</p>
+                                        <p className="text-xl font-bold m-0">{virementSummary.count} virements</p>
+                                        <p className="text-pink-600 font-bold m-0">{formatCurrency(virementSummary.totalAmount)}</p>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
+
                     {/* Mouvements de la période */}
                     <div className="grid mb-4">
                         <div className="col-12 md:col-4">
@@ -571,4 +726,11 @@ const RapportSynthesePage = () => {
     );
 };
 
-export default RapportSynthesePage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_REPORT']}>
+            <RapportSynthesePage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { ExpenseType } from './ExpenseType';
 import ExpenseTypeForm from './ExpenseTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const ExpenseTypesPage = () => {
     const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
@@ -199,4 +200,11 @@ const ExpenseTypesPage = () => {
     );
 };
 
-export default ExpenseTypesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <ExpenseTypesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

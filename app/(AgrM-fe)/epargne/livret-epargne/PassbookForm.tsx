@@ -7,6 +7,7 @@ import { Calendar } from 'primereact/calendar';
 import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { Passbook } from './Passbook';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 interface PassbookFormProps {
     passbook: Passbook;
@@ -107,7 +108,7 @@ const PassbookForm: React.FC<PassbookFormProps> = ({
                                 handleDropdownChange('clientId', e.value);
                                 if (onClientChange) onClientChange(e.value);
                             }}
-                            optionLabel={(item) => `${item.firstName} ${item.lastName} - ${item.clientNumber}`}
+                            optionLabel={(item) => `${getClientDisplayName(item)} - ${item.clientNumber}`}
                             optionValue="id"
                             placeholder="Rechercher un client..."
                             disabled={isViewMode}

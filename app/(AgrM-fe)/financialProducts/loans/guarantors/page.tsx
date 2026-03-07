@@ -11,6 +11,7 @@ import { Badge } from 'primereact/badge';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { LoanGuarantor } from './LoanGuarantor';
 import LoanGuarantorForm from './LoanGuarantorForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanGuarantorPage = () => {
     const [entities, setEntities] = useState<LoanGuarantor[]>([]);
@@ -291,4 +292,11 @@ const LoanGuarantorPage = () => {
     );
 };
 
-export default LoanGuarantorPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_VIEW']}>
+            <LoanGuarantorPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

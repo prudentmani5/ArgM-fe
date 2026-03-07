@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import Cookies from 'js-cookie';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
 const SAVINGS_ACCOUNTS_URL = buildApiUrl('/api/epargne/comptes');
@@ -76,7 +77,9 @@ export default function AnalysesListPage() {
     }, [data, error, callType]);
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     // Get account number from savingsAccountId

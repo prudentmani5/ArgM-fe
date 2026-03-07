@@ -90,6 +90,7 @@ export interface WithdrawalRequest {
     rejectedById?: number;
     rejectionReason?: string;
     notes?: string;
+    caisseId?: number;
     userAction?: string;
     // Informations du Bénéficiaire du Retrait (personne qui retire)
     depositorName?: string;
@@ -167,6 +168,7 @@ export class WithdrawalRequestClass implements WithdrawalRequest {
     rejectedById?: number;
     rejectionReason?: string;
     notes?: string = '';
+    caisseId?: number;
     userAction?: string = '';
     depositorName?: string = '';
     depositorRelationship?: string = '';

@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { DisbursementConditionType } from './DisbursementConditionType';
 import DisbursementConditionTypeForm from './DisbursementConditionTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const DisbursementConditionTypesPage = () => {
     const [disbursementConditionTypes, setDisbursementConditionTypes] = useState<DisbursementConditionType[]>([]);
@@ -199,4 +200,11 @@ const DisbursementConditionTypesPage = () => {
     );
 };
 
-export default DisbursementConditionTypesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <DisbursementConditionTypesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

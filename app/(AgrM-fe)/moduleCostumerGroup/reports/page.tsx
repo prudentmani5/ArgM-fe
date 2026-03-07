@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { TabView, TabPanel } from 'primereact/tabview';
@@ -678,4 +679,11 @@ function ReportsPage() {
     );
 }
 
-export default ReportsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CUSTOMER_GROUP_REPORT']}>
+            <ReportsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

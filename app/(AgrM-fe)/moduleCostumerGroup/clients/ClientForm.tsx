@@ -7,7 +7,8 @@ import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { FileUpload, FileUploadHandlerEvent } from "primereact/fileupload";
 import { Image } from "primereact/image";
-import { Client, ClientType, Gender, RiskRating, Province, Commune, Zone, Colline, Nationality, IdDocumentType, ActivitySector, MaritalStatus, EducationLevel, ClientCategory, HousingType, Branch } from "./Client";
+import { Button } from "primereact/button";
+import { Client, ClientType, Gender, RiskRating, Province, Commune, Zone, Colline, Nationality, IdDocumentType, ActivitySector, MaritalStatus, EducationLevel, ClientCategory, HousingType, Branch, RelationshipType, EmergencyContact, EmergencyContactClass } from "./Client";
 
 interface ClientFormProps {
     client: Client;
@@ -19,6 +20,10 @@ interface ClientFormProps {
     handleFileRemove: (fieldName: string) => void;
     idDocumentFile: File | null;
     photoFile: File | null;
+    signatureFile: File | null;
+    secondPhotoFile?: File | null;
+    secondSignatureFile?: File | null;
+    secondIdDocumentFile?: File | null;
     provinces: Province[];
     communes: Commune[];
     zones: Zone[];
@@ -34,14 +39,24 @@ interface ClientFormProps {
     onProvinceChange: (provinceId: number) => void;
     onCommuneChange: (communeId: number) => void;
     onZoneChange: (zoneId: number) => void;
+    // Second address (co-titulaire)
+    secondCommunes?: Commune[];
+    secondZones?: Zone[];
+    secondCollines?: Colline[];
+    onSecondProvinceChange?: (provinceId: number) => void;
+    onSecondCommuneChange?: (communeId: number) => void;
+    onSecondZoneChange?: (zoneId: number) => void;
     onDocumentNumberBlur?: () => void;
     documentNumberError?: string | null;
     checkingDocument?: boolean;
+    relationshipTypes: RelationshipType[];
+    onEmergencyContactsChange: (contacts: EmergencyContact[]) => void;
 }
 
 const clientTypeOptions = [
     { label: 'Individuel', value: ClientType.INDIVIDUAL },
-    { label: 'Entreprise', value: ClientType.BUSINESS }
+    { label: 'Entreprise', value: ClientType.BUSINESS },
+    { label: 'Compte Conjoint', value: ClientType.JOINT_ACCOUNT }
 ];
 
 const genderOptions = [
@@ -66,6 +81,10 @@ const ClientForm: React.FC<ClientFormProps> = ({
     handleFileRemove,
     idDocumentFile,
     photoFile,
+    signatureFile,
+    secondPhotoFile,
+    secondSignatureFile,
+    secondIdDocumentFile,
     provinces,
     communes,
     zones,
@@ -81,10 +100,159 @@ const ClientForm: React.FC<ClientFormProps> = ({
     onProvinceChange,
     onCommuneChange,
     onZoneChange,
+    secondCommunes = [],
+    secondZones = [],
+    secondCollines = [],
+    onSecondProvinceChange,
+    onSecondCommuneChange,
+    onSecondZoneChange,
     onDocumentNumberBlur,
     documentNumberError,
-    checkingDocument
+    checkingDocument,
+    relationshipTypes,
+    onEmergencyContactsChange
 }) => {
+
+    const getContactsFor = (contactFor: string) => {
+        return (client.emergencyContacts || []).filter(c => c.contactFor === contactFor);
+    };
+
+    const addEmergencyContact = (contactFor: string = 'PRINCIPAL') => {
+        const newContact = new EmergencyContactClass(contactFor);
+        onEmergencyContactsChange([...client.emergencyContacts, newContact]);
+    };
+
+    const removeEmergencyContact = (contactFor: string, localIndex: number) => {
+        const allContacts = [...client.emergencyContacts];
+        let count = 0;
+        const globalIndex = allContacts.findIndex(c => {
+            if (c.contactFor === contactFor) {
+                if (count === localIndex) return true;
+                count++;
+            }
+            return false;
+        });
+        if (globalIndex >= 0) {
+            allContacts.splice(globalIndex, 1);
+            onEmergencyContactsChange(allContacts);
+        }
+    };
+
+    const updateEmergencyContact = (contactFor: string, localIndex: number, field: string, value: any) => {
+        const allContacts = [...client.emergencyContacts];
+        let count = 0;
+        const globalIndex = allContacts.findIndex(c => {
+            if (c.contactFor === contactFor) {
+                if (count === localIndex) return true;
+                count++;
+            }
+            return false;
+        });
+        if (globalIndex >= 0) {
+            allContacts[globalIndex] = { ...allContacts[globalIndex], [field]: value };
+            onEmergencyContactsChange(allContacts);
+        }
+    };
+
+    const renderContactSection = (contactFor: string, title: string, iconClass: string, borderColor: string) => {
+        const contacts = getContactsFor(contactFor);
+        return (
+            <div className="surface-100 p-3 border-round mb-4" style={borderColor ? { borderLeft: `4px solid ${borderColor}` } : {}}>
+                <div className="flex align-items-center justify-content-between mb-3">
+                    <h5 className="m-0" style={{ color: borderColor || 'var(--primary-color)' }}>
+                        <i className={`${iconClass} mr-2`}></i>
+                        {title}
+                    </h5>
+                    <Button
+                        type="button"
+                        icon="pi pi-plus"
+                        label="Ajouter"
+                        className="p-button-sm p-button-outlined"
+                        onClick={() => addEmergencyContact(contactFor)}
+                    />
+                </div>
+
+                {contacts.length === 0 && (
+                    <p className="text-500 text-center p-3">Aucune personne de contact ajoutée.</p>
+                )}
+
+                {contacts.map((contact, index) => (
+                    <div key={index} className="surface-0 p-3 border-round mb-3 border-1 border-300">
+                        <div className="flex align-items-center justify-content-between mb-2">
+                            <span className="font-bold text-primary">Contact {index + 1}</span>
+                            <Button
+                                type="button"
+                                icon="pi pi-trash"
+                                className="p-button-sm p-button-danger p-button-text"
+                                onClick={() => removeEmergencyContact(contactFor, index)}
+                                tooltip="Supprimer"
+                            />
+                        </div>
+                        <div className="formgrid grid">
+                            <div className="field col-12 md:col-4">
+                                <label>Nom Complet <span className="text-red-500">*</span></label>
+                                <InputText
+                                    value={contact.contactName}
+                                    onChange={(e) => updateEmergencyContact(contactFor, index, 'contactName', e.target.value)}
+                                    placeholder="Nom de la personne"
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label>Lien de Parenté</label>
+                                <Dropdown
+                                    value={contact.relationshipTypeId || contact.relationshipType?.id}
+                                    options={relationshipTypes}
+                                    optionLabel="nameFr"
+                                    optionValue="id"
+                                    onChange={(e) => updateEmergencyContact(contactFor, index, 'relationshipTypeId', e.value)}
+                                    placeholder="Sélectionner"
+                                    showClear
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label>Autre (préciser)</label>
+                                <InputText
+                                    value={contact.relationshipOther}
+                                    onChange={(e) => updateEmergencyContact(contactFor, index, 'relationshipOther', e.target.value)}
+                                    placeholder="Si autre, préciser"
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label>Téléphone Principal <span className="text-red-500">*</span></label>
+                                <InputText
+                                    value={contact.phonePrimary}
+                                    onChange={(e) => updateEmergencyContact(contactFor, index, 'phonePrimary', e.target.value)}
+                                    placeholder="+257 ..."
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label>Téléphone Secondaire</label>
+                                <InputText
+                                    value={contact.phoneSecondary}
+                                    onChange={(e) => updateEmergencyContact(contactFor, index, 'phoneSecondary', e.target.value)}
+                                    placeholder="+257 ..."
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label>Adresse</label>
+                                <InputText
+                                    value={contact.address}
+                                    onChange={(e) => updateEmergencyContact(contactFor, index, 'address', e.target.value)}
+                                    placeholder="Adresse"
+                                    className="w-full"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
     return (
         <div className="card p-fluid">
             {/* Type de Client */}
@@ -133,12 +301,12 @@ const ClientForm: React.FC<ClientFormProps> = ({
                 </div>
             </div>
 
-            {/* Informations Personnelles (Individual) */}
-            {client.clientType === ClientType.INDIVIDUAL && (
+            {/* Informations Personnelles (Individual & Compte Conjoint) */}
+            {(client.clientType === ClientType.INDIVIDUAL || client.clientType === ClientType.JOINT_ACCOUNT) && (
                 <div className="surface-100 p-3 border-round mb-4">
                     <h5 className="m-0 mb-3 text-primary">
                         <i className="pi pi-id-card mr-2"></i>
-                        Informations Personnelles
+                        {client.clientType === ClientType.JOINT_ACCOUNT ? 'Titulaire Principal (1ère Personne)' : 'Informations Personnelles'}
                     </h5>
                     <div className="formgrid grid">
                         <div className="field col-12 md:col-4">
@@ -190,6 +358,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                                 onChange={(e) => handleDateChange('dateOfBirth', e.value as Date | null)}
                                 dateFormat="dd/mm/yy"
                                 showIcon
+                                maxDate={new Date()}
                                 placeholder="JJ/MM/AAAA"
                                 className="w-full"
                             />
@@ -218,55 +387,59 @@ const ClientForm: React.FC<ClientFormProps> = ({
                                 className="w-full"
                             />
                         </div>
-                        <div className="field col-12 md:col-3">
-                            <label htmlFor="maritalStatusId">Etat Civil</label>
-                            <Dropdown
-                                id="maritalStatusId"
-                                value={client.maritalStatusId}
-                                options={maritalStatuses}
-                                optionLabel="name"
-                                optionValue="id"
-                                onChange={(e) => handleDropdownChange('maritalStatusId', e.value)}
-                                placeholder="Sélectionner"
-                                className="w-full"
-                            />
-                        </div>
-                        <div className="field col-12 md:col-3">
-                            <label htmlFor="educationLevelId">Niveau d'Etude</label>
-                            <Dropdown
-                                id="educationLevelId"
-                                value={client.educationLevelId}
-                                options={educationLevels}
-                                optionLabel="name"
-                                optionValue="id"
-                                onChange={(e) => handleDropdownChange('educationLevelId', e.value)}
-                                placeholder="Sélectionner"
-                                className="w-full"
-                            />
-                        </div>
-                        <div className="field col-12 md:col-3">
-                            <label htmlFor="numberOfDependents">Nombre de Personnes à Charge</label>
-                            <InputNumber
-                                id="numberOfDependents"
-                                value={client.numberOfDependents ?? client.dependentsCount ?? 0}
-                                onValueChange={(e) => handleNumberChange('numberOfDependents', e.value ?? 0)}
-                                min={0}
-                                className="w-full"
-                            />
-                        </div>
-                        <div className="field col-12 md:col-3">
-                            <label htmlFor="housingTypeId">Type d'Habitation</label>
-                            <Dropdown
-                                id="housingTypeId"
-                                value={client.housingTypeId}
-                                options={housingTypes}
-                                optionLabel="name"
-                                optionValue="id"
-                                onChange={(e) => handleDropdownChange('housingTypeId', e.value)}
-                                placeholder="Sélectionner"
-                                className="w-full"
-                            />
-                        </div>
+                        {client.clientType === ClientType.INDIVIDUAL && (
+                            <>
+                                <div className="field col-12 md:col-3">
+                                    <label htmlFor="maritalStatusId">Etat Civil</label>
+                                    <Dropdown
+                                        id="maritalStatusId"
+                                        value={client.maritalStatusId}
+                                        options={maritalStatuses}
+                                        optionLabel="name"
+                                        optionValue="id"
+                                        onChange={(e) => handleDropdownChange('maritalStatusId', e.value)}
+                                        placeholder="Sélectionner"
+                                        className="w-full"
+                                    />
+                                </div>
+                                <div className="field col-12 md:col-3">
+                                    <label htmlFor="educationLevelId">Niveau d'Etude</label>
+                                    <Dropdown
+                                        id="educationLevelId"
+                                        value={client.educationLevelId}
+                                        options={educationLevels}
+                                        optionLabel="name"
+                                        optionValue="id"
+                                        onChange={(e) => handleDropdownChange('educationLevelId', e.value)}
+                                        placeholder="Sélectionner"
+                                        className="w-full"
+                                    />
+                                </div>
+                                <div className="field col-12 md:col-3">
+                                    <label htmlFor="numberOfDependents">Nombre de Personnes à Charge</label>
+                                    <InputNumber
+                                        id="numberOfDependents"
+                                        value={client.numberOfDependents ?? client.dependentsCount ?? 0}
+                                        onValueChange={(e) => handleNumberChange('numberOfDependents', e.value ?? 0)}
+                                        min={0}
+                                        className="w-full"
+                                    />
+                                </div>
+                                <div className="field col-12 md:col-3">
+                                    <label htmlFor="housingTypeId">Type d'Habitation</label>
+                                    <Dropdown
+                                        id="housingTypeId"
+                                        value={client.housingTypeId}
+                                        options={housingTypes}
+                                        optionLabel="name"
+                                        optionValue="id"
+                                        onChange={(e) => handleDropdownChange('housingTypeId', e.value)}
+                                        placeholder="Sélectionner"
+                                        className="w-full"
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -317,8 +490,315 @@ const ClientForm: React.FC<ClientFormProps> = ({
                                 onChange={(e) => handleDateChange('dateOfIncorporation', e.value as Date | null)}
                                 dateFormat="dd/mm/yy"
                                 showIcon
+                                maxDate={new Date()}
                                 placeholder="JJ/MM/AAAA"
                                 className="w-full"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Co-titulaire (JOINT_ACCOUNT only) */}
+            {client.clientType === ClientType.JOINT_ACCOUNT && (
+                <div className="surface-100 p-3 border-round mb-4" style={{ borderLeft: '4px solid var(--orange-500)' }}>
+                    <h5 className="m-0 mb-3 text-orange-600">
+                        <i className="pi pi-users mr-2"></i>
+                        Co-titulaire (2ème Personne)
+                    </h5>
+                    <div className="formgrid grid">
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="secondLastName" className="font-bold">Nom <span className="text-red-500">*</span></label>
+                            <InputText
+                                id="secondLastName"
+                                value={client.secondLastName}
+                                onChange={handleChange}
+                                name="secondLastName"
+                                placeholder="Nom du co-titulaire"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="secondFirstName" className="font-bold">Prénom <span className="text-red-500">*</span></label>
+                            <InputText
+                                id="secondFirstName"
+                                value={client.secondFirstName}
+                                onChange={handleChange}
+                                name="secondFirstName"
+                                placeholder="Prénom du co-titulaire"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="secondGender" className="font-bold">Genre <span className="text-red-500">*</span></label>
+                            <Dropdown
+                                id="secondGender"
+                                value={client.secondGender}
+                                options={genderOptions}
+                                onChange={(e) => handleDropdownChange('secondGender', e.value)}
+                                placeholder="Sélectionner"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="secondDateOfBirth" className="font-bold">Date de Naissance <span className="text-red-500">*</span></label>
+                            <Calendar
+                                id="secondDateOfBirth"
+                                value={client.secondDateOfBirth ? new Date(client.secondDateOfBirth) : null}
+                                onChange={(e) => handleDateChange('secondDateOfBirth', e.value as Date | null)}
+                                dateFormat="dd/mm/yy"
+                                showIcon
+                                maxDate={new Date()}
+                                placeholder="JJ/MM/AAAA"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="secondPlaceOfBirth">Lieu de Naissance</label>
+                            <InputText
+                                id="secondPlaceOfBirth"
+                                value={client.secondPlaceOfBirth}
+                                onChange={handleChange}
+                                name="secondPlaceOfBirth"
+                                placeholder="Lieu de naissance"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="secondNationalityId" className="font-bold">Nationalité <span className="text-red-500">*</span></label>
+                            <Dropdown
+                                id="secondNationalityId"
+                                value={client.secondNationalityId}
+                                options={nationalities}
+                                optionLabel="name"
+                                optionValue="id"
+                                onChange={(e) => handleDropdownChange('secondNationalityId', e.value)}
+                                placeholder="Sélectionner"
+                                filter
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="secondPhonePrimary">Téléphone</label>
+                            <InputText
+                                id="secondPhonePrimary"
+                                value={client.secondPhonePrimary}
+                                onChange={handleChange}
+                                name="secondPhonePrimary"
+                                placeholder="+257 XX XXX XXX"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Co-titulaire Document d'Identité */}
+                    <h6 className="m-0 mb-2 mt-3 text-orange-500">
+                        <i className="pi pi-id-card mr-2"></i>
+                        Document d'Identité du Co-titulaire
+                    </h6>
+                    <div className="formgrid grid">
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondIdDocumentTypeId">Type de Document</label>
+                            <Dropdown
+                                id="secondIdDocumentTypeId"
+                                value={client.secondIdDocumentTypeId}
+                                options={idDocumentTypes}
+                                optionLabel="name"
+                                optionValue="id"
+                                onChange={(e) => handleDropdownChange('secondIdDocumentTypeId', e.value)}
+                                placeholder="Sélectionner"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondIdDocumentNumber">Numéro du Document</label>
+                            <InputText
+                                id="secondIdDocumentNumber"
+                                value={client.secondIdDocumentNumber}
+                                onChange={handleChange}
+                                name="secondIdDocumentNumber"
+                                placeholder="Numéro du document"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondIdIssueDate">Date de Délivrance</label>
+                            <Calendar
+                                id="secondIdIssueDate"
+                                value={client.secondIdIssueDate ? new Date(client.secondIdIssueDate) : null}
+                                onChange={(e) => handleDateChange('secondIdIssueDate', e.value as Date | null)}
+                                dateFormat="dd/mm/yy"
+                                showIcon
+                                maxDate={new Date()}
+                                placeholder="JJ/MM/AAAA"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondIdExpiryDate">Date d'Expiration</label>
+                            <Calendar
+                                id="secondIdExpiryDate"
+                                value={client.secondIdExpiryDate ? new Date(client.secondIdExpiryDate) : null}
+                                onChange={(e) => handleDateChange('secondIdExpiryDate', e.value as Date | null)}
+                                dateFormat="dd/mm/yy"
+                                showIcon
+                                placeholder="JJ/MM/AAAA"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label>Document Scanné</label>
+                            <FileUpload
+                                mode="basic"
+                                accept="image/*,.pdf"
+                                maxFileSize={5000000}
+                                chooseLabel={secondIdDocumentFile ? secondIdDocumentFile.name : "Choisir un document"}
+                                onSelect={(e) => {
+                                    if (e.files && e.files.length > 0) {
+                                        handleFileUpload('secondIdDocumentScanPath', e.files[0]);
+                                    }
+                                }}
+                                onClear={() => handleFileRemove('secondIdDocumentScanPath')}
+                                className="w-full"
+                            />
+                            {client.secondIdDocumentScanPath && !secondIdDocumentFile && (
+                                <small className="text-green-600 block mt-1">
+                                    <i className="pi pi-check mr-1"></i>
+                                    Fichier existant: {client.secondIdDocumentScanPath.split('/').pop()}
+                                </small>
+                            )}
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label>Photo du Co-titulaire</label>
+                            <FileUpload
+                                mode="basic"
+                                accept="image/*"
+                                maxFileSize={2000000}
+                                chooseLabel={secondPhotoFile ? secondPhotoFile.name : "Choisir une photo"}
+                                onSelect={(e) => {
+                                    if (e.files && e.files.length > 0) {
+                                        handleFileUpload('secondPhotoPath', e.files[0]);
+                                    }
+                                }}
+                                onClear={() => handleFileRemove('secondPhotoPath')}
+                                className="w-full"
+                            />
+                            {client.secondPhotoPath && !secondPhotoFile && (
+                                <div className="mt-2">
+                                    <Image src={client.secondPhotoPath} alt="Photo co-titulaire" width="80" preview imageClassName="border-round" />
+                                </div>
+                            )}
+                            {secondPhotoFile && (
+                                <div className="mt-2">
+                                    <Image src={URL.createObjectURL(secondPhotoFile)} alt="Nouvelle photo" width="80" preview imageClassName="border-round" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="field col-12 md:col-4">
+                            <label>Signature du Co-titulaire</label>
+                            <FileUpload
+                                mode="basic"
+                                accept="image/*"
+                                maxFileSize={2000000}
+                                chooseLabel={secondSignatureFile ? secondSignatureFile.name : "Choisir une signature"}
+                                onSelect={(e) => {
+                                    if (e.files && e.files.length > 0) {
+                                        handleFileUpload('secondSignatureImagePath', e.files[0]);
+                                    }
+                                }}
+                                onClear={() => handleFileRemove('secondSignatureImagePath')}
+                                className="w-full"
+                            />
+                            {client.secondSignatureImagePath && !secondSignatureFile && (
+                                <div className="mt-2">
+                                    <Image src={client.secondSignatureImagePath} alt="Signature co-titulaire" width="120" preview imageClassName="border-round" />
+                                </div>
+                            )}
+                            {secondSignatureFile && (
+                                <div className="mt-2">
+                                    <Image src={URL.createObjectURL(secondSignatureFile)} alt="Nouvelle signature" width="120" preview imageClassName="border-round" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Co-titulaire Adresse */}
+                    <h6 className="m-0 mb-2 mt-3 text-orange-500">
+                        <i className="pi pi-map-marker mr-2"></i>
+                        Adresse du Co-titulaire
+                    </h6>
+                    <div className="formgrid grid">
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondProvinceId">Province</label>
+                            <Dropdown
+                                id="secondProvinceId"
+                                value={client.secondProvinceId}
+                                options={provinces}
+                                optionLabel="name"
+                                optionValue="id"
+                                onChange={(e) => {
+                                    handleDropdownChange('secondProvinceId', e.value);
+                                    if (onSecondProvinceChange) onSecondProvinceChange(e.value);
+                                }}
+                                placeholder="Sélectionner"
+                                filter
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondCommuneId">Commune</label>
+                            <Dropdown
+                                id="secondCommuneId"
+                                value={client.secondCommuneId}
+                                options={secondCommunes}
+                                optionLabel="name"
+                                optionValue="id"
+                                onChange={(e) => {
+                                    handleDropdownChange('secondCommuneId', e.value);
+                                    if (onSecondCommuneChange) onSecondCommuneChange(e.value);
+                                }}
+                                placeholder="Sélectionner"
+                                filter
+                                disabled={!client.secondProvinceId}
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondZoneId">Zone</label>
+                            <Dropdown
+                                id="secondZoneId"
+                                value={client.secondZoneId}
+                                options={secondZones}
+                                optionLabel="name"
+                                optionValue="id"
+                                onChange={(e) => {
+                                    handleDropdownChange('secondZoneId', e.value);
+                                    if (onSecondZoneChange) onSecondZoneChange(e.value);
+                                }}
+                                placeholder="Sélectionner"
+                                filter
+                                disabled={!client.secondCommuneId}
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12 md:col-3">
+                            <label htmlFor="secondCollineId">Colline</label>
+                            <Dropdown
+                                id="secondCollineId"
+                                value={client.secondCollineId}
+                                options={secondCollines}
+                                optionLabel="name"
+                                optionValue="id"
+                                onChange={(e) => handleDropdownChange('secondCollineId', e.value)}
+                                placeholder="Sélectionner"
+                                filter
+                                disabled={!client.secondZoneId}
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field col-12">
+                            <label htmlFor="secondStreetAddress">Adresse Détaillée</label>
+                            <InputText
+                                id="secondStreetAddress"
+                                value={client.secondStreetAddress}
+                                onChange={handleChange}
+                                name="secondStreetAddress"
+                                placeholder="Quartier, Avenue, Numéro..."
                             />
                         </div>
                     </div>
@@ -329,7 +809,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
             <div className="surface-100 p-3 border-round mb-4">
                 <h5 className="m-0 mb-3 text-primary">
                     <i className="pi pi-credit-card mr-2"></i>
-                    Document d'Identité
+                    {client.clientType === ClientType.JOINT_ACCOUNT ? "Document d'Identité (Titulaire Principal)" : "Document d'Identité"}
                 </h5>
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-3">
@@ -375,6 +855,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             onChange={(e) => handleDateChange('idDocumentIssueDate', e.value as Date | null)}
                             dateFormat="dd/mm/yy"
                             showIcon
+                            maxDate={new Date()}
                             placeholder="JJ/MM/AAAA"
                             className="w-full"
                         />
@@ -471,6 +952,48 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             </div>
                         )}
                     </div>
+                    {client.clientType !== ClientType.BUSINESS && (
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="clientSignature">Signature du Client</label>
+                            <FileUpload
+                                id="clientSignature"
+                                mode="basic"
+                                name="clientSignature"
+                                accept="image/*"
+                                maxFileSize={2000000}
+                                chooseLabel={signatureFile ? signatureFile.name : "Choisir une signature"}
+                                onSelect={(e) => {
+                                    if (e.files && e.files.length > 0) {
+                                        handleFileUpload('signatureImagePath', e.files[0]);
+                                    }
+                                }}
+                                onClear={() => handleFileRemove('signatureImagePath')}
+                                className="w-full"
+                            />
+                            {client.signatureImagePath && !signatureFile && (
+                                <div className="mt-2">
+                                    <Image
+                                        src={client.signatureImagePath}
+                                        alt="Signature du client"
+                                        width="120"
+                                        preview
+                                        imageClassName="border-round"
+                                    />
+                                </div>
+                            )}
+                            {signatureFile && (
+                                <div className="mt-2">
+                                    <Image
+                                        src={URL.createObjectURL(signatureFile)}
+                                        alt="Nouvelle signature"
+                                        width="120"
+                                        preview
+                                        imageClassName="border-round"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -519,7 +1042,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
             <div className="surface-100 p-3 border-round mb-4">
                 <h5 className="m-0 mb-3 text-primary">
                     <i className="pi pi-map-marker mr-2"></i>
-                    Adresse
+                    {client.clientType === ClientType.JOINT_ACCOUNT ? 'Adresse (Titulaire Principal)' : 'Adresse'}
                 </h5>
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-3">
@@ -624,38 +1147,42 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             className="w-full"
                         />
                     </div>
-                    <div className="field col-12 md:col-4">
-                        <label htmlFor="occupation">Profession/Occupation</label>
-                        <InputText
-                            id="occupation"
-                            value={client.occupation || client.profession || ''}
-                            onChange={handleChange}
-                            name="occupation"
-                            placeholder="Profession"
-                        />
-                    </div>
-                    <div className="field col-12 md:col-4">
-                        <label htmlFor="employer">Employeur</label>
-                        <InputText
-                            id="employer"
-                            value={client.employer || client.employerName || ''}
-                            onChange={handleChange}
-                            name="employer"
-                            placeholder="Nom de l'employeur"
-                        />
-                    </div>
-                    <div className="field col-12 md:col-4">
-                        <label htmlFor="monthlyIncome">Revenu Mensuel (BIF)</label>
-                        <InputNumber
-                            id="monthlyIncome"
-                            value={client.monthlyIncome}
-                            onValueChange={(e) => handleNumberChange('monthlyIncome', e.value ?? 0)}
-                            mode="currency"
-                            currency="BIF"
-                            locale="fr-BI"
-                            className="w-full"
-                        />
-                    </div>
+                    {(client.clientType === ClientType.INDIVIDUAL || client.clientType === ClientType.JOINT_ACCOUNT) && (
+                        <>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="occupation">Profession/Occupation</label>
+                                <InputText
+                                    id="occupation"
+                                    value={client.occupation || client.profession || ''}
+                                    onChange={handleChange}
+                                    name="occupation"
+                                    placeholder="Profession"
+                                />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="employer">Employeur</label>
+                                <InputText
+                                    id="employer"
+                                    value={client.employer || client.employerName || ''}
+                                    onChange={handleChange}
+                                    name="employer"
+                                    placeholder="Nom de l'employeur"
+                                />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="monthlyIncome">Revenu Mensuel (BIF)</label>
+                                <InputNumber
+                                    id="monthlyIncome"
+                                    value={client.monthlyIncome}
+                                    onValueChange={(e) => handleNumberChange('monthlyIncome', e.value ?? 0)}
+                                    mode="currency"
+                                    currency="BIF"
+                                    locale="fr-BI"
+                                    className="w-full"
+                                />
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -692,6 +1219,17 @@ const ClientForm: React.FC<ClientFormProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Personne de Contact — Individual: one section, Joint Account: two sections, Business: hidden */}
+            {client.clientType === ClientType.INDIVIDUAL && (
+                renderContactSection('PRINCIPAL', 'Personne de Contact', 'pi pi-phone', '')
+            )}
+            {client.clientType === ClientType.JOINT_ACCOUNT && (
+                <>
+                    {renderContactSection('PRINCIPAL', 'Personne de Contact — Titulaire Principal', 'pi pi-phone', 'var(--primary-color)')}
+                    {renderContactSection('CO_TITULAIRE', 'Personne de Contact — Co-titulaire', 'pi pi-phone', 'var(--orange-500)')}
+                </>
+            )}
 
             {/* Notes */}
             <div className="surface-100 p-3 border-round">

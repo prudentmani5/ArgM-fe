@@ -14,6 +14,7 @@ import { Divider } from 'primereact/divider';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../utils/branchFilter';
 
 import PaiementForm from './PaiementForm';
 import {
@@ -124,7 +125,11 @@ const PaiementsPage = () => {
                     });
 
                     setFullyPaidLoanIds(paidLoanIds);
-                    fetchAction(null, 'GET', `${DISBURSEMENTS_URL}/findbystatus/COMPLETED/paginated?page=0&size=100&sortBy=disbursementDate&sortDir=desc`, 'loadDisbursements');
+                    const { filter: filterBranch, branchId: userBranchId } = shouldFilterByBranch();
+                    const disbUrl = filterBranch
+                        ? `${DISBURSEMENTS_URL}/findbybranch/${userBranchId}`
+                        : `${DISBURSEMENTS_URL}/findbystatus/COMPLETED/paginated?page=0&size=100&sortBy=disbursementDate&sortDir=desc`;
+                    fetchAction(null, 'GET', disbUrl, 'loadDisbursements');
                     break;
                 case 'process':
                     showToast('success', 'Succès', 'Paiement traité avec succès. Allocation automatique effectuée.');
@@ -153,8 +158,10 @@ const PaiementsPage = () => {
     }, [actionData, actionError, callType]);
 
     const loadPaiements = () => {
-        console.log('[DEBUG] loadPaiements - URL:', `${BASE_URL}/findall`);
-        fetchPaiements(null, 'GET', `${BASE_URL}/findall`, 'loadPaiements');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        console.log('[DEBUG] loadPaiements - URL:', url);
+        fetchPaiements(null, 'GET', url, 'loadPaiements');
     };
 
     const loadModesRemboursement = () => {

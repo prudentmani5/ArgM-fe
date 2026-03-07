@@ -1,6 +1,7 @@
 'use client';
 import React, { forwardRef } from 'react';
 import { DepositSlip } from './DepositSlip';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 interface PrintableDepositSlipProps {
     depositSlip: DepositSlip;
@@ -33,10 +34,7 @@ const PrintableDepositSlip = forwardRef<HTMLDivElement, PrintableDepositSlipProp
         };
 
         const getClientName = () => {
-            if (depositSlip.client) {
-                return `${depositSlip.client.firstName || ''} ${depositSlip.client.lastName || ''}`.trim();
-            }
-            return '-';
+            return getClientDisplayName(depositSlip.client);
         };
 
         const getClientNumber = () => {
@@ -64,14 +62,17 @@ const PrintableDepositSlip = forwardRef<HTMLDivElement, PrintableDepositSlipProp
                     marginBottom: '15px'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a' }}>
-                                {companyName}
-                            </h1>
-                            <p style={{ margin: '5px 0 0 0', fontSize: '11px', color: '#666' }}>
-                                {companyAddress}<br />
-                                Tél: {companyPhone}
-                            </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <img src="/layout/images/logo/logoAgrinova.PNG" alt="Logo" style={{ height: '80px', width: '80px', objectFit: 'contain' }} />
+                            <div>
+                                <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a' }}>
+                                    {companyName}
+                                </h1>
+                                <p style={{ margin: '5px 0 0 0', fontSize: '11px', color: '#666' }}>
+                                    {companyAddress}<br />
+                                    Tél: {companyPhone}
+                                </p>
+                            </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                             <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#1e3a8a' }}>
@@ -113,7 +114,7 @@ const PrintableDepositSlip = forwardRef<HTMLDivElement, PrintableDepositSlipProp
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '3px 0', color: '#666' }}>N° Compte:</td>
-                                    <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{depositSlip.savingsAccountId || '-'}</td>
+                                    <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{(depositSlip as any).savingsAccount?.accountNumber || (depositSlip as any).accountNumber || depositSlip.savingsAccountId || '-'}</td>
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '3px 0', color: '#666' }}>Agence:</td>

@@ -15,6 +15,7 @@ import { LoanProductType } from './LoanProductType';
 import LoanProductTypeForm from './LoanProductTypeForm';
 
 const BASE_URL = buildApiUrl('/api/financial-products/reference/loan-product-types');
+const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts');
 
 const LoanProductTypesPage = () => {
     const [loanProductTypes, setLoanProductTypes] = useState<LoanProductType[]>([]);
@@ -24,9 +25,11 @@ const LoanProductTypesPage = () => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [displayDialog, setDisplayDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
 
     const toast = useRef<Toast>(null);
     const { data, loading, error, fetchData, callType } = useConsumApi('');
+    const { data: accountsData, fetchData: fetchAccounts } = useConsumApi('');
 
     // Get connected user from cookies
     const getConnectedUser = (): string => {
@@ -44,7 +47,18 @@ const LoanProductTypesPage = () => {
 
     useEffect(() => {
         loadLoanProductTypes();
+        fetchAccounts(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findall`, 'loadAccounts');
     }, []);
+
+    useEffect(() => {
+        if (accountsData) {
+            const items = Array.isArray(accountsData) ? accountsData : accountsData.content || [];
+            setInternalAccounts(items.map((a: any) => ({
+                value: a.accountId,
+                label: `${a.accountNumber} - ${a.libelle}`
+            })));
+        }
+    }, [accountsData]);
 
     useEffect(() => {
         if (data) {
@@ -87,6 +101,10 @@ const LoanProductTypesPage = () => {
 
     const handleCheckboxChange = (name: string, checked: boolean) => {
         setLoanProductType(prev => ({ ...prev, [name]: checked }));
+    };
+
+    const handleDropdownChange = (name: string, value: any) => {
+        setLoanProductType(prev => ({ ...prev, [name]: value }));
     };
 
     const saveLoanProductType = () => {
@@ -163,6 +181,8 @@ const LoanProductTypesPage = () => {
                                 loanProductType={loanProductType}
                                 handleChange={handleChange}
                                 handleCheckboxChange={handleCheckboxChange}
+                                handleDropdownChange={handleDropdownChange}
+                                internalAccounts={internalAccounts}
                             />
                             <div className="flex gap-2 mt-4">
                                 <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={saveLoanProductType} loading={loading && (callType === 'create' || callType === 'update')} />
@@ -184,7 +204,21 @@ const LoanProductTypesPage = () => {
                                 <Column field="code" header="Code" sortable filter />
                                 <Column field="name" header="Nom" sortable filter />
                                 <Column field="nameFr" header="Nom (FR)" sortable filter />
-                                <Column field="description" header="Description" />
+                                <Column header="Cpt. Portefeuille" body={(row: LoanProductType) => {
+                                    if (!row.portfolioAccountId) return <span className="text-500">—</span>;
+                                    const acc = internalAccounts.find(a => a.value === row.portfolioAccountId);
+                                    return <span>{acc?.label || row.portfolioAccountId}</span>;
+                                }} />
+                                <Column header="Cpt. Intérêt" body={(row: LoanProductType) => {
+                                    if (!row.interestAccountId) return <span className="text-500">—</span>;
+                                    const acc = internalAccounts.find(a => a.value === row.interestAccountId);
+                                    return <span>{acc?.label || row.interestAccountId}</span>;
+                                }} />
+                                <Column header="Cpt. Pénalité" body={(row: LoanProductType) => {
+                                    if (!row.penaltyAccountId) return <span className="text-500">—</span>;
+                                    const acc = internalAccounts.find(a => a.value === row.penaltyAccountId);
+                                    return <span>{acc?.label || row.penaltyAccountId}</span>;
+                                }} />
                                 <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
                                 <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
                             </DataTable>

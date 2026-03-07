@@ -13,6 +13,7 @@ import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useSearchParams } from 'next/navigation';
 import { LoanCommitteeMember, MemberRoleLabels, MemberRoleColors, MemberRoleIcons } from './LoanCommitteeMember';
 import LoanCommitteeMemberForm from './LoanCommitteeMemberForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanCommitteeMemberPage = () => {
     const [members, setMembers] = useState<LoanCommitteeMember[]>([]);
@@ -265,4 +266,11 @@ const LoanCommitteeMemberPage = () => {
     );
 };
 
-export default LoanCommitteeMemberPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_COMMITTEE']}>
+            <LoanCommitteeMemberPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

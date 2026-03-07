@@ -19,6 +19,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi, { getUserAction, getConnectedUser } from '@/hooks/fetchData/useConsumApi';
+import Cookies from 'js-cookie';
 import { VisiteTerrain, VisiteTerrainClass, EntretienClient, EntretienClientClass, StatutsVisite, EtatsCondition, AttitudesClient, NiveauxCooperation } from '../../types/VisiteTerrain';
 
 const VISITS_URL = buildApiUrl('/api/credit/field-visits');
@@ -56,11 +57,15 @@ export default function VisiteTerrainPage() {
     // Load dropdown data directly on mount (separate from the shared hook to avoid race conditions)
     useEffect(() => {
         const loadDropdownData = async () => {
+            const token = Cookies.get('token');
+            const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+
             try {
                 // Load housing statuses
                 const housingResponse = await fetch(`${HOUSING_STATUS_URL}/findall/active`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders,
                     credentials: 'include'
                 });
                 if (housingResponse.ok) {
@@ -71,7 +76,7 @@ export default function VisiteTerrainPage() {
                 // Load recommendations
                 const recommendationsResponse = await fetch(`${RECOMMENDATIONS_URL}/findall/active`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders,
                     credentials: 'include'
                 });
                 if (recommendationsResponse.ok) {
@@ -97,12 +102,16 @@ export default function VisiteTerrainPage() {
     useEffect(() => {
         const loadAllInterviews = async () => {
             if (visites.length > 0) {
+                const token = Cookies.get('token');
+                const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+                if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+
                 const interviewPromises = visites.map(async (visit) => {
                     if (visit.id) {
                         try {
                             const response = await fetch(`${INTERVIEWS_URL}/findbyvisit/${visit.id}`, {
                                 method: 'GET',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: authHeaders,
                                 credentials: 'include'
                             });
                             if (response.ok) {
@@ -178,9 +187,13 @@ export default function VisiteTerrainPage() {
         // Load interview for this visit if exists
         if (row.id) {
             try {
+                const token = Cookies.get('token');
+                const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+                if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+
                 const response = await fetch(`${INTERVIEWS_URL}/findbyvisit/${row.id}`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders,
                     credentials: 'include'
                 });
                 if (response.ok) {

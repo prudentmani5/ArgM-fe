@@ -13,11 +13,12 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { ObjetCredit, ObjetCreditClass } from '../../types/CreditTypes';
 
 const BASE_URL = buildApiUrl('/api/credit/purposes');
 
-export default function ObjetsCreditPage() {
+function ObjetsCreditPageContent() {
     const [objet, setObjet] = useState<ObjetCredit>(new ObjetCreditClass());
     const [objets, setObjets] = useState<ObjetCredit[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -314,5 +315,13 @@ export default function ObjetsCreditPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function ObjetsCreditPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <ObjetsCreditPageContent />
+        </ProtectedPage>
     );
 }

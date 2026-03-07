@@ -11,6 +11,7 @@ import { Divider } from 'primereact/divider';
 import { Tag } from 'primereact/tag';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../../utils/branchFilter';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 export default function SyntheseRemboursementPage() {
@@ -123,10 +124,24 @@ export default function SyntheseRemboursementPage() {
     }, [paymentsApi.loading, overdueApi.loading, recoveryApi.loading, legalApi.loading]);
 
     const loadAllData = () => {
-        paymentsApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/payments/findall'), 'loadPayments');
-        overdueApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/schedules/findoverdue'), 'loadOverdue');
-        recoveryApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/recovery-cases/findall'), 'loadRecovery');
-        legalApi.fetchData(null, 'GET', buildApiUrl('/api/remboursement/legal-cases/findall'), 'loadLegal');
+        const { filter, branchId } = shouldFilterByBranch();
+        const paymentsUrl = filter
+            ? buildApiUrl(`/api/remboursement/payments/findbybranch/${branchId}`)
+            : buildApiUrl('/api/remboursement/payments/findall');
+        const overdueUrl = filter
+            ? buildApiUrl(`/api/remboursement/schedules/findoverduebybranch/${branchId}`)
+            : buildApiUrl('/api/remboursement/schedules/findoverdue');
+        const recoveryUrl = filter
+            ? buildApiUrl(`/api/remboursement/recovery-cases/findbybranch/${branchId}`)
+            : buildApiUrl('/api/remboursement/recovery-cases/findall');
+        const legalUrl = filter
+            ? buildApiUrl(`/api/remboursement/legal-cases/findbybranch/${branchId}`)
+            : buildApiUrl('/api/remboursement/legal-cases/findall');
+
+        paymentsApi.fetchData(null, 'GET', paymentsUrl, 'loadPayments');
+        overdueApi.fetchData(null, 'GET', overdueUrl, 'loadOverdue');
+        recoveryApi.fetchData(null, 'GET', recoveryUrl, 'loadRecovery');
+        legalApi.fetchData(null, 'GET', legalUrl, 'loadLegal');
     };
 
     const formatCurrency = (value: number) => {

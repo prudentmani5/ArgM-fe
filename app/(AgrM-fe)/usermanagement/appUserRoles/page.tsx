@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
@@ -528,4 +529,11 @@ const AppUserRolesPage = () => {
     );
 };
 
-export default AppUserRolesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['ROLE_MANAGE']}>
+            <AppUserRolesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

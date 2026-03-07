@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { ApplicationStage } from './ApplicationStage';
 import ApplicationStageForm from './ApplicationStageForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const ApplicationStagesPage = () => {
     const [applicationStages, setApplicationStages] = useState<ApplicationStage[]>([]);
@@ -205,4 +206,11 @@ const ApplicationStagesPage = () => {
     );
 };
 
-export default ApplicationStagesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <ApplicationStagesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

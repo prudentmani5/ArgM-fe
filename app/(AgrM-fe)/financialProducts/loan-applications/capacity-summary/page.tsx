@@ -9,8 +9,9 @@ import { ProgressBar } from 'primereact/progressbar';
 import { useSearchParams } from 'next/navigation';
 import { LoanCapacitySummary } from './LoanCapacitySummary';
 import { LoanCapacitySummaryForm } from './LoanCapacitySummaryForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function LoanCapacitySummaryPage() {
+function LoanCapacitySummaryPage() {
     const [summary, setSummary] = useState<LoanCapacitySummary | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -293,3 +294,12 @@ export default function LoanCapacitySummaryPage() {
         </div>
     );
 }
+
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanCapacitySummaryPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

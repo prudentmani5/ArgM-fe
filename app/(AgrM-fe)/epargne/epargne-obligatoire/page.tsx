@@ -12,6 +12,8 @@ import { ProgressBar } from 'primereact/progressbar';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { CompulsorySavings, CompulsorySavingsStatus } from './CompulsorySavings';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/compulsory-savings`;
 
@@ -269,7 +271,7 @@ function CompulsorySavingsPage() {
                     field="client"
                     header="Client"
                     sortable
-                    body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                    body={(row) => getClientDisplayName(row.client)}
                 />
                 <Column
                     field="loan"
@@ -323,9 +325,7 @@ function CompulsorySavingsPage() {
                                 <div className="col-6">
                                     <p className="text-500 mb-1">Client</p>
                                     <p className="font-bold">
-                                        {selectedSavings.client
-                                            ? `${selectedSavings.client.firstName} ${selectedSavings.client.lastName}`
-                                            : '-'}
+                                        {getClientDisplayName(selectedSavings.client)}
                                     </p>
                                 </div>
                                 <div className="col-6">
@@ -421,4 +421,11 @@ function CompulsorySavingsPage() {
     );
 }
 
-export default CompulsorySavingsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+            <CompulsorySavingsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

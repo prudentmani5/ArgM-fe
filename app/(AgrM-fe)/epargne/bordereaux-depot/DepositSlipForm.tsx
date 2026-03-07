@@ -10,6 +10,7 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Divider } from 'primereact/divider';
 import { DepositSlip, CashDenomination, FBU_DENOMINATIONS } from './DepositSlip';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 interface DepositSlipFormProps {
     depositSlip: DepositSlip;
@@ -24,6 +25,7 @@ interface DepositSlipFormProps {
     currencies: any[];
     onSavingsAccountChange?: (accountId: number) => void;
     isViewMode?: boolean;
+    branchLocked?: boolean;
 }
 
 const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
@@ -38,7 +40,8 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
     savingsAccounts,
     currencies,
     onSavingsAccountChange,
-    isViewMode = false
+    isViewMode = false,
+    branchLocked = false
 }) => {
     const [denominations, setDenominations] = useState<{ [key: number]: number }>({});
 
@@ -134,7 +137,7 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                             optionLabel="name"
                             optionValue="id"
                             placeholder="Sélectionner l'agence"
-                            disabled={isViewMode}
+                            disabled={isViewMode || branchLocked}
                             filter
                             className="w-full"
                         />
@@ -174,13 +177,21 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                                 handleDropdownChange('savingsAccountId', e.value);
                                 if (onSavingsAccountChange) onSavingsAccountChange(e.value);
                             }}
-                            optionLabel={(item) => `${item.accountNumber} - ${item.client?.firstName || ''} ${item.client?.lastName || ''} (${formatCurrency(item.currentBalance || 0)})`}
+                            optionLabel="accountNumber"
                             optionValue="id"
                             placeholder="Sélectionner le compte d'épargne..."
                             disabled={isViewMode}
                             filter
+                            filterBy="accountNumber,client.firstName,client.lastName,client.businessName"
                             filterPlaceholder="Rechercher par numéro de compte"
                             className="w-full"
+                            itemTemplate={(item: any) => (
+                                <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.currentBalance || 0)})</span>
+                            )}
+                            valueTemplate={(item: any, props: any) => {
+                                if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
+                                return <span>{props?.placeholder}</span>;
+                            }}
                         />
                     </div>
                     <div className="field col-12 md:col-6">
@@ -190,11 +201,19 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                             value={depositSlip.clientId}
                             options={clients}
                             onChange={(e) => handleDropdownChange('clientId', e.value)}
-                            optionLabel={(item) => `${item.firstName} ${item.lastName} - ${item.clientNumber}`}
+                            optionLabel="clientNumber"
                             optionValue="id"
                             placeholder="Sélectionnez d'abord un compte..."
                             disabled={true}
                             className="w-full"
+                            filterBy="clientNumber,firstName,lastName,businessName"
+                            itemTemplate={(item: any) => (
+                                <span>{getClientDisplayName(item)} - {item.clientNumber}</span>
+                            )}
+                            valueTemplate={(item: any, props: any) => {
+                                if (item) return <span>{getClientDisplayName(item)} - {item.clientNumber}</span>;
+                                return <span>{props?.placeholder}</span>;
+                            }}
                         />
                     </div>
                 </div>
@@ -287,11 +306,12 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                                     onValueChange={(e) => handleDenominationChange(denomination, e.value || 0)}
                                     min={0}
                                     disabled={isViewMode}
-                                    className="w-6rem"
+                                    className="w-9rem"
                                     showButtons
                                     buttonLayout="horizontal"
                                     incrementButtonIcon="pi pi-plus"
                                     decrementButtonIcon="pi pi-minus"
+                                    inputStyle={{ textAlign: 'center', fontSize: '1.1rem', fontWeight: 600 }}
                                 />
                                 <span className="text-500">=</span>
                                 <span className="font-bold text-primary" style={{ width: '120px' }}>

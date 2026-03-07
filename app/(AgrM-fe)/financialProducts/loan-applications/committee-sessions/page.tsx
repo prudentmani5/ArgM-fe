@@ -14,6 +14,7 @@ import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useRouter } from 'next/navigation';
 import { LoanCommitteeSession, SessionStatus, SessionStatusLabels, SessionStatusColors } from './LoanCommitteeSession';
 import LoanCommitteeSessionForm from './LoanCommitteeSessionForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanCommitteeSessionPage = () => {
     const [sessions, setSessions] = useState<LoanCommitteeSession[]>([]);
@@ -319,4 +320,11 @@ const LoanCommitteeSessionPage = () => {
     );
 };
 
-export default LoanCommitteeSessionPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_COMMITTEE']}>
+            <LoanCommitteeSessionPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { MobileMoneyOperator } from './MobileMoneyOperator';
 import MobileMoneyOperatorForm from './MobileMoneyOperatorForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const MobileMoneyOperatorsPage = () => {
     const [mobileMoneyOperators, setMobileMoneyOperators] = useState<MobileMoneyOperator[]>([]);
@@ -206,4 +207,11 @@ const MobileMoneyOperatorsPage = () => {
     );
 };
 
-export default MobileMoneyOperatorsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <MobileMoneyOperatorsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

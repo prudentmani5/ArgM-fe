@@ -3,18 +3,23 @@ import React from 'react';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
+import { Dropdown } from 'primereact/dropdown';
 import { LoanProductType } from './LoanProductType';
 
 interface LoanProductTypeFormProps {
     loanProductType: LoanProductType;
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
     handleCheckboxChange: (name: string, checked: boolean) => void;
+    handleDropdownChange: (name: string, value: any) => void;
+    internalAccounts: any[];
 }
 
 const LoanProductTypeForm: React.FC<LoanProductTypeFormProps> = ({
     loanProductType,
     handleChange,
-    handleCheckboxChange
+    handleCheckboxChange,
+    handleDropdownChange,
+    internalAccounts
 }) => {
     return (
         <div className="p-fluid">
@@ -82,6 +87,56 @@ const LoanProductTypeForm: React.FC<LoanProductTypeFormProps> = ({
                             value={loanProductType.descriptionFr || ''}
                             onChange={handleChange}
                             rows={3}
+                        />
+                    </div>
+                </div>
+            </div>
+            <div className="surface-100 p-4 mb-4">
+                <h5>Comptes Internes Correspondants</h5>
+                <div className="grid">
+                    <div className="col-12 md:col-4">
+                        <label htmlFor="portfolioAccountId">Compte Portefeuille Crédit</label>
+                        <Dropdown
+                            id="portfolioAccountId"
+                            value={loanProductType.portfolioAccountId || null}
+                            options={internalAccounts}
+                            onChange={(e) => handleDropdownChange('portfolioAccountId', e.value)}
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Sélectionner un compte"
+                            filter
+                            showClear
+                            filterPlaceholder="Rechercher..."
+                        />
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <label htmlFor="interestAccountId">Compte Intérêt</label>
+                        <Dropdown
+                            id="interestAccountId"
+                            value={loanProductType.interestAccountId || null}
+                            options={internalAccounts}
+                            onChange={(e) => handleDropdownChange('interestAccountId', e.value)}
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Sélectionner un compte"
+                            filter
+                            showClear
+                            filterPlaceholder="Rechercher..."
+                        />
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <label htmlFor="penaltyAccountId">Compte Pénalité</label>
+                        <Dropdown
+                            id="penaltyAccountId"
+                            value={loanProductType.penaltyAccountId || null}
+                            options={internalAccounts}
+                            onChange={(e) => handleDropdownChange('penaltyAccountId', e.value)}
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Sélectionner un compte"
+                            filter
+                            showClear
+                            filterPlaceholder="Rechercher..."
                         />
                     </div>
                 </div>

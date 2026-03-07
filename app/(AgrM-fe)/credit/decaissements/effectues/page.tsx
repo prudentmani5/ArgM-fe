@@ -9,6 +9,7 @@ import { InputText } from 'primereact/inputtext';
 import { Calendar } from 'primereact/calendar';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/disbursements');
 
@@ -34,7 +35,9 @@ export default function DecaissementsEffectuesPage() {
     }, [data, error, callType]);
 
     const loadDecaissements = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDecaissements');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDecaissements');
     };
 
     const formatCurrency = (value: number) => {

@@ -10,18 +10,23 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { Dropdown } from 'primereact/dropdown';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { DepositSlip, DepositSlipClass, DepositSlipStatus, CashDenomination } from './DepositSlip';
+import { getClientDisplayName } from '@/utils/clientUtils';
 import DepositSlipForm from './DepositSlipForm';
 import PrintableDepositSlip from './PrintableDepositSlip';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/deposit-slips`;
 const CLIENTS_URL = `${API_BASE_URL}/api/clients`;
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const SAVINGS_URL = `${API_BASE_URL}/api/savings-accounts`;
 const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currencies`;
+const CAISSES_URL = `${API_BASE_URL}/api/comptability/caisses`;
 
 // Get current user from cookies
 const getCurrentUser = (): string => {
@@ -38,6 +43,7 @@ const getCurrentUser = (): string => {
 };
 
 function DepositSlipPage() {
+    const { can } = useAuthorizedAction();
     const [depositSlip, setDepositSlip] = useState<DepositSlip>(new DepositSlipClass());
     const [depositSlips, setDepositSlips] = useState<DepositSlip[]>([]);
     const [clients, setClients] = useState<any[]>([]);
@@ -52,6 +58,9 @@ function DepositSlipPage() {
     const [printDialog, setPrintDialog] = useState(false);
     const [selectedSlip, setSelectedSlip] = useState<DepositSlip | null>(null);
     const [cancellationReason, setCancellationReason] = useState('');
+    const [caisses, setCaisses] = useState<any[]>([]);
+    const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
+    const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
     const toast = useRef<Toast>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +71,7 @@ function DepositSlipPage() {
     const savingsApi = useConsumApi('');
     const slipsApi = useConsumApi('');
     const actionsApi = useConsumApi('');
+    const caissesApi = useConsumApi('');
 
     useEffect(() => {
         loadReferenceData();
@@ -112,18 +122,22 @@ function DepositSlipPage() {
         }
     }, [savingsApi.data, savingsApi.error]);
 
-    // Handle deposit slips data
+    // Handle deposit slips data — filter by caisse for caissiers
     useEffect(() => {
         if (slipsApi.data) {
-            const data = slipsApi.data;
-            setDepositSlips(Array.isArray(data) ? data : data.content || []);
+            let data: DepositSlip[] = Array.isArray(slipsApi.data) ? slipsApi.data : slipsApi.data.content || [];
+            // If caissier has an assigned caisse, only show their transactions
+            if (selectedCaisseId) {
+                data = data.filter((s: any) => s.caisseId === selectedCaisseId);
+            }
+            setDepositSlips(data);
             setLoading(false);
         }
         if (slipsApi.error) {
             showToast('error', 'Erreur', slipsApi.error.message || 'Erreur lors du chargement des bordereaux');
             setLoading(false);
         }
-    }, [slipsApi.data, slipsApi.error]);
+    }, [slipsApi.data, slipsApi.error, selectedCaisseId]);
 
     // Handle actions (create, complete, cancel, delete)
     useEffect(() => {
@@ -155,12 +169,107 @@ function DepositSlipPage() {
         }
     }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
 
+    // Handle caisses data + auto-detect user's caisse
+    useEffect(() => {
+        if (caissesApi.data && caissesApi.callType === 'loadCaisses') {
+            const allData = Array.isArray(caissesApi.data) ? caissesApi.data : [];
+            try {
+                const appUserCookie = Cookies.get('appUser');
+                if (appUserCookie) {
+                    const appUser = JSON.parse(appUserCookie);
+                    const roleName = (appUser.roleName || '').toLowerCase();
+                    const isCaissier = roleName.includes('caiss');
+                    const isChefAgence = roleName.includes('chef');
+                    const auths: string[] = appUser.authorities || [];
+                    const isSuperAdmin = auths.includes('SUPER_ADMIN') || auths.includes('ROLE_SUPER_ADMIN');
+                    const canViewAll = auths.includes('VIEW_ALL_BRANCHES') || auths.includes('ROLE_VIEW_ALL_BRANCHES');
+
+                    let filteredData = allData;
+                    let userCaisse = null;
+
+                    if (isCaissier && !isChefAgence && !isSuperAdmin && !canViewAll) {
+                        // Caissier: only show their own GUICHET caisse (never AGENCE/CHEF_AGENCE/SIEGE)
+                        const isGuichet = (c: any) =>
+                            c.typeCaisse !== 'CHEF_AGENCE' && c.typeCaisse !== 'AGENCE' && c.typeCaisse !== 'SIEGE';
+                        // Priority 1: Match by agentId (most precise - caisse assigned to this user)
+                        if (appUser.id) {
+                            userCaisse = allData.find((c: any) =>
+                                c.agentId && Number(c.agentId) === Number(appUser.id) && isGuichet(c));
+                        }
+                        // Priority 2: Match by agentName
+                        if (!userCaisse) {
+                            const userName = `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim();
+                            userCaisse = allData.find((c: any) =>
+                                c.agentName && c.agentName.toLowerCase() === userName.toLowerCase() && isGuichet(c));
+                        }
+                        // Priority 3: Match by compteComptable (fallback, exclude parent types)
+                        if (!userCaisse && appUser.compteComptable) {
+                            userCaisse = allData.find((c: any) =>
+                                c.compteComptable === appUser.compteComptable && isGuichet(c));
+                        }
+                        filteredData = userCaisse ? [userCaisse] : [];
+                    } else {
+                        // Chef d'Agence / Admin / VIEW_ALL_BRANCHES: show all loaded caisses
+                        // Auto-detect their own caisse
+                        if (appUser.id) {
+                            userCaisse = allData.find((c: any) => c.agentId && Number(c.agentId) === Number(appUser.id));
+                        }
+                        if (!userCaisse && appUser.compteComptable) {
+                            userCaisse = allData.find((c: any) => c.compteComptable === appUser.compteComptable);
+                        }
+                        if (!userCaisse) {
+                            const userName = `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim();
+                            userCaisse = allData.find((c: any) => c.agentName && c.agentName.toLowerCase() === userName.toLowerCase());
+                        }
+                    }
+
+                    setCaisses(filteredData);
+
+                    if (userCaisse) {
+                        setSelectedCaisseId(userCaisse.caisseId);
+                        setDepositSlip(prev => ({
+                            ...prev,
+                            caisseId: userCaisse.caisseId,
+                            branchId: userCaisse.branchId ? Number(userCaisse.branchId) : prev.branchId
+                        }));
+                        caissesApi.fetchData(null, 'GET', `${CAISSES_URL}/agency-status/${userCaisse.caisseId}`, 'agencyStatus');
+                    }
+                } else {
+                    setCaisses(allData);
+                }
+            } catch (e) {
+                setCaisses(allData);
+            }
+        }
+        // Handle agency status response
+        if (caissesApi.data && caissesApi.callType === 'agencyStatus') {
+            setAgencyOpen((caissesApi.data as any).agencyOpen !== false);
+        }
+    }, [caissesApi.data, caissesApi.callType]);
+
     const loadReferenceData = () => {
         clientsApi.fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
         currenciesApi.fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
-        // Load all savings accounts on startup
         savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/findallactive`, 'loadSavingsAccounts');
+        // Filter caisses by branch unless user has VIEW_ALL_BRANCHES or SUPER_ADMIN authority
+        let userBranchId = null;
+        let canViewAll = false;
+        try {
+            const appUserCookie = Cookies.get('appUser');
+            if (appUserCookie) {
+                const appUser = JSON.parse(appUserCookie);
+                userBranchId = appUser.branchId;
+                const auths: string[] = appUser.authorities || [];
+                canViewAll = auths.includes('VIEW_ALL_BRANCHES') || auths.includes('ROLE_VIEW_ALL_BRANCHES')
+                    || auths.includes('SUPER_ADMIN') || auths.includes('ROLE_SUPER_ADMIN');
+            }
+        } catch (e) { /* ignore */ }
+        if (userBranchId && !canViewAll) {
+            caissesApi.fetchData(null, 'GET', `${CAISSES_URL}/findbybranch/${userBranchId}`, 'loadCaisses');
+        } else {
+            caissesApi.fetchData(null, 'GET', `${CAISSES_URL}/findactive`, 'loadCaisses');
+        }
     };
 
     const loadDepositSlips = () => {
@@ -248,6 +357,7 @@ function DepositSlipPage() {
         if (!validateForm()) return;
         const slipData = {
             ...depositSlip,
+            caisseId: selectedCaisseId,
             userAction: getCurrentUser()
         };
         actionsApi.fetchData(slipData, 'POST', `${BASE_URL}/new`, 'create');
@@ -358,14 +468,20 @@ function DepositSlipPage() {
             showToast('warn', 'Attention', 'Seuls les dépôts validés peuvent être imprimés');
             return;
         }
-        setSelectedSlip(rowData);
+        // Resolve account number from savingsAccounts list
+        const account = savingsAccounts.find(a => a.id === rowData.savingsAccountId);
+        const enriched = { ...rowData, accountNumber: account?.accountNumber || rowData.savingsAccountId };
+        setSelectedSlip(enriched);
         setPrintDialog(true);
     };
 
     // Handle print
     const handlePrint = () => {
         if (printRef.current) {
-            const printContent = printRef.current.innerHTML;
+            const printContent = printRef.current.innerHTML.replace(
+                /src="\/layout\//g,
+                `src="${window.location.origin}/layout/`
+            );
             const printWindow = window.open('', '_blank');
             if (printWindow) {
                 printWindow.document.write(`
@@ -375,9 +491,10 @@ function DepositSlipPage() {
                         <title>Bordereau de Dépôt - ${selectedSlip?.slipNumber}</title>
                         <style>
                             * { margin: 0; padding: 0; box-sizing: border-box; }
-                            body { font-family: Arial, sans-serif; }
+                            body { font-family: Arial, sans-serif; padding: 15mm; }
+                            @page { margin: 15mm; }
                             @media print {
-                                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                                body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                             }
                         </style>
                     </head>
@@ -391,7 +508,7 @@ function DepositSlipPage() {
                 setTimeout(() => {
                     printWindow.print();
                     printWindow.close();
-                }, 250);
+                }, 500);
             }
         }
     };
@@ -407,21 +524,21 @@ function DepositSlipPage() {
                     onClick={() => viewSlip(rowData)}
                     tooltip="Voir"
                 />
-                {isPending && (
-                    <>
-                        <Button
-                            icon="pi pi-check"
-                            className="p-button-rounded p-button-success p-button-sm"
-                            onClick={() => completeDeposit(rowData)}
-                            tooltip="Valider"
-                        />
-                        <Button
-                            icon="pi pi-times"
-                            className="p-button-rounded p-button-danger p-button-sm"
-                            onClick={() => openCancelDialog(rowData)}
-                            tooltip="Annuler"
-                        />
-                    </>
+                {isPending && can('EPARGNE_DEPOSIT_COMPLETE') && (
+                    <Button
+                        icon="pi pi-check"
+                        className="p-button-rounded p-button-success p-button-sm"
+                        onClick={() => completeDeposit(rowData)}
+                        tooltip="Valider"
+                    />
+                )}
+                {isPending && can('EPARGNE_DEPOSIT_CANCEL') && (
+                    <Button
+                        icon="pi pi-times"
+                        className="p-button-rounded p-button-danger p-button-sm"
+                        onClick={() => openCancelDialog(rowData)}
+                        tooltip="Annuler"
+                    />
                 )}
                 <Button
                     icon="pi pi-print"
@@ -501,14 +618,60 @@ function DepositSlipPage() {
                         savingsAccounts={savingsAccounts}
                         currencies={currencies}
                         onSavingsAccountChange={handleSavingsAccountChange}
+                        branchLocked={!!selectedCaisseId}
                     />
+                    {/* Agency closed banner */}
+                    {!agencyOpen && (
+                        <div className="p-3 mt-3 border-round bg-red-50 border-red-200" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-ban text-red-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-red-700">Operations bloquees</div>
+                                    <div className="text-red-600 text-sm">
+                                        La journee n'est pas encore ouverte par le chef d'agence. Aucun depot ne peut etre enregistre.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Caisse selection */}
+                    <div className="grid mt-3">
+                        <div className="col-12 md:col-6">
+                            <div className="field">
+                                <label htmlFor="caisseId" className="font-medium">Caisse du Guichetier</label>
+                                <Dropdown
+                                    id="caisseId"
+                                    value={selectedCaisseId}
+                                    options={caisses.filter((c: any) => c.status === 'OPEN')}
+                                    optionLabel="libelle"
+                                    optionValue="caisseId"
+                                    onChange={(e) => {
+                                        setSelectedCaisseId(e.value);
+                                        setDepositSlip(prev => ({ ...prev, caisseId: e.value }));
+                                    }}
+                                    placeholder="Sélectionner la caisse"
+                                    className="w-full"
+                                    filter
+                                    showClear
+                                />
+                                {selectedCaisseId && (
+                                    <small className="text-green-500">
+                                        <i className="pi pi-check-circle mr-1"></i>
+                                        Caisse sélectionnée - le solde sera mis à jour automatiquement
+                                    </small>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex gap-2 mt-4">
                         <Button
                             label="Enregistrer le Dépôt"
                             icon="pi pi-save"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={depositSlip.totalAmount < 500}
+                            disabled={depositSlip.totalAmount < 500 || !can('EPARGNE_DEPOSIT_CREATE') || !agencyOpen}
                         />
                         <Button
                             label="Réinitialiser"
@@ -540,7 +703,7 @@ function DepositSlipPage() {
                             field="client"
                             header="Client"
                             sortable
-                            body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                            body={(row) => getClientDisplayName(row.client)}
                         />
                         <Column field="depositDate" header="Date" sortable />
                         <Column
@@ -647,7 +810,7 @@ function DepositSlipPage() {
                         <PrintableDepositSlip
                             ref={printRef}
                             depositSlip={selectedSlip}
-                            companyName="MICROFINANCE"
+                            companyName=" AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
                             companyPhone="+257 22 XX XX XX"
                         />
@@ -658,4 +821,11 @@ function DepositSlipPage() {
     );
 }
 
-export default DepositSlipPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+            <DepositSlipPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

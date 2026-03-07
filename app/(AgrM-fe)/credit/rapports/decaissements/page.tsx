@@ -11,6 +11,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/disbursements');
 
@@ -62,7 +63,9 @@ export default function RapportDecaissementsPage() {
     }, [branchesApi.data, branchesApi.error]);
 
     const loadDecaissements = () => {
-        decaissementsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDecaissements');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        decaissementsApi.fetchData(null, 'GET', url, 'loadDecaissements');
     };
 
     const loadBranches = () => {

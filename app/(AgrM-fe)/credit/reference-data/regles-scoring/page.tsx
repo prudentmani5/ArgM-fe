@@ -15,6 +15,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/scoring-rules');
 const CATEGORIES_URL = buildApiUrl('/api/credit/scoring-categories');
@@ -40,7 +41,7 @@ interface CategorieScoring {
     nameFr: string;
 }
 
-export default function ReglesScoringPage() {
+function ReglesScoringPageContent() {
     const [regle, setRegle] = useState<RegleScoring>({ isActive: true });
     const [regles, setRegles] = useState<RegleScoring[]>([]);
     const [categories, setCategories] = useState<CategorieScoring[]>([]);
@@ -290,5 +291,13 @@ export default function ReglesScoringPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function ReglesScoringPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <ReglesScoringPageContent />
+        </ProtectedPage>
     );
 }

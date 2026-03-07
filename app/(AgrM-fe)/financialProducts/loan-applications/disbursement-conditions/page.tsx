@@ -17,6 +17,7 @@ import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useSearchParams } from 'next/navigation';
 import { LoanDisbursementCondition, ConditionStatus, ConditionStatusLabels, ConditionStatusColors } from './LoanDisbursementCondition';
 import LoanDisbursementConditionForm from './LoanDisbursementConditionForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanDisbursementConditionPage = () => {
     const [conditions, setConditions] = useState<LoanDisbursementCondition[]>([]);
@@ -376,4 +377,11 @@ const LoanDisbursementConditionPage = () => {
     );
 };
 
-export default LoanDisbursementConditionPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_DISBURSE']}>
+            <LoanDisbursementConditionPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

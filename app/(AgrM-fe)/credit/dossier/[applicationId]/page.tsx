@@ -13,15 +13,18 @@ import { Dialog } from 'primereact/dialog';
 import { ProgressBar } from 'primereact/progressbar';
 import { Divider } from 'primereact/divider';
 import { buildApiUrl } from '@/utils/apiConfig';
+import Cookies from 'js-cookie';
 
 // API URLs
 const APP_URL = buildApiUrl('/api/credit/applications');
+const SAVINGS_ACCOUNTS_URL = buildApiUrl('/api/savings-accounts');
 const INCOME_URL = buildApiUrl('/api/credit/income-analysis');
 const EXPENSE_URL = buildApiUrl('/api/credit/expense-analysis');
 const CAPACITY_URL = buildApiUrl('/api/credit/capacity-analysis');
 const VISITS_URL = buildApiUrl('/api/credit/field-visits');
 const INTERVIEWS_URL = buildApiUrl('/api/credit/client-interviews');
 const DOCUMENTS_URL = buildApiUrl('/api/credit/application-documents');
+const PRODUCTS_URL = buildApiUrl('/api/financial-products/loan-products');
 
 // Status mapping for visits
 const StatutsVisite = [
@@ -45,6 +48,9 @@ export default function DossierCreditPage() {
     const [entretiens, setEntretiens] = useState<any[]>([]);
     const [documents, setDocuments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [savingsAccount, setSavingsAccount] = useState<any>(null);
+    const [productFees, setProductFees] = useState<any[]>([]);
+    const [productGuarantees, setProductGuarantees] = useState<any[]>([]);
 
     // Dialog states
     const [showVisitDialog, setShowVisitDialog] = useState(false);
@@ -55,9 +61,13 @@ export default function DossierCreditPage() {
 
     // Fetch helper
     const fetchWithAuth = async (url: string) => {
+        const token = Cookies.get('token');
         const response = await fetch(url, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
             credentials: 'include'
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -84,6 +94,22 @@ export default function DossierCreditPage() {
             ]);
 
             setApplication(appData);
+            // Fetch savings account for account number display
+            if (appData?.savingsAccountId) {
+                fetchWithAuth(`${SAVINGS_ACCOUNTS_URL}/findbyid/${appData.savingsAccountId}`)
+                    .then(acc => setSavingsAccount(acc))
+                    .catch(() => setSavingsAccount(null));
+            }
+            // Fetch product fees and guarantees
+            if (appData?.loanProductId) {
+                Promise.all([
+                    fetchWithAuth(`${PRODUCTS_URL}/${appData.loanProductId}/fees`).catch(() => []),
+                    fetchWithAuth(`${PRODUCTS_URL}/${appData.loanProductId}/guarantees`).catch(() => [])
+                ]).then(([fees, guarantees]) => {
+                    setProductFees(Array.isArray(fees) ? fees : []);
+                    setProductGuarantees(Array.isArray(guarantees) ? guarantees : []);
+                });
+            }
             setRevenus(Array.isArray(incomeData) ? incomeData : incomeData?.content || []);
             setDepenses(Array.isArray(expenseData) ? expenseData : expenseData?.content || []);
             setCapacite(capacityData);
@@ -97,7 +123,10 @@ export default function DossierCreditPage() {
                         try {
                             const response = await fetch(`${INTERVIEWS_URL}/findbyvisit/${visit.id}`, {
                                 method: 'GET',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    ...(Cookies.get('token') ? { 'Authorization': `Bearer ${Cookies.get('token')}` } : {})
+                                },
                                 credentials: 'include'
                             });
                             if (response.ok) {
@@ -131,7 +160,10 @@ export default function DossierCreditPage() {
             try {
                 const response = await fetch(`${INTERVIEWS_URL}/findbyvisit/${visit.id}`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(Cookies.get('token') ? { 'Authorization': `Bearer ${Cookies.get('token')}` } : {})
+                    },
                     credentials: 'include'
                 });
                 if (response.ok) {
@@ -153,8 +185,13 @@ export default function DossierCreditPage() {
 
     // Calculate totals
     const totalRevenus = revenus.reduce((sum, r) => sum + (r.monthlyAmount || 0), 0);
+    const totalRevenusVerifies = revenus.filter(r => r.isVerified).reduce((sum, r) => sum + (r.monthlyAmount || 0), 0);
     const totalDepenses = depenses.reduce((sum, d) => sum + (d.monthlyAmount || 0), 0);
     const soldeDisponible = totalRevenus - totalDepenses;
+    const revenuDisponible = totalRevenusVerifies - totalDepenses;
+    const capaciteCalculee = revenuDisponible * 0.6;
+    const mensualiteDemandee = (application?.amountRequested || 0) / (application?.durationMonths || 1);
+    const ratioEndettement = totalRevenusVerifies > 0 ? (mensualiteDemandee / totalRevenusVerifies) * 100 : 0;
 
     // Status template for visits
     const visitStatusTemplate = (row: any) => {
@@ -199,13 +236,19 @@ export default function DossierCreditPage() {
             {/* Client Info Summary Card */}
             <Card className="mb-4 surface-100">
                 <div className="grid">
-                    <div className="col-12 md:col-3">
+                    <div className="col-12 md:col-2">
                         <strong><i className="pi pi-user mr-2"></i>Client:</strong><br />
                         <span className="text-lg">{application?.client?.firstName} {application?.client?.lastName}</span>
+                        <br />
+                        <small className="text-500"><i className="pi pi-id-card mr-1"></i>N° Compte: {savingsAccount?.accountNumber || 'N/A'}</small>
                     </div>
-                    <div className="col-12 md:col-3">
+                    <div className="col-12 md:col-2">
                         <strong><i className="pi pi-money-bill mr-2"></i>Montant demandé:</strong><br />
                         <span className="text-lg text-primary">{formatCurrency(application?.amountRequested)}</span>
+                    </div>
+                    <div className="col-12 md:col-2">
+                        <strong><i className="pi pi-percentage mr-2"></i>Taux:</strong><br />
+                        <span className="text-lg text-green-600">{application?.interestRate != null ? `${Number(application.interestRate).toFixed(2)}%` : 'N/A'}</span>
                     </div>
                     <div className="col-12 md:col-2">
                         <strong><i className="pi pi-clock mr-2"></i>Durée:</strong><br />
@@ -248,18 +291,16 @@ export default function DossierCreditPage() {
                                             {formatCurrency(soldeDisponible)}
                                         </div>
                                     </div>
-                                    {capacite && (
-                                        <>
-                                            <div className="col-12">
-                                                <Divider />
-                                                <div className="text-500 mb-2">Ratio d'Endettement</div>
-                                                <ProgressBar
-                                                    value={Math.min(capacite.debtToIncomeRatio || 0, 100)}
-                                                    color={capacite.debtToIncomeRatio > 40 ? '#ef4444' : capacite.debtToIncomeRatio > 30 ? '#f59e0b' : '#22c55e'}
-                                                />
-                                                <div className="mt-1 text-sm">{(capacite.debtToIncomeRatio || 0).toFixed(1)}%</div>
-                                            </div>
-                                        </>
+                                    {totalRevenusVerifies > 0 && (
+                                        <div className="col-12">
+                                            <Divider />
+                                            <div className="text-500 mb-2">Ratio d'Endettement</div>
+                                            <ProgressBar
+                                                value={Math.min(ratioEndettement, 100)}
+                                                color={ratioEndettement > 40 ? '#ef4444' : ratioEndettement > 30 ? '#f59e0b' : '#22c55e'}
+                                            />
+                                            <div className="mt-1 text-sm">{ratioEndettement.toFixed(1)}%</div>
+                                        </div>
                                     )}
                                 </div>
                             </Card>
@@ -298,6 +339,48 @@ export default function DossierCreditPage() {
                                 </div>
                             </Card>
                         </div>
+
+                        {/* Fees & Guarantees */}
+                        {(productFees.length > 0 || productGuarantees.length > 0) && (
+                            <>
+                                {productFees.length > 0 && (
+                                    <div className="col-12 md:col-6">
+                                        <Card title={`Frais du Produit (${productFees.length})`} className="h-full">
+                                            <DataTable value={productFees} size="small" stripedRows>
+                                                <Column header="Frais" body={(row: any) => row.feeNameFr || row.feeName || row.feeType?.nameFr || '-'} />
+                                                <Column header="Montant/Taux" body={(row: any) => {
+                                                    if (row.calculationMethod?.code === 'PERCENTAGE' || row.percentageRate) {
+                                                        return `${row.percentageRate || 0} %`;
+                                                    }
+                                                    return row.fixedAmount != null ? formatCurrency(row.fixedAmount) : '-';
+                                                }} />
+                                                <Column header="Perception" body={(row: any) => {
+                                                    const labels: any = { AT_DISBURSEMENT: 'Décaissement', MONTHLY: 'Mensuel', UPFRONT: 'Avance', AT_MATURITY: 'Échéance' };
+                                                    return labels[row.collectionTime] || row.collectionTime || '-';
+                                                }} />
+                                                <Column header="Obligatoire" body={(row: any) => (
+                                                    <Tag value={row.isMandatory ? 'Oui' : 'Non'} severity={row.isMandatory ? 'danger' : 'info'} />
+                                                )} style={{ width: '100px' }} />
+                                            </DataTable>
+                                        </Card>
+                                    </div>
+                                )}
+
+                                {productGuarantees.length > 0 && (
+                                    <div className="col-12 md:col-6">
+                                        <Card title={`Garanties Requises (${productGuarantees.length})`} className="h-full">
+                                            <DataTable value={productGuarantees} size="small" stripedRows>
+                                                <Column header="Type de Garantie" body={(row: any) => row.guaranteeType?.nameFr || row.guaranteeType?.name || '-'} />
+                                                <Column header="Couverture Min (%)" body={(row: any) => row.minCoveragePercentage != null ? `${row.minCoveragePercentage} %` : '-'} />
+                                                <Column header="Obligatoire" body={(row: any) => (
+                                                    <Tag value={row.isMandatory ? 'Oui' : 'Non'} severity={row.isMandatory ? 'danger' : 'info'} />
+                                                )} style={{ width: '100px' }} />
+                                            </DataTable>
+                                        </Card>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 </TabPanel>
 
@@ -347,34 +430,51 @@ export default function DossierCreditPage() {
                         </div>
 
                         {/* Capacité de Remboursement */}
-                        {capacite && (
-                            <div className="col-12">
-                                <Divider />
-                                <h5><i className="pi pi-calculator mr-2"></i>Capacité de Remboursement</h5>
-                                <div className="surface-100 p-3 border-round">
-                                    <div className="grid">
-                                        <div className="col-6 md:col-3">
-                                            <strong>Revenu Net Mensuel:</strong><br />
-                                            {formatCurrency(capacite.netMonthlyIncome)}
-                                        </div>
-                                        <div className="col-6 md:col-3">
-                                            <strong>Capacité Mensuelle:</strong><br />
-                                            {formatCurrency(capacite.monthlyRepaymentCapacity)}
-                                        </div>
-                                        <div className="col-6 md:col-3">
-                                            <strong>Ratio Endettement:</strong><br />
-                                            <span className={capacite.debtToIncomeRatio > 40 ? 'text-red-500' : 'text-green-500'}>
-                                                {(capacite.debtToIncomeRatio || 0).toFixed(1)}%
-                                            </span>
-                                        </div>
-                                        <div className="col-6 md:col-3">
-                                            <strong>Montant Maximum:</strong><br />
-                                            <span className="text-primary font-bold">{formatCurrency(capacite.maxLoanAmount)}</span>
-                                        </div>
+                        <div className="col-12">
+                            <Divider />
+                            <h5><i className="pi pi-calculator mr-2"></i>Capacité de Remboursement</h5>
+                            <div className="surface-100 p-3 border-round">
+                                <div className="grid">
+                                    <div className="col-6 md:col-2">
+                                        <div className="text-500 mb-1">Revenu vérifié:</div>
+                                        <strong className="text-green-600">{formatCurrency(totalRevenusVerifies)}</strong>
+                                    </div>
+                                    <div className="col-6 md:col-2">
+                                        <div className="text-500 mb-1">Total Charges:</div>
+                                        <strong className="text-red-500">{formatCurrency(totalDepenses)}</strong>
+                                    </div>
+                                    <div className="col-6 md:col-2">
+                                        <div className="text-500 mb-1">Revenu disponible:</div>
+                                        <strong className={revenuDisponible >= 0 ? 'text-green-600' : 'text-red-500'}>{formatCurrency(revenuDisponible)}</strong>
+                                    </div>
+                                    <div className="col-6 md:col-2">
+                                        <div className="text-500 mb-1">Capacité (60%):</div>
+                                        <strong className="text-primary">{formatCurrency(capaciteCalculee)}</strong>
+                                    </div>
+                                    <div className="col-6 md:col-2">
+                                        <div className="text-500 mb-1">Mensualité demandée:</div>
+                                        <strong>{formatCurrency(mensualiteDemandee)}</strong>
+                                    </div>
+                                    <div className="col-6 md:col-2">
+                                        <div className="text-500 mb-1">Ratio Endettement:</div>
+                                        <strong className={ratioEndettement > 40 ? 'text-red-500' : ratioEndettement > 30 ? 'text-orange-500' : 'text-green-600'}>
+                                            {ratioEndettement.toFixed(1)}%
+                                        </strong>
                                     </div>
                                 </div>
+                                <Divider />
+                                <div className="flex align-items-center gap-3 mt-2">
+                                    <span className="text-500">Évaluation:</span>
+                                    {capaciteCalculee >= mensualiteDemandee
+                                        ? <Tag value="Capacité suffisante" severity="success" />
+                                        : <Tag value="Capacité insuffisante" severity="danger" />
+                                    }
+                                    {capacite?.calculationNotes && (
+                                        <span className="text-500 text-sm ml-3">{capacite.calculationNotes}</span>
+                                    )}
+                                </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </TabPanel>
 
@@ -462,7 +562,34 @@ export default function DossierCreditPage() {
                     <h5><i className="pi pi-file mr-2"></i>Documents du Dossier ({documents.length})</h5>
                     <DataTable value={documents} emptyMessage="Aucun document enregistré" className="p-datatable-sm">
                         <Column field="documentType.nameFr" header="Type de Document" sortable />
-                        <Column field="documentName" header="Nom du Fichier" />
+                        <Column
+                            field="documentName"
+                            header="Nom du Fichier"
+                            body={(row) => {
+                                if (!row.filePath) return <span>{row.documentName || '—'}</span>;
+                                const isPdfOrImage = row.mimeType?.startsWith('image/') ||
+                                    row.filePath?.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp|pdf)$/);
+                                const fileUrl = buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(row.filePath)}`);
+                                return (
+                                    <span
+                                        className="text-primary cursor-pointer hover:underline"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => {
+                                            if (isPdfOrImage) {
+                                                window.open(fileUrl, '_blank');
+                                            } else {
+                                                const link = document.createElement('a');
+                                                link.href = fileUrl;
+                                                link.download = row.documentName || 'document';
+                                                link.click();
+                                            }
+                                        }}
+                                    >
+                                        <i className="pi pi-file mr-1"></i>{row.documentName}
+                                    </span>
+                                );
+                            }}
+                        />
                         <Column header="Statut" body={documentStatusTemplate} />
                         <Column
                             field="receivedDate"

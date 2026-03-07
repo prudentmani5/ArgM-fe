@@ -15,6 +15,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/allocation-rules');
 
@@ -39,7 +40,7 @@ const approvalLevels = [
     { label: 'Comité de Crédit', value: 'COMMITTEE' }
 ];
 
-export default function ReglesAllocationPage() {
+function ReglesAllocationPageContent() {
     const [regle, setRegle] = useState<RegleAllocation>({ isActive: true });
     const [regles, setRegles] = useState<RegleAllocation[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -273,5 +274,13 @@ export default function ReglesAllocationPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function ReglesAllocationPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <ReglesAllocationPageContent />
+        </ProtectedPage>
     );
 }

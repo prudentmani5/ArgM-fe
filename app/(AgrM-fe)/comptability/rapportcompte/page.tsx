@@ -9,6 +9,7 @@ import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice, CptCompte } from '../types';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const RapportCompteReport: React.FC = () => {
     const toast = useRef<Toast>(null);
@@ -159,4 +160,11 @@ const RapportCompteReport: React.FC = () => {
     );
 };
 
-export default RapportCompteReport;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_REPORT_VIEW']}>
+            <RapportCompteReport />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

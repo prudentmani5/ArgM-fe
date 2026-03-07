@@ -14,6 +14,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/risk-levels');
 
@@ -29,7 +30,7 @@ interface NiveauRisque {
     isActive?: boolean;
 }
 
-export default function NiveauxRisquePage() {
+function NiveauxRisquePageContent() {
     const [niveau, setNiveau] = useState<NiveauRisque>({ isActive: true });
     const [niveaux, setNiveaux] = useState<NiveauRisque[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -250,5 +251,13 @@ export default function NiveauxRisquePage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function NiveauxRisquePage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <NiveauxRisquePageContent />
+        </ProtectedPage>
     );
 }

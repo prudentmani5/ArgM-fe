@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { RiskLevel } from './RiskLevel';
 import RiskLevelForm from './RiskLevelForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const RiskLevelsPage = () => {
     const [riskLevels, setRiskLevels] = useState<RiskLevel[]>([]);
@@ -206,4 +207,11 @@ const RiskLevelsPage = () => {
     );
 };
 
-export default RiskLevelsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <RiskLevelsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

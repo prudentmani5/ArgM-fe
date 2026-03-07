@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { TermDepositDuration } from './TermDepositDuration';
 import TermDepositDurationForm from './TermDepositDurationForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const TermDepositDurationsPage = () => {
     const [termDepositDurations, setTermDepositDurations] = useState<TermDepositDuration[]>([]);
@@ -205,4 +206,11 @@ const TermDepositDurationsPage = () => {
     );
 };
 
-export default TermDepositDurationsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <TermDepositDurationsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

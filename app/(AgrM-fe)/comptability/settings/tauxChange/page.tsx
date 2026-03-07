@@ -14,8 +14,9 @@ import useConsumApi, { getUserAction } from '../../../../../hooks/fetchData/useC
 import { buildApiUrl } from '../../../../../utils/apiConfig';
 import { TauxChange } from '../../types';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function TauxChangePage() {
+function TauxChangePage() {
     const [tauxList, setTauxList] = useState<TauxChange[]>([]);
     const [currentTaux, setCurrentTaux] = useState<TauxChange | null>(null);
     const [dialogVisible, setDialogVisible] = useState(false);
@@ -302,5 +303,13 @@ export default function TauxChangePage() {
                 </div>
             </Dialog>
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_SETTINGS']}>
+            <TauxChangePage />
+        </ProtectedPage>
     );
 }

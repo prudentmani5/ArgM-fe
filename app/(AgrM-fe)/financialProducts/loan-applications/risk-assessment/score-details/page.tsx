@@ -10,8 +10,9 @@ import { Card } from 'primereact/card';
 import { useSearchParams } from 'next/navigation';
 import { LoanRiskScoreDetail } from './LoanRiskScoreDetail';
 import { LoanRiskScoreDetailForm } from './LoanRiskScoreDetailForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function LoanRiskScoreDetailPage() {
+function LoanRiskScoreDetailPage() {
     const [scoreDetails, setScoreDetails] = useState<LoanRiskScoreDetail[]>([]);
     const [selectedScoreDetails, setSelectedScoreDetails] = useState<LoanRiskScoreDetail[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -238,3 +239,12 @@ export default function LoanRiskScoreDetailPage() {
         </div>
     );
 }
+
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanRiskScoreDetailPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

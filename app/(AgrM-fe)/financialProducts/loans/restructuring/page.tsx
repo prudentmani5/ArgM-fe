@@ -11,6 +11,7 @@ import { Badge } from 'primereact/badge';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { LoanRestructuring } from './LoanRestructuring';
 import LoanRestructuringForm from './LoanRestructuringForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanRestructuringPage = () => {
     const [entities, setEntities] = useState<LoanRestructuring[]>([]);
@@ -298,4 +299,11 @@ const LoanRestructuringPage = () => {
     );
 };
 
-export default LoanRestructuringPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['REMBOURSEMENT_RESTRUCTURE']}>
+            <LoanRestructuringPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

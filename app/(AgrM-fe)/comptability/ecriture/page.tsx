@@ -7,13 +7,14 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
-import { InputMask } from 'primereact/inputmask';
+import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptEcriture, CptBrouillard, CptCompte, CptExercice } from '../types';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const CptEcritureComponent: React.FC = () => {
   const toast = useRef<Toast>(null);
@@ -23,6 +24,7 @@ const CptEcritureComponent: React.FC = () => {
   const [currentExercice, setCurrentExercice] = useState<CptExercice | null>(null);
   const [ecritures, setEcritures] = useState<CptEcriture[]>([]);
   const [selectedEcritures, setSelectedEcritures] = useState<CptEcriture[]>([]);
+  const [dateCalendarValue, setDateCalendarValue] = useState<Date | null>(null);
 
   const { data, fetchData, callType, error } = useConsumApi('');
   const { data: dataBrd, fetchData: brdFetchData } = useConsumApi('');
@@ -109,10 +111,18 @@ const CptEcritureComponent: React.FC = () => {
     setEcriture({ ...ecriture, [e.target.name]: e.target.value });
   };
 
-  const handleDateChange = (name: string, value: string) => {
-    const [jj, mm, aa] = value.split('/');
-    const iso = aa && mm && jj ? `${aa}-${mm}-${jj}` : '';
-    setEcriture({ ...ecriture, [name]: value, dateEcriture: iso });
+  const handleCalendarDateChange = (date: Date | null) => {
+    setDateCalendarValue(date);
+    if (date) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const iso = `${yyyy}-${mm}-${dd}`;
+      const display = `${dd}/${mm}/${yyyy}`;
+      setEcriture(prev => ({ ...prev, dateEcriture: iso, printDate: display }));
+    } else {
+      setEcriture(prev => ({ ...prev, dateEcriture: '', printDate: '' }));
+    }
   };
 
   const handleBrdDropDownSelect = (e: any) => {
@@ -165,6 +175,7 @@ const CptEcritureComponent: React.FC = () => {
       journalId: prev.journalId, numeroPiece: prev.numeroPiece, reference: prev.reference,
       dateEcriture: prev.dateEcriture, printDate: prev.printDate, libelle: prev.libelle
     }));
+    // Keep calendar date synced (don't reset it - date stays for next entry)
   };
 
   const handleAutoEcriture = () => {
@@ -246,14 +257,17 @@ const CptEcritureComponent: React.FC = () => {
     const selected = e.data as CptEcriture;
     if (!selected) return;
     let formattedDate = '';
+    let calDate: Date | null = null;
     if (selected.dateEcriture) {
       try {
         const isoDate = selected.dateEcriture.includes(' ') ? selected.dateEcriture.split(' ')[0] : selected.dateEcriture;
         const [year, month, day] = isoDate.split('-');
         formattedDate = `${day}/${month}/${year}`;
+        calDate = new Date(Number(year), Number(month) - 1, Number(day));
       } catch { formattedDate = ''; }
     }
     setEcriture({ ...selected, printDate: formattedDate });
+    setDateCalendarValue(calDate);
   };
 
   const showToast = (severity: 'success' | 'warn' | 'error', summary: string, detail: string) =>
@@ -319,8 +333,14 @@ const CptEcritureComponent: React.FC = () => {
           </div>
           <div className="field col-12 md:col-2">
             <label>Date</label>
-            <InputMask mask="99/99/9999" value={ecriture.printDate || ''} placeholder="jj/mm/aaaa"
-              onChange={(e) => handleDateChange('printDate', e.target.value || '')} />
+            <Calendar
+              value={dateCalendarValue}
+              onChange={(e) => handleCalendarDateChange(e.value as Date | null)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              placeholder="jj/mm/aaaa"
+              className="w-full"
+            />
           </div>
           <div className="field col-12 md:col-2">
             <label>Référence</label>
@@ -392,4 +412,11 @@ const CptEcritureComponent: React.FC = () => {
   );
 };
 
-export default CptEcritureComponent;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_ENTRY_CREATE']}>
+            <CptEcritureComponent />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

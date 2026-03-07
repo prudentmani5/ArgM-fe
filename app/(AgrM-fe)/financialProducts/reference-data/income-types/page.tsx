@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { IncomeType } from './IncomeType';
 import IncomeTypeForm from './IncomeTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const IncomeTypesPage = () => {
     const [incomeTypes, setIncomeTypes] = useState<IncomeType[]>([]);
@@ -199,4 +200,11 @@ const IncomeTypesPage = () => {
     );
 };
 
-export default IncomeTypesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <IncomeTypesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

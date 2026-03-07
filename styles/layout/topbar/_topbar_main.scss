@@ -22,7 +22,8 @@
         align-items: center;
         justify-content: center;
         position: relative;
-        width: 17rem;
+        width: 4rem;
+        min-width: 4rem;
         background-color: var(--topbar-start-bg);
 
         .layout-topbar-logo {
@@ -76,25 +77,19 @@
         flex-grow: 1;
         align-items: center;
         justify-content: space-between;
-        padding: 0 2rem;
+        padding: 0 1rem;
 
-        .layout-megamenu {
-            background: none;
+        .layout-topbar-actions-start {
+            flex-grow: 1;
+            overflow-x: auto;
 
-            &.p-megamenu .p-megamenu-root-list > .p-menuitem {
-                > .p-menuitem-link {
-                    .p-menuitem-text,
-                    .p-menuitem-icon,
-                    .p-submenu-icon {
-                        color: var(--topbar-item-text-color);
-                    }
-
-                    &:not(.p-disabled):hover {
-                        background: var(--topbar-item-hover-bg);
-                        transition: background-color var(--transition-duration);
-                    }
-                }
+            &::-webkit-scrollbar {
+                display: none;
             }
+        }
+
+        .layout-topbar-actions-end {
+            flex-shrink: 0;
         }
 
         .layout-topbar-actions-end {

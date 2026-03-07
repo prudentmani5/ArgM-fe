@@ -14,6 +14,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/recovery-actions');
 
@@ -38,7 +39,7 @@ const actionTypes = [
     { label: 'Action Judiciaire', value: 'LEGAL_ACTION' }
 ];
 
-export default function ActionsRecouvrementPage() {
+function ActionsRecouvrementPageContent() {
     const [action, setAction] = useState<ActionRecouvrement>({ isActive: true });
     const [actions, setActions] = useState<ActionRecouvrement[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -259,5 +260,13 @@ export default function ActionsRecouvrementPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function ActionsRecouvrementPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <ActionsRecouvrementPageContent />
+        </ProtectedPage>
     );
 }

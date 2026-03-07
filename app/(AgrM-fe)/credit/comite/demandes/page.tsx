@@ -14,6 +14,8 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { useRouter } from 'next/navigation';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
 
@@ -24,7 +26,7 @@ const DecisionsComite = [
     { code: 'REJETE', label: 'Rejeté', severity: 'danger' }
 ];
 
-export default function ComiteDemandesPage() {
+function ComiteDemandesPageContent() {
     const [demandes, setDemandes] = useState<any[]>([]);
     const [globalFilter, setGlobalFilter] = useState('');
     const [decisionDialog, setDecisionDialog] = useState(false);
@@ -61,7 +63,9 @@ export default function ComiteDemandesPage() {
     }, [data, error, callType]);
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     const formatCurrency = (value: number) => {
@@ -247,5 +251,13 @@ export default function ComiteDemandesPage() {
                 )}
             </Dialog>
         </div>
+    );
+}
+
+export default function ComiteDemandesPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_COMMITTEE']}>
+            <ComiteDemandesPageContent />
+        </ProtectedPage>
     );
 }

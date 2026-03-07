@@ -8,6 +8,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice } from '../types';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const typeOptions = [
     { label: 'Détaillé', value: 'D' },
@@ -140,4 +141,11 @@ const FluxTresorerieReport: React.FC = () => {
     );
 };
 
-export default FluxTresorerieReport;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_REPORT_VIEW']}>
+            <FluxTresorerieReport />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

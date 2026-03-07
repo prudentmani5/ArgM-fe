@@ -17,6 +17,7 @@ import { ProgressBar } from 'primereact/progressbar';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
+import Cookies from 'js-cookie';
 import { AnalyseRevenu, AnalyseRevenuClass, AnalyseDepense, AnalyseDepenseClass, AnalyseCapacite, AnalyseCapaciteClass, TypesContrat, EvaluationsRisque } from '../../types/AnalyseFinanciere';
 
 const INCOME_URL = buildApiUrl('/api/credit/income-analysis');
@@ -55,10 +56,16 @@ export default function AnalyseFinancierePage() {
     useEffect(() => {
         const loadDropdownData = async () => {
             try {
+                const token = Cookies.get('token');
+                const authHeaders: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                };
+
                 // Load income types
                 const incomeTypesResponse = await fetch(`${INCOME_TYPES_URL}/findall/active`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders,
                     credentials: 'include'
                 });
                 if (incomeTypesResponse.ok) {
@@ -69,7 +76,7 @@ export default function AnalyseFinancierePage() {
                 // Load expense types
                 const expenseTypesResponse = await fetch(`${EXPENSE_TYPES_URL}/findall/active`, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders,
                     credentials: 'include'
                 });
                 if (expenseTypesResponse.ok) {
@@ -97,9 +104,13 @@ export default function AnalyseFinancierePage() {
     const loadSavingsAccount = async (savingsAccountId: number) => {
         if (!savingsAccountId) return;
         try {
+            const token = Cookies.get('token');
             const response = await fetch(`${SAVINGS_ACCOUNTS_URL}/findbyid/${savingsAccountId}`, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 credentials: 'include'
             });
             if (response.ok) {

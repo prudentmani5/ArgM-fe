@@ -11,6 +11,7 @@ import { Badge } from 'primereact/badge';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { LoanClosure } from './LoanClosure';
 import LoanClosureForm from './LoanClosureForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanClosurePage = () => {
     const [entities, setEntities] = useState<LoanClosure[]>([]);
@@ -299,4 +300,11 @@ const LoanClosurePage = () => {
     );
 };
 
-export default LoanClosurePage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_VIEW']}>
+            <LoanClosurePage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

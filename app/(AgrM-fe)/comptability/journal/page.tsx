@@ -16,8 +16,9 @@ import { Tag } from 'primereact/tag';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptJournal } from '../types';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function JournalPage() {
+function JournalPage() {
     const [journaux, setJournaux] = useState<CptJournal[]>([]);
     const [journal, setJournal] = useState<CptJournal>(new CptJournal());
     const [dialogVisible, setDialogVisible] = useState(false);
@@ -297,5 +298,13 @@ export default function JournalPage() {
                 </div>
             </Dialog>
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_VIEW']}>
+            <JournalPage />
+        </ProtectedPage>
     );
 }

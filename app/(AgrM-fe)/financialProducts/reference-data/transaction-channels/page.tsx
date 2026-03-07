@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { TransactionChannel } from './TransactionChannel';
 import TransactionChannelForm from './TransactionChannelForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const TransactionChannelsPage = () => {
     const [transactionChannels, setTransactionChannels] = useState<TransactionChannel[]>([]);
@@ -199,4 +200,11 @@ const TransactionChannelsPage = () => {
     );
 };
 
-export default TransactionChannelsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <TransactionChannelsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

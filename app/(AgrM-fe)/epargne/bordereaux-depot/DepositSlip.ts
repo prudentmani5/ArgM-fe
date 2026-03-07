@@ -86,6 +86,7 @@ export interface DepositSlip {
     cancelledById?: number;
     cancellationReason?: string;
     notes?: string;
+    caisseId?: number;
     createdAt?: string;
     updatedAt?: string;
     userAction?: string;
@@ -134,6 +135,7 @@ export class DepositSlipClass implements DepositSlip {
     cancelledById?: number;
     cancellationReason?: string;
     notes?: string = '';
+    caisseId?: number;
     createdAt?: string;
     updatedAt?: string;
     userAction?: string;

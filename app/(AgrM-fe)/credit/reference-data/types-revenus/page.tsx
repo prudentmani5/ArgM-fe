@@ -13,11 +13,12 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { TypeRevenu, TypeRevenuClass } from '../../types/CreditTypes';
 
 const BASE_URL = buildApiUrl('/api/credit/income-types');
 
-export default function TypesRevenusPage() {
+function TypesRevenusPageContent() {
     const [typeRevenu, setTypeRevenu] = useState<TypeRevenu>(new TypeRevenuClass());
     const [typesRevenus, setTypesRevenus] = useState<TypeRevenu[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -222,5 +223,13 @@ export default function TypesRevenusPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function TypesRevenusPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <TypesRevenusPageContent />
+        </ProtectedPage>
     );
 }

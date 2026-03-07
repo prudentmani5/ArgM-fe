@@ -11,8 +11,9 @@ import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
-import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
-import { API_BASE_URL } from '../../../../../utils/apiConfig';
+import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { API_BASE_URL } from '@/utils/apiConfig';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const STATUSES_URL = `${API_BASE_URL}/api/epargne/passbook-statuses`;
@@ -173,8 +174,11 @@ const RapportLivretsPage = () => {
                 <title>${reportTitle}</title>
                 <style>
                     body { font-family: Arial, sans-serif; margin: 20px; }
-                    h1 { color: #333; text-align: center; }
-                    .date-range { text-align: center; color: #666; margin-bottom: 20px; }
+                    .header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #4a90a4; padding-bottom:10px; margin-bottom:20px; }
+                    .logo-section { display:flex; align-items:center; gap:10px; }
+                    .company-name { font-size:16px; font-weight:bold; color:#1e3a5f; margin:0; }
+                    .company-info { font-size:10px; color:#64748b; margin:2px 0 0 0; }
+                    .doc-title { font-size:14px; font-weight:bold; color:#1e3a5f; }
                     .stats { display: flex; justify-content: space-around; margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; }
                     .stat-box { text-align: center; }
                     table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
@@ -186,8 +190,19 @@ const RapportLivretsPage = () => {
                 </style>
             </head>
             <body>
-                <h1>${reportTitle}</h1>
-                <p class="date-range">${dateRange}</p>
+                <div class="header">
+                    <div class="logo-section">
+                        <img src="/layout/images/logo/logoAgrinova.PNG" alt="Logo" style="height:60px;width:60px;object-fit:contain" />
+                        <div>
+                            <h1 class="company-name">AgrM MICROFINANCE</h1>
+                            <p class="company-info">Bujumbura, Burundi</p>
+                        </div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="doc-title">${reportTitle}</div>
+                        <p style="font-size:9px;color:#64748b;margin-top:4px">${dateRange}</p>
+                    </div>
+                </div>
                 ${statsSection}
                 <table>
                     <thead><tr>${tableHeaders}</tr></thead>
@@ -446,4 +461,11 @@ const RapportLivretsPage = () => {
     );
 };
 
-export default RapportLivretsPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_REPORT']}>
+            <RapportLivretsPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

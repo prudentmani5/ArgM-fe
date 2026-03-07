@@ -11,6 +11,7 @@ import { Card } from 'primereact/card';
 import { Tag } from 'primereact/tag';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../../utils/branchFilter';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 const MODES_PAIEMENT = [
@@ -47,7 +48,9 @@ export default function RapportPaiementsPage() {
     }, [data, error]);
 
     const loadPaiements = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadPaiements');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadPaiements');
     };
 
     const formatCurrency = (value: number) => {

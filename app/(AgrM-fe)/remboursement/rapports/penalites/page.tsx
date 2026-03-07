@@ -8,6 +8,7 @@ import { Calendar } from 'primereact/calendar';
 import { Toast } from 'primereact/toast';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../../utils/branchFilter';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 export default function RapportPenalitesPage() {
@@ -35,7 +36,9 @@ export default function RapportPenalitesPage() {
     }, [data, error]);
 
     const loadPenalites = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadPenalites');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadPenalites');
     };
 
     const formatCurrency = (value: number) => {

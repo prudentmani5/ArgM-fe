@@ -10,6 +10,7 @@ import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../../utils/branchFilter';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 const STATUTS = [
@@ -45,7 +46,9 @@ export default function RapportRestructurationsPage() {
     }, [data, error]);
 
     const loadRestructurations = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadRestructurations');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadRestructurations');
     };
 
     const formatCurrency = (value: number) => {

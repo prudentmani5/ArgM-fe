@@ -10,12 +10,13 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { StatutDemande, StatutDemandeClass } from '../../types/CreditTypes';
 import StatutDemandeForm from './StatutDemandeForm';
 
 const BASE_URL = buildApiUrl('/api/credit/application-statuses');
 
-export default function StatutsDemandeePage() {
+function StatutsDemandeePageContent() {
     const [statut, setStatut] = useState<StatutDemande>(new StatutDemandeClass());
     const [statuts, setStatuts] = useState<StatutDemande[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -259,5 +260,13 @@ export default function StatutsDemandeePage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function StatutsDemandeePage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <StatutsDemandeePageContent />
+        </ProtectedPage>
     );
 }

@@ -28,6 +28,9 @@ export class LoanDisbursement {
     // Notes
     notes?: string;
 
+    // Caisse/guichet for cash disbursement
+    caisseId?: number;
+
     // Audit
     createdAt?: string;
     updatedAt?: string;

@@ -15,6 +15,7 @@ import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useSearchParams } from 'next/navigation';
 import { LoanCommitteeReview } from './LoanCommitteeReview';
 import LoanCommitteeReviewForm from './LoanCommitteeReviewForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanCommitteeReviewPage = () => {
     const [reviews, setReviews] = useState<LoanCommitteeReview[]>([]);
@@ -364,4 +365,11 @@ const LoanCommitteeReviewPage = () => {
     );
 };
 
-export default LoanCommitteeReviewPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_COMMITTEE']}>
+            <LoanCommitteeReviewPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

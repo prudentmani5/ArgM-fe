@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { useRouter } from 'next/navigation';
@@ -9,6 +10,13 @@ const UserManagementPage = () => {
     const router = useRouter();
 
     const navigationCards = [
+        {
+            title: 'Créer un Utilisateur',
+            description: 'Créer un nouveau compte utilisateur avec rôle et autorisations.',
+            icon: 'pi pi-user-plus',
+            color: 'bg-purple-500',
+            route: '/usermanagement/create-user'
+        },
         {
             title: 'Recherche d\'Utilisateurs',
             description: 'Rechercher tous les utilisateurs et gérer leurs mots de passe.',
@@ -73,4 +81,11 @@ const UserManagementPage = () => {
     );
 };
 
-export default UserManagementPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['USER_VIEW', 'USER_CREATE', 'USER_UPDATE', 'USER_APPROVE']}>
+            <UserManagementPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

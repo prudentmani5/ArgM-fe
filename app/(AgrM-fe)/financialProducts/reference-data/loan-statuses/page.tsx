@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { LoanStatus } from './LoanStatus';
 import LoanStatusForm from './LoanStatusForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanStatusesPage = () => {
     const [loanStatuses, setLoanStatuses] = useState<LoanStatus[]>([]);
@@ -210,4 +211,11 @@ const LoanStatusesPage = () => {
     );
 };
 
-export default LoanStatusesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <LoanStatusesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

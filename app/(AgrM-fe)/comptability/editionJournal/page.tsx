@@ -9,6 +9,7 @@ import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice, CptJournal } from '../types';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const EditionJournalReport: React.FC = () => {
     const toast = useRef<Toast>(null);
@@ -159,4 +160,11 @@ const EditionJournalReport: React.FC = () => {
     );
 };
 
-export default EditionJournalReport;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_REPORT_VIEW']}>
+            <EditionJournalReport />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

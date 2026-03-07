@@ -15,6 +15,7 @@ import { FeeType } from './FeeType';
 import FeeTypeForm from './FeeTypeForm';
 
 const BASE_URL = buildApiUrl('/api/financial-products/reference/fee-types');
+const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts');
 
 const FeeTypesPage = () => {
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
@@ -24,9 +25,11 @@ const FeeTypesPage = () => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [displayDialog, setDisplayDialog] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
 
     const toast = useRef<Toast>(null);
     const { data, loading, error, fetchData, callType } = useConsumApi('');
+    const { data: accountsData, fetchData: fetchAccounts } = useConsumApi('');
 
     // Get connected user from cookies
     const getConnectedUser = (): string => {
@@ -44,7 +47,18 @@ const FeeTypesPage = () => {
 
     useEffect(() => {
         loadFeeTypes();
+        fetchAccounts(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findall`, 'loadAccounts');
     }, []);
+
+    useEffect(() => {
+        if (accountsData) {
+            const items = Array.isArray(accountsData) ? accountsData : accountsData.content || [];
+            setInternalAccounts(items.map((a: any) => ({
+                value: a.accountId,
+                label: `${a.accountNumber} - ${a.libelle}`
+            })));
+        }
+    }, [accountsData]);
 
     useEffect(() => {
         if (data) {
@@ -65,8 +79,8 @@ const FeeTypesPage = () => {
                     resetForm();
                     setActiveIndex(1);
                     break;
-                case 'delete':
-                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Type de frais supprimé avec succès' });
+                case 'toggleStatus':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Statut mis à jour avec succès' });
                     loadFeeTypes();
                     break;
             }
@@ -89,13 +103,17 @@ const FeeTypesPage = () => {
         setFeeType(prev => ({ ...prev, [name]: checked }));
     };
 
+    const handleDropdownChange = (name: string, value: any) => {
+        setFeeType(prev => ({ ...prev, [name]: value }));
+    };
+
     const saveFeeType = () => {
-        if (!feeType.code || !feeType.name || !feeType.nameFr) {
+        if (!feeType.code || !feeType.nameFr) {
             toast.current?.show({ severity: 'warn', summary: 'Validation', detail: 'Veuillez remplir les champs obligatoires' });
             return;
         }
 
-        const feeTypeToSave = { ...feeType, userAction: getConnectedUser() };
+        const feeTypeToSave = { ...feeType, name: feeType.nameFr, userAction: getConnectedUser() };
 
         if (isEditing && feeType.id) {
             fetchData(feeTypeToSave, 'PUT', `${BASE_URL}/update/${feeType.id}`, 'update');
@@ -110,14 +128,15 @@ const FeeTypesPage = () => {
         setActiveIndex(0);
     };
 
-    const confirmDelete = (rowData: FeeType) => {
+    const confirmToggleStatus = (rowData: FeeType) => {
         setSelectedFeeType(rowData);
         setDisplayDialog(true);
     };
 
-    const deleteFeeTypeConfirmed = () => {
+    const toggleStatusConfirmed = () => {
         if (selectedFeeType?.id) {
-            fetchData(null, 'DELETE', `${BASE_URL}/delete/${selectedFeeType.id}`, 'delete');
+            const updated = { ...selectedFeeType, isActive: !selectedFeeType.isActive, userAction: getConnectedUser() };
+            fetchData(updated, 'PUT', `${BASE_URL}/update/${selectedFeeType.id}`, 'toggleStatus');
             setDisplayDialog(false);
             setSelectedFeeType(null);
         }
@@ -132,7 +151,14 @@ const FeeTypesPage = () => {
         return (
             <div className="flex gap-2">
                 <Button icon="pi pi-pencil" rounded outlined className="p-button-warning" onClick={() => editFeeType(rowData)} tooltip="Modifier" />
-                <Button icon="pi pi-trash" rounded outlined severity="danger" onClick={() => confirmDelete(rowData)} tooltip="Supprimer" />
+                <Button
+                    icon={rowData.isActive ? 'pi pi-ban' : 'pi pi-check-circle'}
+                    rounded
+                    outlined
+                    severity={rowData.isActive ? 'danger' : 'success'}
+                    onClick={() => confirmToggleStatus(rowData)}
+                    tooltip={rowData.isActive ? 'Désactiver' : 'Activer'}
+                />
             </div>
         );
     };
@@ -163,6 +189,8 @@ const FeeTypesPage = () => {
                                 feeType={feeType}
                                 handleChange={handleChange}
                                 handleCheckboxChange={handleCheckboxChange}
+                                handleDropdownChange={handleDropdownChange}
+                                internalAccounts={internalAccounts}
                             />
                             <div className="flex gap-2 mt-4">
                                 <Button label={isEditing ? 'Modifier' : 'Enregistrer'} icon="pi pi-check" onClick={saveFeeType} loading={loading && (callType === 'create' || callType === 'update')} />
@@ -182,8 +210,15 @@ const FeeTypesPage = () => {
                                 className="p-datatable-sm"
                             >
                                 <Column field="code" header="Code" sortable filter />
-                                <Column field="name" header="Nom" sortable filter />
-                                <Column field="nameFr" header="Nom (FR)" sortable filter />
+                                <Column field="nameFr" header="Nom" sortable filter />
+                                <Column
+                                    header="Compte Interne"
+                                    body={(row: FeeType) => {
+                                        if (!row.internalAccountId) return <span className="text-500">—</span>;
+                                        const acc = internalAccounts.find(a => a.value === row.internalAccountId);
+                                        return <span>{acc?.label || row.internalAccountId}</span>;
+                                    }}
+                                />
                                 <Column field="isActive" header="Statut" body={statusBodyTemplate} sortable />
                                 <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
                             </DataTable>
@@ -195,19 +230,30 @@ const FeeTypesPage = () => {
             <Dialog
                 visible={displayDialog}
                 style={{ width: '450px' }}
-                header="Confirmer la suppression"
+                header={selectedFeeType?.isActive ? 'Confirmer la désactivation' : 'Confirmer l\'activation'}
                 modal
                 footer={
                     <>
                         <Button label="Non" icon="pi pi-times" onClick={() => setDisplayDialog(false)} className="p-button-text" />
-                        <Button label="Oui" icon="pi pi-check" onClick={deleteFeeTypeConfirmed} autoFocus loading={loading && callType === 'delete'} />
+                        <Button
+                            label="Oui"
+                            icon="pi pi-check"
+                            onClick={toggleStatusConfirmed}
+                            autoFocus
+                            severity={selectedFeeType?.isActive ? 'danger' : 'success'}
+                            loading={loading && callType === 'toggleStatus'}
+                        />
                     </>
                 }
                 onHide={() => setDisplayDialog(false)}
             >
                 <div className="confirmation-content">
                     <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
-                    {selectedFeeType && <span>Êtes-vous sûr de vouloir supprimer <b>{selectedFeeType.name}</b>?</span>}
+                    {selectedFeeType && (
+                        <span>
+                            Êtes-vous sûr de vouloir {selectedFeeType.isActive ? 'désactiver' : 'activer'} <b>{selectedFeeType.name}</b>?
+                        </span>
+                    )}
                 </div>
             </Dialog>
         </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Calendar } from 'primereact/calendar';
@@ -6,6 +6,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { LoanDisbursement } from './LoanDisbursement';
+import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '../../../../utils/apiConfig';
 
 interface LoanDisbursementFormProps {
     entity: LoanDisbursement;
@@ -15,16 +17,33 @@ interface LoanDisbursementFormProps {
     handleCheckboxChange?: (name: string, checked: boolean) => void;
 }
 
+const CAISSE_URL = buildApiUrl('/api/comptability/caisses');
+
 const LoanDisbursementForm: React.FC<LoanDisbursementFormProps> = ({
     entity,
     handleChange,
     handleNumberChange,
     handleDropdownChange
 }) => {
+    const [caisses, setCaisses] = useState<any[]>([]);
+    const caisseApi = useConsumApi('');
+
+    useEffect(() => {
+        caisseApi.fetchData(null, 'GET', `${CAISSE_URL}/findactive`, 'loadCaisses');
+    }, []);
+
+    useEffect(() => {
+        if (caisseApi.data && Array.isArray(caisseApi.data)) {
+            setCaisses(caisseApi.data.filter((c: any) => c.typeCaisse === 'GUICHET' && c.status === 'OPEN'));
+        }
+    }, [caisseApi.data]);
+
     const formatDate = (dateString?: string) => {
         if (!dateString) return null;
         return new Date(dateString);
     };
+
+    const selectedCaisse = caisses.find(c => c.caisseId === entity.caisseId);
 
     const disbursementMethodOptions = [
         { label: 'Espèces', value: 'CASH' },
@@ -183,6 +202,32 @@ const LoanDisbursementForm: React.FC<LoanDisbursementFormProps> = ({
                                     className="w-full"
                                 />
                             </div>
+                        )}
+
+                        {(entity.disbursementMethod === 'CASH' || entity.disbursementMethod === 'CHECK') && (
+                            <>
+                                <div className="col-12 md:col-6">
+                                    <label htmlFor="caisseId">Caisse / Guichet *</label>
+                                    <Dropdown
+                                        id="caisseId"
+                                        value={entity.caisseId}
+                                        onChange={(e) => handleDropdownChange('caisseId', e.value)}
+                                        options={caisses}
+                                        optionLabel="codeCaisse"
+                                        optionValue="caisseId"
+                                        placeholder="Sélectionner une caisse"
+                                        className="w-full"
+                                        itemTemplate={(option) => (
+                                            <span>{option.codeCaisse} - {option.libelle} ({option.agentName})</span>
+                                        )}
+                                    />
+                                    {selectedCaisse && (
+                                        <small className="text-primary">
+                                            Solde disponible: {new Intl.NumberFormat('fr-FR').format(selectedCaisse.soldeActuel)} FBu
+                                        </small>
+                                    )}
+                                </div>
+                            </>
                         )}
 
                         {entity.disbursementMethod === 'MOBILE_MONEY' && (

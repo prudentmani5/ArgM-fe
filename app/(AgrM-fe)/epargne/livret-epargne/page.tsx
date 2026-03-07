@@ -16,6 +16,8 @@ import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { Passbook, PassbookClass } from './Passbook';
 import PassbookForm from './PassbookForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/passbooks`;
 const CLIENTS_URL = `${API_BASE_URL}/api/clients`;
@@ -75,12 +77,12 @@ function PassbookPage() {
         }
     }, [branchesApi.data, branchesApi.error]);
 
-    // Handle statuses data
+    // Handle statuses data (silently ignore 403 for users without settings authority)
     useEffect(() => {
         if (statusesApi.data) {
             setPassbookStatuses(Array.isArray(statusesApi.data) ? statusesApi.data : []);
         }
-        if (statusesApi.error) {
+        if (statusesApi.error && statusesApi.error.status !== 403 && statusesApi.error.status !== 0) {
             showToast('error', 'Erreur', 'Erreur lors du chargement des statuts');
         }
     }, [statusesApi.data, statusesApi.error]);
@@ -467,7 +469,7 @@ function PassbookPage() {
                             field="client"
                             header="Client"
                             sortable
-                            body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                            body={(row) => getClientDisplayName(row.client)}
                         />
                         <Column field="branch.name" header="Agence" sortable />
                         <Column field="issueDate" header="Date d'Émission" sortable />
@@ -581,4 +583,11 @@ function PassbookPage() {
     );
 }
 
-export default PassbookPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+            <PassbookPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

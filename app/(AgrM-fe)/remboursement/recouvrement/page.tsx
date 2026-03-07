@@ -19,6 +19,7 @@ import { InputNumber } from 'primereact/inputnumber';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../utils/branchFilter';
 
 import DossierRecouvrementForm from './DossierRecouvrementForm';
 import {
@@ -116,7 +117,9 @@ const RecouvrementPage = () => {
     }, [data, error, callType]);
 
     const loadDossiers = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDossiers');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDossiers');
     };
 
     const loadActionsForDossier = (caseId: number) => {

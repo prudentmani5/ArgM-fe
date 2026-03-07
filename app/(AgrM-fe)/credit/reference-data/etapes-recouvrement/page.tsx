@@ -14,6 +14,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/recovery-stages');
 
@@ -29,7 +30,7 @@ interface EtapeRecouvrement {
     isActive?: boolean;
 }
 
-export default function EtapesRecouvrementPage() {
+function EtapesRecouvrementPageContent() {
     const [etape, setEtape] = useState<EtapeRecouvrement>({ isActive: true });
     const [etapes, setEtapes] = useState<EtapeRecouvrement[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -239,5 +240,13 @@ export default function EtapesRecouvrementPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function EtapesRecouvrementPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <EtapesRecouvrementPageContent />
+        </ProtectedPage>
     );
 }

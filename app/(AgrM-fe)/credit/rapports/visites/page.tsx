@@ -11,6 +11,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { exportToPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/field-visits');
 
@@ -63,7 +64,9 @@ export default function RapportVisitesPage() {
                 branchName: item.application?.branch?.name || '-',
                 branchId: item.application?.branch?.id
             }));
-            setVisites(mappedData);
+            // Filter by branch if user is restricted to a specific branch
+            const { filter, branchId } = shouldFilterByBranch();
+            setVisites(filter ? mappedData.filter((v: any) => v.branchId === branchId) : mappedData);
         }
         if (visitesApi.error) {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: visitesApi.error.message, life: 3000 });

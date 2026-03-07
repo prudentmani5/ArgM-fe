@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
 import { DataTable, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
@@ -351,4 +352,11 @@ const UsersPage = () => {
     );
 };
 
-export default UsersPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['USER_VIEW', 'USER_CREATE', 'USER_UPDATE']}>
+            <UsersPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -24,6 +24,8 @@ import {
     DailyClosingPreview,
     PreviewEntry
 } from '../types';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 
 const formatNumber = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0';
@@ -60,7 +62,8 @@ const toApiDate = (date: Date): string => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-export default function ClotureJournalierePage() {
+function ClotureJournalierePage() {
+    const { can } = useAuthorizedAction();
     const [currentExercice, setCurrentExercice] = useState<CptExercice | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [preview, setPreview] = useState<DailyClosingPreview | null>(null);
@@ -80,9 +83,14 @@ export default function ClotureJournalierePage() {
     const { data: detailsData, loading: detailsLoading, error: detailsError, fetchData: fetchDetails, callType: detailsCallType } = useConsumApi('');
     const { data: reverseData, loading: reverseLoading, error: reverseError, fetchData: fetchReverse, callType: reverseCallType } = useConsumApi('');
     const { data: branchesData, fetchData: fetchBranches, callType: branchesCallType } = useConsumApi('');
+    const { data: caisseStatusData, error: caisseStatusError, fetchData: fetchCaisseStatus, callType: caisseStatusCallType } = useConsumApi('');
+
+    const [caisseStatus, setCaisseStatus] = useState<any>(null);
+    const [allCaisses, setAllCaisses] = useState<any[]>([]);
 
     const BASE_URL = buildApiUrl('/api/comptability/daily-closing');
     const BRANCHES_URL = buildApiUrl('/api/reference-data/branches/findactive');
+    const CAISSE_URL = buildApiUrl('/api/comptability/caisses');
 
     useEffect(() => {
         try {
@@ -105,6 +113,36 @@ export default function ClotureJournalierePage() {
             setBranches(list);
         }
     }, [branchesData, branchesCallType]);
+
+    // Load caisse status when branch changes or date changes
+    useEffect(() => {
+        if (selectedBranch?.id && selectedDate) {
+            // First load all caisses for this branch to find parent caisse
+            fetchCaisseStatus(null, 'GET', `${CAISSE_URL}/findbybranch/${selectedBranch.id}`, 'caisses-list');
+        } else {
+            setCaisseStatus(null);
+        }
+    }, [selectedBranch]);
+
+    // Handle caisses list -> find parent caisse -> load branch closing status
+    useEffect(() => {
+        if (caisseStatusData && caisseStatusCallType === 'caisses-list') {
+            const caisses = Array.isArray(caisseStatusData) ? caisseStatusData : [];
+            setAllCaisses(caisses);
+            // Find parent caisse (CHEF_AGENCE or AGENCE type)
+            const parentCaisse = caisses.find((c: any) =>
+                c.typeCaisse === 'CHEF_AGENCE' || c.typeCaisse === 'AGENCE' || c.typeCaisse === 'SIEGE'
+            );
+            if (parentCaisse && selectedDate) {
+                fetchCaisseStatus(null, 'GET',
+                    `${CAISSE_URL}/branch-closing-status/${parentCaisse.caisseId}?date=${toApiDate(selectedDate)}`,
+                    'branch-closing-status');
+            }
+        }
+        if (caisseStatusData && caisseStatusCallType === 'branch-closing-status') {
+            setCaisseStatus(caisseStatusData);
+        }
+    }, [caisseStatusData, caisseStatusCallType]);
 
     // Handle preview response
     useEffect(() => {
@@ -178,6 +216,15 @@ export default function ClotureJournalierePage() {
         let url = `${BASE_URL}/preview?date=${dateStr}&exerciceId=${currentExercice.exerciceId}`;
         if (selectedBranch?.id) {
             url += `&branchId=${selectedBranch.id}`;
+            // Refresh caisse status for the selected date
+            const parentCaisse = allCaisses.find((c: any) =>
+                c.typeCaisse === 'CHEF_AGENCE' || c.typeCaisse === 'AGENCE' || c.typeCaisse === 'SIEGE'
+            );
+            if (parentCaisse) {
+                fetchCaisseStatus(null, 'GET',
+                    `${CAISSE_URL}/branch-closing-status/${parentCaisse.caisseId}?date=${dateStr}`,
+                    'branch-closing-status');
+            }
         }
         fetchPreview(null, 'GET', url, 'preview');
     };
@@ -247,7 +294,7 @@ export default function ClotureJournalierePage() {
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => handleViewDetails(rowData)}
             />
-            {rowData.status === 'COMPLETED' && (
+            {rowData.status === 'COMPLETED' && can('ACCOUNTING_CLOSING_REVERSE') && (
                 <Button
                     icon="pi pi-undo"
                     rounded
@@ -334,13 +381,15 @@ export default function ClotureJournalierePage() {
                 loading={previewLoading}
                 severity="info"
             />
-            {preview && !preview.alreadyClosed && preview.entries && preview.entries.length > 0 && (
+            {preview && !preview.alreadyClosed && preview.entries && preview.entries.length > 0 && can('ACCOUNTING_CLOSING_EXECUTE') && (
                 <Button
                     label="Executer la cloture"
                     icon="pi pi-lock"
                     onClick={handleExecute}
                     loading={executeLoading}
                     severity="success"
+                    disabled={selectedBranch && caisseStatus && !caisseStatus.readyForAccounting}
+                    tooltip={selectedBranch && caisseStatus && !caisseStatus.readyForAccounting ? 'Tous les guichets doivent etre fermes et valides' : undefined}
                 />
             )}
         </div>
@@ -397,6 +446,44 @@ export default function ClotureJournalierePage() {
 
             <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
 
+            {/* Caisse Status Panel */}
+            {selectedBranch && caisseStatus && (
+                <div className={`mb-4 p-3 border-round border-1 ${caisseStatus.readyForAccounting ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}
+                     style={{ borderLeft: `4px solid ${caisseStatus.readyForAccounting ? '#4CAF50' : '#FFA726'}` }}>
+                    <div className="flex align-items-center justify-content-between mb-2">
+                        <h5 className="m-0">
+                            <i className={`pi ${caisseStatus.readyForAccounting ? 'pi-check-circle text-green-600' : 'pi-exclamation-triangle text-orange-500'} mr-2`} />
+                            Statut Caisses - {selectedBranch.name} - {selectedDate ? formatDate(toApiDate(selectedDate)) : ''}
+                        </h5>
+                        <div className="flex gap-3">
+                            <span>Guichets Fermes: <strong>{caisseStatus.guichetsFermes}/{caisseStatus.totalGuichets}</strong></span>
+                            <span>Guichets Valides: <strong>{caisseStatus.guichetsValides}/{caisseStatus.totalGuichets}</strong></span>
+                        </div>
+                    </div>
+                    {caisseStatus.readyForAccounting ? (
+                        <div className="text-green-700 text-sm">
+                            <i className="pi pi-check mr-1" />
+                            Toutes les conditions sont remplies - la cloture journaliere peut etre executee.
+                        </div>
+                    ) : (
+                        <div>
+                            {caisseStatus.guichets?.filter((g: any) => g.status === 'OPEN').map((g: any) => (
+                                <div key={g.caisseId} className="text-orange-700 text-sm mb-1">
+                                    <i className="pi pi-exclamation-triangle mr-1" />
+                                    {g.codeCaisse} ({g.agentName}) - <strong>ENCORE OUVERTE</strong>
+                                </div>
+                            ))}
+                            {caisseStatus.guichets?.filter((g: any) => g.closingStatus === 'CLOSED' && g.validationStatus !== 'VALIDATED').map((g: any) => (
+                                <div key={g.caisseId} className="text-orange-700 text-sm mb-1">
+                                    <i className="pi pi-clock mr-1" />
+                                    {g.codeCaisse} ({g.agentName}) - <strong>FERMEE mais NON VALIDEE</strong>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Preview Section */}
             {previewLoading && <ProgressBar mode="indeterminate" style={{ height: '6px' }} className="mb-3" />}
 
@@ -418,25 +505,25 @@ export default function ClotureJournalierePage() {
 
                     {/* Summary Cards */}
                     <div className="grid mb-3">
-                        <div className="col-12 md:col-3">
+                        <div className="col-6 md:col-2">
                             <div className="surface-card shadow-1 p-3 border-round">
                                 <div className="text-500 font-medium mb-1">Total Ecritures</div>
                                 <div className="text-900 text-2xl font-bold">{preview.totalEntries || 0}</div>
                             </div>
                         </div>
-                        <div className="col-12 md:col-3">
+                        <div className="col-6 md:col-2">
                             <div className="surface-card shadow-1 p-3 border-round">
                                 <div className="text-500 font-medium mb-1">Total Debit</div>
                                 <div className="text-blue-500 text-2xl font-bold">{formatNumber(preview.totalDebit)} FBu</div>
                             </div>
                         </div>
-                        <div className="col-12 md:col-3">
+                        <div className="col-6 md:col-2">
                             <div className="surface-card shadow-1 p-3 border-round">
                                 <div className="text-500 font-medium mb-1">Total Credit</div>
                                 <div className="text-green-500 text-2xl font-bold">{formatNumber(preview.totalCredit)} FBu</div>
                             </div>
                         </div>
-                        <div className="col-12 md:col-3">
+                        <div className="col-6 md:col-2">
                             <div className="surface-card shadow-1 p-3 border-round">
                                 <div className="text-500 font-medium mb-1">Equilibre</div>
                                 <div className={`text-2xl font-bold ${preview.balanced ? 'text-green-500' : 'text-red-500'}`}>
@@ -445,6 +532,30 @@ export default function ClotureJournalierePage() {
                                 </div>
                             </div>
                         </div>
+                        <div className="col-6 md:col-2">
+                            <div className="surface-card shadow-1 p-3 border-round" style={{ borderLeft: '3px solid #0D47A1' }}>
+                                <div className="text-500 font-medium mb-1"><i className="pi pi-send mr-1" />Virements</div>
+                                <div className="text-2xl font-bold" style={{ color: '#0D47A1' }}>{preview.virementsCount || 0}</div>
+                            </div>
+                        </div>
+                        {((preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0)) > 0 && (
+                            <div className="col-6 md:col-2">
+                                <div className="surface-card shadow-1 p-3 border-round" style={{ borderLeft: '3px solid #E91E63' }}>
+                                    <div className="text-500 font-medium mb-1"><i className="pi pi-money-bill mr-1" />Frais Operations</div>
+                                    <div className="text-2xl font-bold" style={{ color: '#E91E63' }}>
+                                        {(preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0)}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {(preview.dotationsCount || 0) > 0 && (
+                            <div className="col-6 md:col-2">
+                                <div className="surface-card shadow-1 p-3 border-round" style={{ borderLeft: '3px solid #7B1FA2' }}>
+                                    <div className="text-500 font-medium mb-1"><i className="pi pi-wallet mr-1" />Dotations</div>
+                                    <div className="text-2xl font-bold" style={{ color: '#7B1FA2' }}>{preview.dotationsCount}</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Tabs by operation type */}
@@ -489,9 +600,40 @@ export default function ClotureJournalierePage() {
                                 (preview.remboursementEntries || []).filter(e => (e.sourceType || '').toUpperCase().includes('EARLY'))
                             )}
                         </TabPanel>
-                        <TabPanel header={`Tresorerie (${(preview.tresorerieEntries || []).length})`} leftIcon="pi pi-credit-card mr-2">
-                            {previewEntryTable(preview.tresorerieEntries || [], 'Aucune operation de tresorerie pour cette date')}
-                            {previewTotalsForTab(preview.tresorerieEntries || [])}
+                        <TabPanel header={`Virements (${preview.virementsCount || 0})`} leftIcon="pi pi-send mr-2">
+                            {previewEntryTable(
+                                (preview.tresorerieEntries || []).filter(e => (e.sourceType || '').toUpperCase().includes('VIREMENT')),
+                                'Aucun virement interne pour cette date'
+                            )}
+                            {previewTotalsForTab(
+                                (preview.tresorerieEntries || []).filter(e => (e.sourceType || '').toUpperCase().includes('VIREMENT'))
+                            )}
+                        </TabPanel>
+                        <TabPanel header={`Tresorerie (${(preview.tresorerieEntries || []).filter(e => !(e.sourceType || '').toUpperCase().includes('VIREMENT')).length})`} leftIcon="pi pi-credit-card mr-2">
+                            {previewEntryTable(
+                                (preview.tresorerieEntries || []).filter(e => !(e.sourceType || '').toUpperCase().includes('VIREMENT')),
+                                'Aucune operation de tresorerie pour cette date (credits, debits, dotations, ecarts)'
+                            )}
+                            {previewTotalsForTab(
+                                (preview.tresorerieEntries || []).filter(e => !(e.sourceType || '').toUpperCase().includes('VIREMENT'))
+                            )}
+                        </TabPanel>
+                        <TabPanel header={`Frais Operations (${(preview.fraisEpargneEntries || []).length})`} leftIcon="pi pi-money-bill mr-2">
+                            {previewEntryTable(preview.fraisEpargneEntries || [], 'Aucune operation de frais operations pour cette date (situations, carnets, tenue de compte)')}
+                            {previewTotalsForTab(preview.fraisEpargneEntries || [])}
+                            {((preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0)) > 0 && (
+                                <div className="flex gap-3 mt-2">
+                                    {(preview.statementRequestsCount || 0) > 0 && (
+                                        <Tag value={`Demandes Situation: ${preview.statementRequestsCount}`} severity="info" />
+                                    )}
+                                    {(preview.checkbookOrdersCount || 0) > 0 && (
+                                        <Tag value={`Carnets Cheques: ${preview.checkbookOrdersCount}`} severity="warning" />
+                                    )}
+                                    {(preview.fraisCompteCount || 0) > 0 && (
+                                        <Tag value={`Frais Tenue Compte: ${preview.fraisCompteCount}`} severity="success" />
+                                    )}
+                                </div>
+                            )}
                         </TabPanel>
                         <TabPanel header={`Toutes (${(preview.entries || []).length})`} leftIcon="pi pi-list mr-2">
                             {previewEntryTable(preview.entries || [], 'Aucune ecriture a generer pour cette date')}
@@ -552,6 +694,18 @@ export default function ClotureJournalierePage() {
                         header="Remb."
                         sortable
                         style={{ width: '7%', textAlign: 'center' }}
+                    />
+                    <Column
+                        field="treasuryCount"
+                        header="Vir./Treso."
+                        sortable
+                        style={{ width: '7%', textAlign: 'center' }}
+                    />
+                    <Column
+                        header="Frais"
+                        sortable
+                        style={{ width: '7%', textAlign: 'center' }}
+                        body={(r: DailyClosing) => (r.statementRequestsCount || 0) + (r.checkbookOrdersCount || 0) + (r.fraisCompteCount || 0)}
                     />
                     <Column
                         field="totalEntriesGenerated"
@@ -642,6 +796,15 @@ export default function ClotureJournalierePage() {
                             <Tag value={`Remboursements: ${selectedClosing.repaymentsCount || 0}`} />
                             <Tag value={`Penalites: ${selectedClosing.penaltiesCount || 0}`} severity="danger" />
                             <Tag value={`Remb. Anticipes: ${selectedClosing.earlyRepaymentsCount || 0}`} severity="danger" />
+                            {((selectedClosing.statementRequestsCount || 0) > 0) && (
+                                <Tag value={`Dem. Situation: ${selectedClosing.statementRequestsCount}`} severity="info" />
+                            )}
+                            {((selectedClosing.checkbookOrdersCount || 0) > 0) && (
+                                <Tag value={`Carnets: ${selectedClosing.checkbookOrdersCount}`} severity="warning" />
+                            )}
+                            {((selectedClosing.fraisCompteCount || 0) > 0) && (
+                                <Tag value={`Frais Compte: ${selectedClosing.fraisCompteCount}`} severity="success" />
+                            )}
                         </div>
 
                         {/* Details table */}
@@ -661,7 +824,8 @@ export default function ClotureJournalierePage() {
                                         'EPARGNE': { label: 'Epargne', severity: 'info' },
                                         'CREDIT': { label: 'Credit', severity: 'success' },
                                         'REMBOURSEMENT': { label: 'Remboursement', severity: 'warning' },
-                                        'TRESORERIE': { label: 'Tresorerie', severity: 'danger' }
+                                        'TRESORERIE': { label: 'Tresorerie', severity: 'danger' },
+                                        'FRAIS_EPARGNE': { label: 'Frais Operations', severity: 'info' }
                                     };
                                     const m = moduleMap[r.sourceModule] || { label: r.sourceModule, severity: 'info' as const };
                                     return <Tag value={m.label} severity={m.severity} />;
@@ -683,5 +847,13 @@ export default function ClotureJournalierePage() {
                 )}
             </Dialog>
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_DAILY_CLOSING']}>
+            <ClotureJournalierePage />
+        </ProtectedPage>
     );
 }

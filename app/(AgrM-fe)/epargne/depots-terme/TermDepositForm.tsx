@@ -9,6 +9,7 @@ import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import { Card } from 'primereact/card';
 import { TermDeposit, TermDepositStatusEnum } from './TermDeposit';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 interface TermDepositFormProps {
     termDeposit: TermDeposit;
@@ -153,7 +154,7 @@ const TermDepositForm: React.FC<TermDepositFormProps> = ({
                                 handleDropdownChange('clientId', e.value);
                                 if (onClientChange) onClientChange(e.value);
                             }}
-                            optionLabel={(item) => `${item.firstName} ${item.lastName} - ${item.clientNumber}`}
+                            optionLabel={(item) => `${getClientDisplayName(item)} - ${item.clientNumber}`}
                             optionValue="id"
                             placeholder="Rechercher un client..."
                             disabled={isViewMode}

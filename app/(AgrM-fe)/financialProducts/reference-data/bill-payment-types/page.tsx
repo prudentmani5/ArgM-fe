@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { BillPaymentType } from './BillPaymentType';
 import BillPaymentTypeForm from './BillPaymentTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BillPaymentTypesPage = () => {
     const [billPaymentTypes, setBillPaymentTypes] = useState<BillPaymentType[]>([]);
@@ -199,4 +200,11 @@ const BillPaymentTypesPage = () => {
     );
 };
 
-export default BillPaymentTypesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <BillPaymentTypesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

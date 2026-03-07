@@ -15,6 +15,7 @@ interface LoanProductGuaranteeFormProps {
   loanProductGuarantee: LoanProductGuarantee | null;
   onSave: (loanProductGuarantee: LoanProductGuarantee) => void;
   productId: number;
+  internalAccounts: any[];
 }
 
 const LoanProductGuaranteeForm: React.FC<LoanProductGuaranteeFormProps> = ({
@@ -23,6 +24,7 @@ const LoanProductGuaranteeForm: React.FC<LoanProductGuaranteeFormProps> = ({
   loanProductGuarantee,
   onSave,
   productId,
+  internalAccounts,
 }) => {
   const [formData, setFormData] = useState<LoanProductGuarantee>(new LoanProductGuarantee());
   const [submitted, setSubmitted] = useState(false);
@@ -145,6 +147,23 @@ const LoanProductGuaranteeForm: React.FC<LoanProductGuaranteeFormProps> = ({
               suffix="%"
               min={0}
               max={100}
+            />
+          </div>
+        </div>
+
+        <div className="field grid">
+          <label htmlFor="internalAccountId" className="col-12 mb-2 md:col-3 md:mb-0">
+            Compte Interne
+          </label>
+          <div className="col-12 md:col-9">
+            <Dropdown
+              id="internalAccountId"
+              value={formData.internalAccountId || null}
+              options={internalAccounts}
+              onChange={(e) => handleChange("internalAccountId", e.value)}
+              placeholder="Sélectionner un compte interne"
+              filter
+              showClear
             />
           </div>
         </div>

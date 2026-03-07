@@ -19,6 +19,8 @@ import { ProgressBar } from 'primereact/progressbar';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import Cookies from 'js-cookie';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 import { DemandeCredit, DemandeCreditClass } from '../types/DemandeCredit';
 import { AnalyseRevenu, AnalyseRevenuClass, AnalyseDepense, AnalyseDepenseClass, AnalyseCapacite, TypesContrat, EvaluationsRisque } from '../types/AnalyseFinanciere';
 import DemandeCreditForm from './DemandeCreditForm';
@@ -69,6 +71,7 @@ const DECISION_TO_STATUS: { [key: string]: string } = {
 };
 
 export default function DemandesCreditPage() {
+    const { can } = useAuthorizedAction();
     const [demande, setDemande] = useState<DemandeCredit>(new DemandeCreditClass());
     const [demandes, setDemandes] = useState<DemandeCredit[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -118,6 +121,8 @@ export default function DemandesCreditPage() {
     const [objetsCredit, setObjetsCredit] = useState<any[]>([]);
     const [savingsAccounts, setSavingsAccounts] = useState<any[]>([]);
     const [connectedUser, setConnectedUser] = useState<string>('');
+    const [productFees, setProductFees] = useState<any[]>([]);
+    const [productGuarantees, setProductGuarantees] = useState<any[]>([]);
 
     const toast = useRef<Toast>(null);
 
@@ -126,14 +131,16 @@ export default function DemandesCreditPage() {
     // Helper function for direct API calls
     const fetchWithAuth = async (url: string, options?: RequestInit) => {
         const token = Cookies.get('token');
+        const { headers: optionHeaders, ...restOptions } = options || {};
         const response = await fetch(url, {
             method: 'GET',
+            ...restOptions,
             headers: {
                 'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(optionHeaders as Record<string, string> || {})
             },
             credentials: 'include',
-            ...options
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -160,7 +167,13 @@ export default function DemandesCreditPage() {
         if (data) {
             switch (callType) {
                 case 'loadDemandes':
-                    setDemandes(Array.isArray(data) ? data : data.content || []);
+                    const rawDemandes = Array.isArray(data) ? data : data.content || [];
+                    // Enrich with accountNumber for search/filter
+                    const enriched = rawDemandes.map((d: any) => {
+                        const account = savingsAccounts.find((a: any) => a.id === d.savingsAccountId);
+                        return { ...d, accountNumber: account?.accountNumber || '' };
+                    });
+                    setDemandes(enriched);
                     break;
                 case 'create':
                     showToast('success', 'Succes', 'Demande de credit creee avec succes');
@@ -189,6 +202,16 @@ export default function DemandesCreditPage() {
             showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
         }
     }, [data, error, callType]);
+
+    // Re-enrich demandes when savingsAccounts are loaded/updated
+    useEffect(() => {
+        if (savingsAccounts.length > 0 && demandes.length > 0) {
+            setDemandes(prev => prev.map((d: any) => {
+                const account = savingsAccounts.find((a: any) => a.id === d.savingsAccountId);
+                return { ...d, accountNumber: account?.accountNumber || '' };
+            }));
+        }
+    }, [savingsAccounts]);
 
     // Load analyse financiere reference data (income and expense types)
     const loadAnalyseReferenceData = async () => {
@@ -265,10 +288,26 @@ export default function DemandesCreditPage() {
     };
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     // Handle product selection - auto-fill default values from product
+    const loadProductFeesAndGuarantees = async (productId: number) => {
+        try {
+            const [fees, guarantees] = await Promise.all([
+                fetchWithAuth(`${PRODUCTS_URL}/${productId}/fees`).catch(() => []),
+                fetchWithAuth(`${PRODUCTS_URL}/${productId}/guarantees`).catch(() => [])
+            ]);
+            setProductFees(Array.isArray(fees) ? fees : []);
+            setProductGuarantees(Array.isArray(guarantees) ? guarantees : []);
+        } catch {
+            setProductFees([]);
+            setProductGuarantees([]);
+        }
+    };
+
     const handleProductChange = (product: any) => {
         if (product) {
             setDemande(prev => ({
@@ -282,11 +321,19 @@ export default function DemandesCreditPage() {
                 durationMonths: (!prev.durationMonths || prev.durationMonths === 12)
                     ? (product.defaultTermMonths || product.minTermMonths)
                     : prev.durationMonths,
+                // Set default interest rate from product
+                interestRate: (!prev.interestRate || prev.interestRate === 0)
+                    ? (product.defaultInterestRate || product.minInterestRate)
+                    : prev.interestRate,
                 // Set default frequency from product if available
                 repaymentFrequency: prev.repaymentFrequency || 'MONTHLY'
             }));
+            loadProductFeesAndGuarantees(product.id);
             showToast('info', 'Produit selectionne',
                 `Montant: ${formatCurrency(product.minAmount)} - ${formatCurrency(product.maxAmount)} | Duree: ${product.minTermMonths} - ${product.maxTermMonths} mois`);
+        } else {
+            setProductFees([]);
+            setProductGuarantees([]);
         }
     };
 
@@ -307,6 +354,8 @@ export default function DemandesCreditPage() {
     const resetForm = () => {
         setDemande(new DemandeCreditClass());
         setIsViewMode(false);
+        setProductFees([]);
+        setProductGuarantees([]);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -381,12 +430,14 @@ export default function DemandesCreditPage() {
         setDemande({ ...rowData });
         setIsViewMode(false);
         setActiveIndex(0);
+        if (rowData.loanProductId) loadProductFeesAndGuarantees(rowData.loanProductId);
     };
 
     const handleView = (rowData: DemandeCredit) => {
         setDemande({ ...rowData });
         setIsViewMode(true);
         setActiveIndex(0);
+        if (rowData.loanProductId) loadProductFeesAndGuarantees(rowData.loanProductId);
     };
 
     const handleDelete = (rowData: DemandeCredit) => {
@@ -471,6 +522,16 @@ export default function DemandesCreditPage() {
             return;
         }
 
+        // Validate approved amount/duration do not exceed requested values
+        if (approvedAmount !== null && approvedAmount > (workflowDemande.amountRequested || 0)) {
+            showToast('warn', 'Attention', `Le montant approuvé (${approvedAmount.toLocaleString('fr-FR')} BIF) ne peut pas dépasser le montant demandé (${(workflowDemande.amountRequested || 0).toLocaleString('fr-FR')} BIF)`);
+            return;
+        }
+        if (approvedDuration !== null && approvedDuration > (workflowDemande.durationMonths || 0)) {
+            showToast('warn', 'Attention', `La durée approuvée (${approvedDuration} mois) ne peut pas dépasser la durée demandée (${workflowDemande.durationMonths || 0} mois)`);
+            return;
+        }
+
         try {
             const token = Cookies.get('token');
 
@@ -492,12 +553,16 @@ export default function DemandesCreditPage() {
                 changeReason: `Decision comite: ${selectedDecision.nameFr}. ${committeeNotes || ''}`
             };
 
-            // If decision includes reduced amount, update the approved amount
-            if (selectedDecision.code === 'APPROUVE_MONTANT_REDUIT' && approvedAmount) {
-                updatedData.amountApproved = approvedAmount;
-            }
-            if (approvedDuration) {
-                updatedData.durationApproved = approvedDuration;
+            // If approved, apply the approved amount/duration as new official values
+            if (selectedDecision.isApproval) {
+                if (approvedAmount !== null) {
+                    updatedData.amountApproved = approvedAmount;
+                    updatedData.amountRequested = approvedAmount;
+                }
+                if (approvedDuration !== null) {
+                    updatedData.durationApproved = approvedDuration;
+                    updatedData.durationMonths = approvedDuration;
+                }
             }
 
             // Update application status
@@ -575,10 +640,9 @@ export default function DemandesCreditPage() {
             const url = editRevenu.id ? `${INCOME_URL}/update/${editRevenu.id}` : `${INCOME_URL}/new`;
             const method = editRevenu.id ? 'PUT' : 'POST';
 
-            await fetch(url, {
+            const response = await fetchWithAuth(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(revenuToSave)
             });
 
@@ -600,7 +664,7 @@ export default function DemandesCreditPage() {
             rejectLabel: 'Non',
             accept: async () => {
                 try {
-                    await fetch(`${INCOME_URL}/delete/${revenu.id}`, { method: 'DELETE', credentials: 'include' });
+                    await fetchWithAuth(`${INCOME_URL}/delete/${revenu.id}`, { method: 'DELETE' });
                     showToast('success', 'Succes', 'Revenu supprime');
                     reloadAnalyseData();
                 } catch (err) {
@@ -618,10 +682,9 @@ export default function DemandesCreditPage() {
             const url = editDepense.id ? `${EXPENSE_URL}/update/${editDepense.id}` : `${EXPENSE_URL}/new`;
             const method = editDepense.id ? 'PUT' : 'POST';
 
-            await fetch(url, {
+            await fetchWithAuth(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify(depenseToSave)
             });
 
@@ -643,7 +706,7 @@ export default function DemandesCreditPage() {
             rejectLabel: 'Non',
             accept: async () => {
                 try {
-                    await fetch(`${EXPENSE_URL}/delete/${depense.id}`, { method: 'DELETE', credentials: 'include' });
+                    await fetchWithAuth(`${EXPENSE_URL}/delete/${depense.id}`, { method: 'DELETE' });
                     showToast('success', 'Succes', 'Depense supprimee');
                     reloadAnalyseData();
                 } catch (err) {
@@ -656,7 +719,7 @@ export default function DemandesCreditPage() {
     const handleCalculateCapacity = async () => {
         if (!analyseApplication?.id) return;
         try {
-            await fetch(`${CAPACITY_URL}/calculate/${analyseApplication.id}`, { method: 'POST', credentials: 'include' });
+            await fetchWithAuth(`${CAPACITY_URL}/calculate/${analyseApplication.id}`, { method: 'POST' });
             showToast('success', 'Succes', 'Capacite de remboursement calculee');
             reloadAnalyseData();
         } catch (err) {
@@ -672,6 +735,10 @@ export default function DemandesCreditPage() {
     const totalRevenusVerifies = revenus.reduce((sum, r) => sum + (r.verifiedAmount || 0), 0);
     const totalDepenses = depenses.reduce((sum, d) => sum + (d.monthlyAmount || 0), 0);
     const revenuDisponible = totalRevenusVerifies - totalDepenses;
+    const capaciteRemboursement = revenuDisponible * 0.6;
+    const ratioEndettement = totalRevenusVerifies > 0
+        ? ((analyseApplication?.amountRequested || 0) / ((analyseApplication?.durationMonths || 1))) / totalRevenusVerifies * 100
+        : 0;
 
     // ==================== END ANALYSE FINANCIERE FUNCTIONS ====================
 
@@ -700,7 +767,7 @@ export default function DemandesCreditPage() {
         return (
             <div className="flex gap-1">
                 <Button icon="pi pi-eye" rounded text severity="info" onClick={() => handleView(rowData)} tooltip="Voir" />
-                <Button icon="pi pi-pencil" rounded text severity="warning" onClick={() => handleEdit(rowData)} tooltip="Modifier" disabled={!rowData.status?.allowsEdit} />
+                <Button icon="pi pi-pencil" rounded text severity="warning" onClick={() => handleEdit(rowData)} tooltip="Modifier" disabled={!rowData.status?.allowsEdit || !can('CREDIT_APPLICATION_UPDATE')} />
                 <Button
                     icon={isCommitteeStatus ? "pi pi-users" : "pi pi-arrow-right"}
                     rounded
@@ -708,14 +775,14 @@ export default function DemandesCreditPage() {
                     severity={isCommitteeStatus ? "danger" : "success"}
                     onClick={() => handleOpenWorkflowDialog(rowData)}
                     tooltip={isCommitteeStatus ? "Decision Comite" : "Avancer Workflow"}
-                    disabled={isFinalStatus}
+                    disabled={isFinalStatus || !can('CREDIT_APPLICATION_CHANGE_STATUS')}
                 />
                 <Button icon="pi pi-history" rounded text severity="secondary" onClick={() => window.location.href = `/credit/historique-workflow/${rowData.id}`} tooltip="Historique Workflow" />
                 <Button icon="pi pi-chart-line" rounded text severity="success" onClick={() => window.location.href = `/credit/dossier/${rowData.id}`} tooltip="Voir dossier complet" />
                 <Button icon="pi pi-calculator" rounded text severity="info" onClick={() => handleOpenAnalyseDialog(rowData)} tooltip="Analyse financiere" />
                 <Button icon="pi pi-map-marker" rounded text severity="help" onClick={() => window.location.href = `/credit/visites/${rowData.id}`} tooltip="Visite terrain" />
                 <Button icon="pi pi-file" rounded text severity="warning" onClick={() => window.location.href = `/credit/documents/${rowData.id}`} tooltip="Documents" />
-                <Button icon="pi pi-trash" rounded text severity="danger" onClick={() => handleDelete(rowData)} tooltip="Supprimer" disabled={!rowData.status?.allowsEdit} />
+                <Button icon="pi pi-trash" rounded text severity="danger" onClick={() => handleDelete(rowData)} tooltip="Supprimer" disabled={!rowData.status?.allowsEdit || !can('CREDIT_DELETE')} />
             </div>
         );
     };
@@ -766,6 +833,8 @@ export default function DemandesCreditPage() {
                                 onProductChange={handleProductChange}
                                 connectedUser={connectedUser}
                                 isViewMode={isViewMode}
+                                productFees={productFees}
+                                productGuarantees={productGuarantees}
                             />
                             <div className="flex justify-content-end gap-2 mt-4">
                                 <Button label="Reinitialiser" icon="pi pi-refresh" severity="secondary" onClick={resetForm} />
@@ -787,14 +856,17 @@ export default function DemandesCreditPage() {
                         emptyMessage="Aucune demande de credit trouvee"
                         className="p-datatable-sm"
                         globalFilter={globalFilter}
+                        globalFilterFields={['applicationNumber', 'client.firstName', 'client.lastName', 'accountNumber', 'creditPurpose.nameFr', 'userAction']}
                         header={header}
-                        sortField="applicationDate"
+                        sortField="applicationNumber"
                         sortOrder={-1}
                     >
                         <Column field="applicationNumber" header="N Dossier" sortable filter style={{ minWidth: '130px' }} />
                         <Column header="Client" body={clientBodyTemplate} sortable filter />
                         <Column header="Date" body={dateBodyTemplate} sortable />
+                        <Column field="accountNumber" header="N° Compte" sortable filter />
                         <Column header="Montant" body={amountBodyTemplate} sortable />
+                        <Column header="Taux (%)" body={(rowData: DemandeCredit) => rowData.interestRate != null ? `${rowData.interestRate} %` : 'N/A'} sortable />
                         <Column field="durationMonths" header="Duree (mois)" sortable />
                         <Column field="creditPurpose.nameFr" header="Objet" sortable filter />
                         <Column field="userAction" header="Utilisateur" sortable filter />
@@ -905,50 +977,84 @@ export default function DemandesCreditPage() {
                                     <h5 className="m-0"><i className="pi pi-calculator mr-2"></i>Capacite de Remboursement</h5>
                                     <Button icon="pi pi-refresh" label="Recalculer" size="small" onClick={handleCalculateCapacity} />
                                 </div>
-                                {capacite ? (
-                                    <div className="grid">
-                                        <div className="col-12 md:col-4">
-                                            <div className="mb-2">
-                                                <label className="font-semibold">Score de capacite:</label>
-                                                <ProgressBar value={capacite.capacityPercentage || 0} className="mt-1" />
-                                            </div>
-                                        </div>
-                                        <div className="col-12 md:col-4">
-                                            <div className="mb-2">
-                                                <label className="font-semibold">Evaluation:</label>
-                                                <div className="mt-1">
-                                                    <Tag value={capacite.isCapacitySufficient ? 'Suffisant' : 'Insuffisant'} severity={capacite.isCapacitySufficient ? 'success' : 'danger'} />
+                                <div className="grid">
+                                    {/* Left: Calcul */}
+                                    <div className="col-12 md:col-6">
+                                        <div className="surface-0 p-3 border-round border-1 border-200">
+                                            <h6 className="mt-0 mb-3 font-bold">Calcul de la Capacite</h6>
+                                            <div className="flex flex-column gap-2">
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Revenu mensuel verifie:</span>
+                                                    <strong>{formatCurrency(totalRevenusVerifies)}</strong>
+                                                </div>
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Charges mensuelles:</span>
+                                                    <strong className="text-orange-500">- {formatCurrency(totalDepenses)}</strong>
+                                                </div>
+                                                <hr className="my-1" />
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Revenu disponible:</span>
+                                                    <strong className={revenuDisponible >= 0 ? 'text-green-500' : 'text-red-500'}>{formatCurrency(revenuDisponible)}</strong>
+                                                </div>
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Capacite de remboursement (60%):</span>
+                                                    <strong className="text-primary">{formatCurrency(capaciteRemboursement)}</strong>
+                                                </div>
+                                                <hr className="my-1" />
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Montant demande:</span>
+                                                    <strong>{formatCurrency(analyseApplication?.amountRequested)}</strong>
+                                                </div>
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Ratio d'endettement:</span>
+                                                    <strong className={ratioEndettement < 40 ? 'text-green-500' : 'text-red-500'}>{ratioEndettement.toFixed(1)}%</strong>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="col-12 md:col-4">
-                                            <div className="mb-2">
-                                                <label className="font-semibold">Montant recommande:</label>
-                                                <div className="text-xl font-bold text-primary mt-1">{formatCurrency(capacite.recommendedMaxAmount)}</div>
-                                            </div>
-                                        </div>
-                                        <div className="col-12 md:col-4">
-                                            <label className="font-semibold">Duree recommandee:</label>
-                                            <div className="mt-1">{capacite.recommendedMaxDuration || 0} mois</div>
-                                        </div>
-                                        <div className="col-12 md:col-4">
-                                            <label className="font-semibold">Ratio d'endettement:</label>
-                                            <div className="mt-1">{(capacite.newDebtRatio || 0).toFixed(1)}%</div>
-                                        </div>
-                                        <div className="col-12 md:col-4">
-                                            <label className="font-semibold">Capacite max mensuelle:</label>
-                                            <div className="mt-1">{formatCurrency(capacite.repaymentCapacity)}</div>
-                                        </div>
-                                        {capacite.analysisNotes && (
-                                            <div className="col-12">
-                                                <label className="font-semibold">Notes:</label>
-                                                <p className="mt-1 text-500">{capacite.analysisNotes}</p>
-                                            </div>
-                                        )}
                                     </div>
-                                ) : (
-                                    <p className="text-500 text-center">Cliquez sur "Recalculer" pour generer l'analyse de capacite</p>
-                                )}
+                                    {/* Right: Résumé */}
+                                    <div className="col-12 md:col-6">
+                                        <div className="surface-0 p-3 border-round border-1 border-200">
+                                            <h6 className="mt-0 mb-3 font-bold">Resume et Recommandation</h6>
+                                            {capacite ? (
+                                                <div className="flex flex-column gap-3">
+                                                    <div>
+                                                        <label className="font-semibold text-500">Score de capacite:</label>
+                                                        <ProgressBar value={capacite.capacityPercentage || 0} className="mt-1" />
+                                                    </div>
+                                                    <div className="flex justify-content-between align-items-center">
+                                                        <span className="font-semibold text-500">Evaluation:</span>
+                                                        <Tag value={capacite.isCapacitySufficient ? 'Suffisant' : 'Insuffisant'} severity={capacite.isCapacitySufficient ? 'success' : 'danger'} />
+                                                    </div>
+                                                    <div className="flex justify-content-between align-items-center">
+                                                        <span className="font-semibold text-500">Montant recommande:</span>
+                                                        <span className="text-xl font-bold text-primary">{formatCurrency(capacite.recommendedMaxAmount)}</span>
+                                                    </div>
+                                                    <div className="flex justify-content-between">
+                                                        <span className="font-semibold text-500">Duree recommandee:</span>
+                                                        <span>{capacite.recommendedMaxDuration || 0} mois</span>
+                                                    </div>
+                                                    <div className="flex justify-content-between">
+                                                        <span className="font-semibold text-500">Ratio d'endettement:</span>
+                                                        <span className={((capacite.newDebtRatio || 0) < 40) ? 'text-green-500' : 'text-red-500'}>{(capacite.newDebtRatio || 0).toFixed(1)}%</span>
+                                                    </div>
+                                                    <div className="flex justify-content-between">
+                                                        <span className="font-semibold text-500">Capacite max mensuelle:</span>
+                                                        <span>{formatCurrency(capacite.repaymentCapacity)}</span>
+                                                    </div>
+                                                    {capacite.analysisNotes && (
+                                                        <div>
+                                                            <label className="font-semibold text-500">Notes d'analyse:</label>
+                                                            <p className="mt-1 text-500 text-sm">{capacite.analysisNotes}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="text-500 text-center">Cliquez sur "Recalculer" pour generer l'analyse de capacite</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1145,21 +1251,39 @@ export default function DemandesCreditPage() {
                                     <label className="font-semibold">Montant Approuve (BIF)</label>
                                     <InputNumber
                                         value={approvedAmount}
-                                        onValueChange={(e) => setApprovedAmount(e.value ?? null)}
-                                        className="w-full"
+                                        onValueChange={(e) => {
+                                            const val = e.value ?? null;
+                                            if (val !== null && val > (workflowDemande?.amountRequested || 0)) {
+                                                setApprovedAmount(workflowDemande?.amountRequested || null);
+                                            } else {
+                                                setApprovedAmount(val);
+                                            }
+                                        }}
+                                        className={`w-full ${approvedAmount !== null && approvedAmount > (workflowDemande?.amountRequested || 0) ? 'p-invalid' : ''}`}
                                         mode="currency"
                                         currency="BIF"
                                         locale="fr-FR"
+                                        max={workflowDemande?.amountRequested || undefined}
                                     />
+                                    <small className="text-500">Max: {(workflowDemande?.amountRequested || 0).toLocaleString('fr-FR')} BIF</small>
                                 </div>
                                 <div className="field col-6">
                                     <label className="font-semibold">Duree Approuvee (mois)</label>
                                     <InputNumber
                                         value={approvedDuration}
-                                        onValueChange={(e) => setApprovedDuration(e.value ?? null)}
-                                        className="w-full"
+                                        onValueChange={(e) => {
+                                            const val = e.value ?? null;
+                                            if (val !== null && val > (workflowDemande?.durationMonths || 0)) {
+                                                setApprovedDuration(workflowDemande?.durationMonths || null);
+                                            } else {
+                                                setApprovedDuration(val);
+                                            }
+                                        }}
+                                        className={`w-full ${approvedDuration !== null && approvedDuration > (workflowDemande?.durationMonths || 0) ? 'p-invalid' : ''}`}
                                         suffix=" mois"
+                                        max={workflowDemande?.durationMonths || undefined}
                                     />
+                                    <small className="text-500">Max: {workflowDemande?.durationMonths || 0} mois</small>
                                 </div>
                             </>
                         )}

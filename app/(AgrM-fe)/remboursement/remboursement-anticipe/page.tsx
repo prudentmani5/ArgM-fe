@@ -21,6 +21,8 @@ import { Dialog } from 'primereact/dialog';
 import Cookies from 'js-cookie';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../utils/branchFilter';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 
 import {
     RemboursementAnticipe,
@@ -34,6 +36,7 @@ const TYPES_REMBOURSEMENT = [
 ];
 
 const RemboursementAnticipePage = () => {
+    const { can } = useAuthorizedAction();
     const [demandes, setDemandes] = useState<RemboursementAnticipe[]>([]);
     const [demande, setDemande] = useState<RemboursementAnticipe>(new RemboursementAnticipeClass());
     const [activeIndex, setActiveIndex] = useState(0);
@@ -134,7 +137,11 @@ const RemboursementAnticipePage = () => {
                     });
 
                     setFullyPaidLoanIds(paidLoanIds);
-                    fetchData(null, 'GET', `${DISBURSEMENTS_URL}/findbystatus/COMPLETED/paginated?page=0&size=100&sortBy=disbursementDate&sortDir=desc`, 'loadDisbursements');
+                    const { filter: filterBranch, branchId: userBranchId } = shouldFilterByBranch();
+                    const disbUrl = filterBranch
+                        ? `${DISBURSEMENTS_URL}/findbybranch/${userBranchId}`
+                        : `${DISBURSEMENTS_URL}/findbystatus/COMPLETED/paginated?page=0&size=100&sortBy=disbursementDate&sortDir=desc`;
+                    fetchData(null, 'GET', disbUrl, 'loadDisbursements');
                     break;
                 case 'calculate':
                     setCalculatedAmount(data.totalSettlementAmount);
@@ -181,7 +188,9 @@ const RemboursementAnticipePage = () => {
     }, [data, error, callType]);
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall-with-details`, 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}/with-details` : `${BASE_URL}/findall-with-details`;
+        fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     const calculateSettlementAmount = () => {
@@ -469,29 +478,29 @@ const RemboursementAnticipePage = () => {
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => handleView(rowData)}
             />
-            {rowData.status === 'PENDING' && (
-                <>
-                    <Button
-                        icon="pi pi-check"
-                        rounded
-                        text
-                        severity="success"
-                        tooltip="Approuver"
-                        tooltipOptions={{ position: 'top' }}
-                        onClick={() => handleApprove(rowData)}
-                    />
-                    <Button
-                        icon="pi pi-pencil"
-                        rounded
-                        text
-                        severity="warning"
-                        tooltip="Modifier"
-                        tooltipOptions={{ position: 'top' }}
-                        onClick={() => handleEdit(rowData)}
-                    />
-                </>
+            {rowData.status === 'PENDING' && can('REMBOURSEMENT_EARLY_APPROVE') && (
+                <Button
+                    icon="pi pi-check"
+                    rounded
+                    text
+                    severity="success"
+                    tooltip="Approuver"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleApprove(rowData)}
+                />
             )}
-            {rowData.status === 'APPROVED' && (
+            {rowData.status === 'PENDING' && (
+                <Button
+                    icon="pi pi-pencil"
+                    rounded
+                    text
+                    severity="warning"
+                    tooltip="Modifier"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleEdit(rowData)}
+                />
+            )}
+            {rowData.status === 'APPROVED' && can('REMBOURSEMENT_EARLY_PROCESS') && (
                 <Button
                     icon="pi pi-dollar"
                     rounded

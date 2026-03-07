@@ -1,7 +1,183 @@
+/* Navigation bar below the topbar */
+.layout-navbar {
+    position: fixed;
+    top: 4rem;
+    left: 0;
+    width: 100%;
+    height: 3rem;
+    z-index: 998;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    background-color: var(--topbar-bg);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    overflow: visible;
+
+    .layout-megamenu {
+        width: 100%;
+    }
+}
+
 .layout-megamenu {
     &.p-megamenu {
         border: 0 none;
         padding: 0;
-        
+        background: none;
+
+        .p-megamenu-root-list {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 0;
+
+            > .p-menuitem {
+                > .p-menuitem-content {
+                    > .p-menuitem-link {
+                        padding: 0.5rem 0.65rem;
+                        white-space: nowrap;
+                        border-radius: var(--border-radius);
+
+                        .p-menuitem-text {
+                            font-weight: 600;
+                            font-size: 0.8rem;
+                            color: var(--topbar-item-text-color);
+                        }
+
+                        .p-menuitem-icon {
+                            font-size: 0.9rem;
+                            color: var(--topbar-item-text-color);
+                        }
+
+                        .p-submenu-icon {
+                            font-size: 0.7rem;
+                            color: var(--topbar-item-text-color);
+                        }
+
+                        &:not(.p-disabled):hover {
+                            background: var(--topbar-item-hover-bg);
+                            transition: background-color var(--transition-duration);
+                        }
+                    }
+                }
+
+                /* Clicked/open menu item highlight */
+                &.p-menuitem-active > .p-menuitem-link,
+                &.p-menuitem-active > .p-menuitem-link:not(.p-disabled):hover,
+                &.p-menuitem-active > .p-menuitem-content > .p-menuitem-link {
+                    background-color: rgba(139, 0, 0, 0.25) !important;
+
+                    .p-menuitem-text {
+                        color: #8b0000 !important;
+                    }
+
+                    .p-menuitem-icon {
+                        color: #8b0000 !important;
+                    }
+
+                    .p-submenu-icon {
+                        color: #8b0000 !important;
+                    }
+                }
+
+                /* Active module highlight (current route) */
+                &.active-module > .p-menuitem-content > .p-menuitem-link {
+                    background-color: rgba(255, 255, 255, 0.15);
+                    border-bottom: 2px solid var(--primary-color);
+                    border-radius: 0;
+
+                    .p-menuitem-text {
+                        color: var(--primary-color);
+                    }
+
+                    .p-menuitem-icon {
+                        color: var(--primary-color);
+                    }
+
+                    .p-submenu-icon {
+                        color: var(--primary-color);
+                    }
+                }
+            }
+        }
+
+        .p-megamenu-root-list > .p-menuitem {
+            position: relative;
+
+            /* Right-side items: align panel to right edge */
+            &.panel-right > .p-megamenu-panel {
+                left: auto;
+                right: 0;
+            }
+
+            /* Wide modules (many columns): centered via JS in AppNavBar */
+            &.wide-panel {
+                > .p-megamenu-panel {
+                    max-width: calc(100vw - 2rem);
+                }
+            }
+        }
+
+        .p-megamenu-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            border-radius: var(--border-radius);
+            background-color: var(--surface-overlay);
+            box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+                        0 8px 10px 1px rgba(0, 0, 0, 0.14),
+                        0 3px 14px 2px rgba(0, 0, 0, 0.12);
+            max-height: 75vh;
+            overflow-y: auto;
+            max-width: 90vw;
+            width: fit-content;
+        }
+
+        .p-megamenu-submenu-header {
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 0.6rem 1rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            margin-bottom: 0.25rem;
+        }
+
+        .p-megamenu-submenu {
+            min-width: 13rem;
+            padding: 0.25rem 0;
+
+            .p-menuitem {
+                .p-menuitem-content {
+                    .p-menuitem-link {
+                        padding: 0.5rem 1rem;
+                        font-size: 0.85rem;
+
+                        &:hover {
+                            background-color: var(--surface-hover);
+                        }
+
+                        .p-menuitem-icon {
+                            font-size: 0.85rem;
+                            margin-right: 0.5rem;
+                            color: var(--text-color-secondary);
+                        }
+
+                        .p-menuitem-text {
+                            font-size: 0.85rem;
+                        }
+                    }
+                }
+            }
+        }
+
+        .p-megamenu-grid {
+            gap: 0;
+            display: flex;
+            flex-wrap: nowrap;
+
+            > [class*="p-megamenu-col"] {
+                flex: 0 0 auto;
+                width: auto !important;
+            }
+        }
     }
 }

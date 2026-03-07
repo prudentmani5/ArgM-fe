@@ -10,8 +10,9 @@ import { Tag } from 'primereact/tag';
 import { useSearchParams } from 'next/navigation';
 import { LoanApplicationDocument } from './LoanApplicationDocument';
 import { LoanApplicationDocumentForm } from './LoanApplicationDocumentForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function LoanApplicationDocumentPage() {
+function LoanApplicationDocumentPage() {
     const [documents, setDocuments] = useState<LoanApplicationDocument[]>([]);
     const [selectedDocuments, setSelectedDocuments] = useState<LoanApplicationDocument[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -232,3 +233,12 @@ export default function LoanApplicationDocumentPage() {
         </div>
     );
 }
+
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_VIEW']}>
+            <LoanApplicationDocumentPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

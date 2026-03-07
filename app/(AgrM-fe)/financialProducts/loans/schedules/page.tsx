@@ -10,6 +10,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { Badge } from 'primereact/badge';
 import { LoanSchedule } from './LoanSchedule';
 import LoanScheduleForm from './LoanScheduleForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanSchedulePage = () => {
     const [entities, setEntities] = useState<LoanSchedule[]>([]);
@@ -172,4 +173,11 @@ const LoanSchedulePage = () => {
     );
 };
 
-export default LoanSchedulePage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['REMBOURSEMENT_VIEW']}>
+            <LoanSchedulePage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ProtectedPage } from '@/components/ProtectedPage';
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
@@ -778,4 +779,11 @@ function ReferenceDataComponent() {
     );
 }
 
-export default ReferenceDataComponent;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CUSTOMER_GROUP_SETTINGS']}>
+            <ReferenceDataComponent />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

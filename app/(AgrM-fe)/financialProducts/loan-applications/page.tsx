@@ -14,8 +14,9 @@ import { ProgressBar } from 'primereact/progressbar';
 import { useRouter } from 'next/navigation';
 import { LoanApplication } from './LoanApplication';
 import { LoanApplicationForm } from './LoanApplicationForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function LoanApplicationPage() {
+function LoanApplicationPage() {
     const [applications, setApplications] = useState<LoanApplication[]>([]);
     const [selectedApplications, setSelectedApplications] = useState<LoanApplication[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -460,3 +461,12 @@ export default function LoanApplicationPage() {
         </div>
     );
 }
+
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_VIEW']}>
+            <LoanApplicationPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -10,6 +10,7 @@ import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../../utils/branchFilter';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 const STATUTS = [
@@ -51,7 +52,9 @@ export default function RapportRemboursementAnticipePage() {
     }, [data, error]);
 
     const loadDemandes = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}/with-details` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     const formatCurrency = (value: number) => {

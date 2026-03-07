@@ -17,6 +17,7 @@ import Cookies from 'js-cookie';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice } from '../types';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 // Helper: convert dd/mm/yyyy to yyyy-mm-dd (ISO)
 const toISODate = (ddmmyyyy: string): string => {
@@ -36,7 +37,7 @@ const toDisplayDate = (isoDate: string): string => {
     return `${dd}/${mm}/${yyyy}`;
 };
 
-export default function ExercicePage() {
+function ExercicePage() {
     const [exercices, setExercices] = useState<CptExercice[]>([]);
     const [exercice, setExercice] = useState<CptExercice>(new CptExercice());
     const [dialogVisible, setDialogVisible] = useState(false);
@@ -411,5 +412,13 @@ export default function ExercicePage() {
                 </div>
             </Dialog>
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_VIEW']}>
+            <ExercicePage />
+        </ProtectedPage>
     );
 }

@@ -18,12 +18,15 @@ export interface SavingsAccount {
     closureReason: string | null;
     isDormant: boolean;
     dormantDate: string | null;
+    requiredSignatures: number;
+    internalAccountId: number | null;
     notes: string | null;
     userAction: string | null;
     client?: any;
     branch?: any;
     currency?: any;
     status?: any;
+    internalAccount?: any;
 }
 
 export class SavingsAccountClass implements SavingsAccount {
@@ -46,6 +49,8 @@ export class SavingsAccountClass implements SavingsAccount {
     closureReason: string | null = null;
     isDormant: boolean = false;
     dormantDate: string | null = null;
+    requiredSignatures: number = 1;
+    internalAccountId: number | null = null;
     notes: string | null = null;
     userAction: string | null = null;
 }

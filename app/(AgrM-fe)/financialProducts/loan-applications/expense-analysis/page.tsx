@@ -9,8 +9,9 @@ import { Toolbar } from 'primereact/toolbar';
 import { useSearchParams } from 'next/navigation';
 import { LoanExpenseAnalysis } from './LoanExpenseAnalysis';
 import { LoanExpenseAnalysisForm } from './LoanExpenseAnalysisForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
-export default function LoanExpenseAnalysisPage() {
+function LoanExpenseAnalysisPage() {
     const [expenses, setExpenses] = useState<LoanExpenseAnalysis[]>([]);
     const [selectedExpenses, setSelectedExpenses] = useState<LoanExpenseAnalysis[]>([]);
     const [showForm, setShowForm] = useState(false);
@@ -191,3 +192,12 @@ export default function LoanExpenseAnalysisPage() {
         </div>
     );
 }
+
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanExpenseAnalysisPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

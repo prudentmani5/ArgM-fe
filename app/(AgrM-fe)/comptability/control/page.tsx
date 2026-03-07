@@ -12,6 +12,7 @@ import Cookies from 'js-cookie';
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice } from '../types';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 // Helper: convert yyyy-mm-dd (ISO) to dd/mm/yyyy
 const toDisplayDate = (isoDate: string): string => {
@@ -31,7 +32,7 @@ interface UnbalancedEntry {
     credit: number;
 }
 
-export default function ControlPage() {
+function ControlPage() {
     const [entries, setEntries] = useState<UnbalancedEntry[]>([]);
     const [currentExercice, setCurrentExercice] = useState<CptExercice | null>(null);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -336,5 +337,13 @@ export default function ControlPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function Page() {
+    return (
+        <ProtectedPage requiredAuthorities={['ACCOUNTING_VIEW']}>
+            <ControlPage />
+        </ProtectedPage>
     );
 }

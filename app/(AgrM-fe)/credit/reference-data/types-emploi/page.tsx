@@ -13,6 +13,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/employment-types');
 
@@ -25,7 +26,7 @@ interface TypeEmploi {
     isActive?: boolean;
 }
 
-export default function TypesEmploiPage() {
+function TypesEmploiPageContent() {
     const [typeEmploi, setTypeEmploi] = useState<TypeEmploi>({ isActive: true });
     const [typesEmploi, setTypesEmploi] = useState<TypeEmploi[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -210,5 +211,13 @@ export default function TypesEmploiPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function TypesEmploiPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <TypesEmploiPageContent />
+        </ProtectedPage>
     );
 }

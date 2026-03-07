@@ -13,6 +13,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/visit-recommendations');
 
@@ -26,7 +27,7 @@ interface RecommandationVisite {
     isActive?: boolean;
 }
 
-export default function RecommandationsVisitePage() {
+function RecommandationsVisitePageContent() {
     const [recommandation, setRecommandation] = useState<RecommandationVisite>({ isActive: true, isPositive: true });
     const [recommandations, setRecommandations] = useState<RecommandationVisite[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -222,5 +223,13 @@ export default function RecommandationsVisitePage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function RecommandationsVisitePage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <RecommandationsVisitePageContent />
+        </ProtectedPage>
     );
 }

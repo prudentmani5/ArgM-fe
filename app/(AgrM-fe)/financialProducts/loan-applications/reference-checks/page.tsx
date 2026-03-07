@@ -13,6 +13,7 @@ import { ConfirmDialog } from 'primereact/confirmdialog';
 import { useSearchParams } from 'next/navigation';
 import { LoanReferenceCheck, CheckMethodLabels, CheckMethodIcons } from './LoanReferenceCheck';
 import LoanReferenceCheckForm from './LoanReferenceCheckForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const LoanReferenceCheckPage = () => {
     const [referenceChecks, setReferenceChecks] = useState<LoanReferenceCheck[]>([]);
@@ -281,4 +282,11 @@ const LoanReferenceCheckPage = () => {
     );
 };
 
-export default LoanReferenceCheckPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_ANALYZE']}>
+            <LoanReferenceCheckPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

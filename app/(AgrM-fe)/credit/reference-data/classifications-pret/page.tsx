@@ -14,6 +14,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/loan-classifications');
 
@@ -30,7 +31,7 @@ interface ClassificationPret {
     isActive?: boolean;
 }
 
-export default function ClassificationsPretsPage() {
+function ClassificationsPretsPageContent() {
     const [classification, setClassification] = useState<ClassificationPret>({ isActive: true });
     const [classifications, setClassifications] = useState<ClassificationPret[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -259,5 +260,13 @@ export default function ClassificationsPretsPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function ClassificationsPretsPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <ClassificationsPretsPageContent />
+        </ProtectedPage>
     );
 }

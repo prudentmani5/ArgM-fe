@@ -22,6 +22,7 @@ export interface DemandeCredit {
     // Informations de la demande
     applicationDate?: string;
     amountRequested?: number;
+    interestRate?: number;
     durationMonths?: number;
     repaymentFrequency?: string;
     purposeDescription?: string;
@@ -52,7 +53,8 @@ export class DemandeCreditClass implements DemandeCredit {
     creditPurposeId?: number;
     applicationDate?: string;
     amountRequested?: number = 0;
-    durationMonths?: number = 12;
+    interestRate?: number = 0;
+    durationMonths?: number = 0;
     repaymentFrequency?: string = 'MONTHLY';
     purposeDescription?: string = '';
     repaymentPlanClient?: string = '';

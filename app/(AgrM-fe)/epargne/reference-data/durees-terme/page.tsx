@@ -10,9 +10,22 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
+import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { TermDuration, TermDurationClass } from './TermDuration';
+import { ProtectedPage } from '@/components/ProtectedPage';
+
+const getCurrentUser = (): string => {
+    try {
+        const userCookie = Cookies.get('appUser');
+        if (userCookie) {
+            const user = JSON.parse(userCookie);
+            return user?.email || user?.username || 'system';
+        }
+    } catch (e) {}
+    return 'system';
+};
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/term-durations`;
 
@@ -34,6 +47,7 @@ function TermDurationPage() {
             switch (callType) {
                 case 'loadData':
                     setTermDurations(Array.isArray(data) ? data : []);
+                    setLoading(false);
                     break;
                 case 'create':
                     showToast('success', 'Succès', 'Durée créée avec succès');
@@ -55,13 +69,13 @@ function TermDurationPage() {
         }
         if (error) {
             showToast('error', 'Erreur', error.message || 'Une erreur est survenue');
+            setLoading(false);
         }
     }, [data, error, callType]);
 
     const loadData = () => {
         setLoading(true);
         fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadData');
-        setLoading(false);
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -103,11 +117,12 @@ function TermDurationPage() {
 
     const handleSubmit = () => {
         if (!validateForm()) return;
+        const dataToSend = { ...termDuration, userAction: getCurrentUser() };
 
         if (termDuration.id) {
-            fetchData(termDuration, 'PUT', `${BASE_URL}/update/${termDuration.id}`, 'update');
+            fetchData(dataToSend, 'PUT', `${BASE_URL}/update/${termDuration.id}`, 'update');
         } else {
-            fetchData(termDuration, 'POST', `${BASE_URL}/new`, 'create');
+            fetchData(dataToSend, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
@@ -129,7 +144,7 @@ function TermDurationPage() {
             acceptLabel: 'Oui, supprimer',
             rejectLabel: 'Annuler',
             accept: () => {
-                fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
+                fetchData({ userAction: getCurrentUser() }, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'delete');
             }
         });
     };
@@ -329,4 +344,11 @@ function TermDurationPage() {
     );
 }
 
-export default TermDurationPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_SETTINGS']}>
+            <TermDurationPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { SavingsProductType } from './SavingsProductType';
 import SavingsProductTypeForm from './SavingsProductTypeForm';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const SavingsProductTypesPage = () => {
     const [savingsProductTypes, setSavingsProductTypes] = useState<SavingsProductType[]>([]);
@@ -199,4 +200,11 @@ const SavingsProductTypesPage = () => {
     );
 };
 
-export default SavingsProductTypesPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['FINANCIAL_PRODUCT_SETTINGS']}>
+            <SavingsProductTypesPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

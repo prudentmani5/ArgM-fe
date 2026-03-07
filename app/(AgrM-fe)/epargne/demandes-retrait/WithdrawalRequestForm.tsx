@@ -5,8 +5,10 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { InputNumber } from 'primereact/inputnumber';
+import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { WithdrawalRequest, WithdrawalStatus } from './WithdrawalRequest';
+import { getClientDisplayName } from '@/utils/clientUtils';
 
 interface WithdrawalRequestFormProps {
     request: WithdrawalRequest;
@@ -23,6 +25,8 @@ interface WithdrawalRequestFormProps {
     onAmountChange?: (amount: number) => void;
     accountBalance?: number;
     isViewMode?: boolean;
+    branchLocked?: boolean;
+    onViewClientDetails?: (clientId: number) => void;
 }
 
 const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
@@ -39,7 +43,9 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
     onSavingsAccountChange,
     onAmountChange,
     accountBalance = 0,
-    isViewMode = false
+    isViewMode = false,
+    branchLocked = false,
+    onViewClientDetails
 }) => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
@@ -138,12 +144,20 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                     handleDropdownChange('savingsAccountId', e.value);
                                     if (onSavingsAccountChange) onSavingsAccountChange(e.value);
                                 }}
-                                optionLabel={(item) => `${item.accountNumber} - ${item.client?.firstName || ''} ${item.client?.lastName || ''} (${formatCurrency(item.currentBalance || 0)})`}
+                                optionLabel="accountNumber"
                                 optionValue="id"
                                 placeholder="Sélectionner le compte d'épargne..."
                                 filter
+                                filterBy="accountNumber,client.firstName,client.lastName,client.businessName"
                                 filterPlaceholder="Rechercher par numéro de compte"
                                 className="w-full"
+                                itemTemplate={(item: any) => (
+                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.currentBalance || 0)})</span>
+                                )}
+                                valueTemplate={(item: any, props: any) => {
+                                    if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
+                                    return <span>{props?.placeholder}</span>;
+                                }}
                             />
                         )}
                     </div>
@@ -151,7 +165,7 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                         <label htmlFor="clientId" className="font-medium">Client</label>
                         {isViewMode ? (
                             <InputText
-                                value={request.client ? `${request.client.firstName || ''} ${request.client.lastName || ''} - ${request.client.clientNumber || ''}` : '-'}
+                                value={request.client ? `${getClientDisplayName(request.client)} - ${request.client.clientNumber || ''}` : '-'}
                                 disabled
                                 className="w-full"
                             />
@@ -161,20 +175,39 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                 value={request.clientId}
                                 options={clients}
                                 onChange={(e) => handleDropdownChange('clientId', e.value)}
-                                optionLabel={(item) => `${item.firstName} ${item.lastName} - ${item.clientNumber}`}
+                                optionLabel="clientNumber"
                                 optionValue="id"
                                 placeholder="Sélectionnez d'abord un compte..."
                                 disabled={true}
                                 className="w-full"
+                                filterBy="clientNumber,firstName,lastName,businessName"
+                                itemTemplate={(item: any) => (
+                                    <span>{getClientDisplayName(item)} - {item.clientNumber}</span>
+                                )}
+                                valueTemplate={(item: any, props: any) => {
+                                    if (item) return <span>{getClientDisplayName(item)} - {item.clientNumber}</span>;
+                                    return <span>{props?.placeholder}</span>;
+                                }}
                             />
                         )}
                     </div>
                 </div>
                 {!isViewMode && request.savingsAccountId && (
                     <div className="mt-2 p-2 surface-50 border-round">
-                        <div className="flex align-items-center gap-2">
-                            <i className="pi pi-info-circle text-blue-500"></i>
-                            <span className="text-500">Le client est automatiquement récupéré depuis le compte sélectionné</span>
+                        <div className="flex align-items-center justify-content-between">
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-info-circle text-blue-500"></i>
+                                <span className="text-500">Le client est automatiquement récupéré depuis le compte sélectionné</span>
+                            </div>
+                            {request.clientId && onViewClientDetails && (
+                                <Button
+                                    label="Voir les détails du Client"
+                                    icon="pi pi-eye"
+                                    className="p-button-outlined p-button-info p-button-sm"
+                                    onClick={() => onViewClientDetails(request.clientId!)}
+                                    type="button"
+                                />
+                            )}
                         </div>
                     </div>
                 )}
@@ -204,6 +237,17 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                             <div className="flex justify-content-between align-items-center mt-2">
                                 <span className="font-medium">Solde après retrait:</span>
                                 <span className="text-xl font-bold text-green-600">{formatCurrency(request.balanceAfterWithdrawal)}</span>
+                            </div>
+                        )}
+                        {request.clientId && onViewClientDetails && (
+                            <div className="flex justify-content-end mt-3">
+                                <Button
+                                    label="Voir les détails du Client"
+                                    icon="pi pi-eye"
+                                    className="p-button-outlined p-button-info p-button-sm"
+                                    onClick={() => onViewClientDetails(request.clientId!)}
+                                    type="button"
+                                />
                             </div>
                         )}
                     </div>
@@ -287,7 +331,7 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                             id="requestedAmount"
                             value={request.requestedAmount}
                             onValueChange={(e) => {
-                                handleNumberChange('requestedAmount', e.value);
+                                handleNumberChange('requestedAmount', e.value??null);
                                 if (onAmountChange && e.value) onAmountChange(e.value);
                             }}
                             mode="decimal"
@@ -337,6 +381,7 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                 value={request.branch?.name || '-'}
                                 disabled
                                 className="w-full"
+                                 
                             />
                         ) : (
                             <Dropdown
@@ -347,6 +392,7 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                 optionLabel="name"
                                 optionValue="id"
                                 placeholder="Sélectionner l'agence"
+                                disabled={branchLocked}
                                 filter
                                 className="w-full"
                             />

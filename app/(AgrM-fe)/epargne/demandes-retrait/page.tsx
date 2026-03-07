@@ -10,11 +10,21 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { Dropdown } from 'primereact/dropdown';
+import { Card } from 'primereact/card';
+import { Image } from 'primereact/image';
+import { Avatar } from 'primereact/avatar';
+import { Divider } from 'primereact/divider';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
-import { API_BASE_URL } from '@/utils/apiConfig';
+import { API_BASE_URL, buildApiUrl } from '@/utils/apiConfig';
 import { WithdrawalRequest, WithdrawalRequestClass, WithdrawalStatus } from './WithdrawalRequest';
+import { getClientDisplayName } from '@/utils/clientUtils';
+import { ClientType } from '@/app/(AgrM-fe)/moduleCostumerGroup/clients/Client';
 import WithdrawalRequestForm from './WithdrawalRequestForm';
+import PrintableWithdrawalReceipt from './PrintableWithdrawalReceipt';
 import Cookies from 'js-cookie';
+import { ProtectedPage } from '@/components/ProtectedPage';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/withdrawal-requests`;
 const CLIENTS_URL = `${API_BASE_URL}/api/clients`;
@@ -22,6 +32,7 @@ const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const SAVINGS_URL = `${API_BASE_URL}/api/savings-accounts`;
 const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currencies`;
 const AUTH_LEVELS_URL = `${API_BASE_URL}/api/epargne/withdrawal-authorization-levels`;
+const CAISSES_URL = `${API_BASE_URL}/api/comptability/caisses`;
 
 // Get current user from cookies
 const getCurrentUser = (): string => {
@@ -38,6 +49,7 @@ const getCurrentUser = (): string => {
 };
 
 function WithdrawalRequestPage() {
+    const { can } = useAuthorizedAction();
     const [request, setRequest] = useState<WithdrawalRequest>(new WithdrawalRequestClass());
     const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
     const [pendingRequests, setPendingRequests] = useState<WithdrawalRequest[]>([]);
@@ -54,7 +66,15 @@ function WithdrawalRequestPage() {
     const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [accountBalance, setAccountBalance] = useState(0);
+    const [caisses, setCaisses] = useState<any[]>([]);
+    const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
+    const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
+    const [isManager, setIsManager] = useState<boolean>(false);
+    const [printDialog, setPrintDialog] = useState(false);
+    const [viewClientDialog, setViewClientDialog] = useState(false);
+    const [clientDetail, setClientDetail] = useState<any>(null);
     const toast = useRef<Toast>(null);
+    const printRef = useRef<HTMLDivElement>(null);
 
     // Separate hook instances for each data type to avoid race conditions
     const clientsApi = useConsumApi('');
@@ -63,8 +83,9 @@ function WithdrawalRequestPage() {
     const savingsApi = useConsumApi('');
     const authLevelsApi = useConsumApi('');
     const requestsApi = useConsumApi('');
-    const pendingApi = useConsumApi('');
     const actionsApi = useConsumApi('');
+    const caissesApi = useConsumApi('');
+    const clientDetailApi = useConsumApi('');
 
     useEffect(() => {
         loadReferenceData();
@@ -115,37 +136,44 @@ function WithdrawalRequestPage() {
         }
     }, [savingsApi.data, savingsApi.error]);
 
-    // Handle authorization levels data
+    // Handle authorization levels data (silently ignore Forbidden for caissiers who lack EPARGNE_SETTINGS)
     useEffect(() => {
         if (authLevelsApi.data) {
             const data = authLevelsApi.data;
             setAuthorizationLevels(Array.isArray(data) ? data : []);
         }
         if (authLevelsApi.error) {
-            showToast('error', 'Erreur', authLevelsApi.error.message || 'Erreur lors du chargement des niveaux');
+            // Silently ignore 403 Forbidden for caissiers who lack EPARGNE_SETTINGS
+            if (authLevelsApi.error.status !== 403 && authLevelsApi.error.status !== 0) {
+                showToast('error', 'Erreur', authLevelsApi.error.message || 'Erreur lors du chargement des niveaux');
+            }
         }
     }, [authLevelsApi.data, authLevelsApi.error]);
 
-    // Handle requests data
+    // Handle requests data — filter by caisse for caissiers, show all for chef d'agence
     useEffect(() => {
         if (requestsApi.data) {
-            const data = requestsApi.data;
-            setRequests(Array.isArray(data) ? data : data.content || []);
+            let data: WithdrawalRequest[] = Array.isArray(requestsApi.data) ? requestsApi.data : requestsApi.data.content || [];
+            // Only filter by caisseId for caissiers (not for chef d'agence/admin who see all branch requests)
+            if (selectedCaisseId && !isManager) {
+                data = data.filter((r: any) => r.caisseId === selectedCaisseId);
+            }
+            setRequests(data);
             setLoading(false);
         }
         if (requestsApi.error) {
             showToast('error', 'Erreur', requestsApi.error.message || 'Erreur lors du chargement des demandes');
             setLoading(false);
         }
-    }, [requestsApi.data, requestsApi.error]);
+    }, [requestsApi.data, requestsApi.error, selectedCaisseId, isManager]);
 
-    // Handle pending requests data
+    // Derive pending requests from all requests — show all that are not DISBURSED, REJECTED, or CANCELLED
     useEffect(() => {
-        if (pendingApi.data) {
-            const data = pendingApi.data;
-            setPendingRequests(Array.isArray(data) ? data : []);
-        }
-    }, [pendingApi.data]);
+        const notCompleted = requests.filter(
+            (r: WithdrawalRequest) => !['DISBURSED', 'REJECTED', 'CANCELLED'].includes(r.status)
+        );
+        setPendingRequests(notCompleted);
+    }, [requests]);
 
     // Handle actions (create, verify, disburse, etc.)
     useEffect(() => {
@@ -184,19 +212,128 @@ function WithdrawalRequestPage() {
         }
     }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
 
+    // Handle caisses data + auto-detect user's caisse
+    useEffect(() => {
+        if (caissesApi.data && caissesApi.callType === 'loadCaisses') {
+            const allData = Array.isArray(caissesApi.data) ? caissesApi.data : [];
+            try {
+                const appUserCookie = Cookies.get('appUser');
+                if (appUserCookie) {
+                    const appUser = JSON.parse(appUserCookie);
+                    const roleName = (appUser.roleName || '').toLowerCase();
+                    const isCaissier = roleName.includes('caiss');
+                    const isChefAgence = roleName.includes('chef');
+                    const auths: string[] = appUser.authorities || [];
+                    const isSuperAdmin = auths.includes('SUPER_ADMIN') || auths.includes('ROLE_SUPER_ADMIN');
+                    const canViewAll = auths.includes('VIEW_ALL_BRANCHES') || auths.includes('ROLE_VIEW_ALL_BRANCHES');
+
+                    let filteredData = allData;
+                    let userCaisse = null;
+
+                    setIsManager(isChefAgence || isSuperAdmin || canViewAll);
+
+                    if (isCaissier && !isChefAgence && !isSuperAdmin && !canViewAll) {
+                        // Caissier: only show their own GUICHET caisse (never AGENCE/CHEF_AGENCE/SIEGE)
+                        const isGuichet = (c: any) =>
+                            c.typeCaisse !== 'CHEF_AGENCE' && c.typeCaisse !== 'AGENCE' && c.typeCaisse !== 'SIEGE';
+                        // Priority 1: Match by agentId (most precise - caisse assigned to this user)
+                        if (appUser.id) {
+                            userCaisse = allData.find((c: any) =>
+                                c.agentId && Number(c.agentId) === Number(appUser.id) && isGuichet(c));
+                        }
+                        // Priority 2: Match by agentName
+                        if (!userCaisse) {
+                            const userName = `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim();
+                            userCaisse = allData.find((c: any) =>
+                                c.agentName && c.agentName.toLowerCase() === userName.toLowerCase() && isGuichet(c));
+                        }
+                        // Priority 3: Match by compteComptable (fallback, exclude parent types)
+                        if (!userCaisse && appUser.compteComptable) {
+                            userCaisse = allData.find((c: any) =>
+                                c.compteComptable === appUser.compteComptable && isGuichet(c));
+                        }
+                        filteredData = userCaisse ? [userCaisse] : [];
+                    } else {
+                        // Chef d'Agence / Admin / VIEW_ALL_BRANCHES: show all loaded caisses
+                        if (appUser.id) {
+                            userCaisse = allData.find((c: any) => c.agentId && Number(c.agentId) === Number(appUser.id));
+                        }
+                        if (!userCaisse && appUser.compteComptable) {
+                            userCaisse = allData.find((c: any) => c.compteComptable === appUser.compteComptable);
+                        }
+                        if (!userCaisse) {
+                            const userName = `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim();
+                            userCaisse = allData.find((c: any) => c.agentName && c.agentName.toLowerCase() === userName.toLowerCase());
+                        }
+                    }
+
+                    setCaisses(filteredData);
+
+                    if (userCaisse) {
+                        setSelectedCaisseId(userCaisse.caisseId);
+                        setRequest(prev => ({
+                            ...prev,
+                            caisseId: userCaisse.caisseId,
+                            branchId: userCaisse.branchId ? Number(userCaisse.branchId) : prev.branchId
+                        }));
+                        caissesApi.fetchData(null, 'GET', `${CAISSES_URL}/agency-status/${userCaisse.caisseId}`, 'agencyStatus');
+                    }
+                } else {
+                    setCaisses(allData);
+                }
+            } catch (e) {
+                setCaisses(allData);
+            }
+        }
+        // Handle agency status response
+        if (caissesApi.data && caissesApi.callType === 'agencyStatus') {
+            setAgencyOpen((caissesApi.data as any).agencyOpen !== false);
+        }
+    }, [caissesApi.data, caissesApi.callType]);
+
+    // Handle client detail API response
+    useEffect(() => {
+        if (clientDetailApi.data && clientDetailApi.callType === 'viewClientById') {
+            setClientDetail(clientDetailApi.data);
+            setViewClientDialog(true);
+        }
+    }, [clientDetailApi.data, clientDetailApi.callType]);
+
+    const viewClientDetails = (clientId: number) => {
+        if (clientId) {
+            clientDetailApi.fetchData(null, 'GET', `${CLIENTS_URL}/findbyid/${clientId}`, 'viewClientById');
+        }
+    };
+
     const loadReferenceData = () => {
         clientsApi.fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
         currenciesApi.fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
         authLevelsApi.fetchData(null, 'GET', `${AUTH_LEVELS_URL}/findall`, 'loadAuthLevels');
-        // Load all savings accounts on startup
         savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/findallactive`, 'loadSavingsAccounts');
+        // Filter caisses by branch unless user has VIEW_ALL_BRANCHES or SUPER_ADMIN authority
+        let userBranchId = null;
+        let canViewAll = false;
+        try {
+            const appUserCookie = Cookies.get('appUser');
+            if (appUserCookie) {
+                const appUser = JSON.parse(appUserCookie);
+                userBranchId = appUser.branchId;
+                const auths: string[] = appUser.authorities || [];
+                canViewAll = auths.includes('VIEW_ALL_BRANCHES') || auths.includes('ROLE_VIEW_ALL_BRANCHES')
+                    || auths.includes('SUPER_ADMIN') || auths.includes('ROLE_SUPER_ADMIN');
+            }
+        } catch (e) { /* ignore */ }
+        if (userBranchId && !canViewAll) {
+            caissesApi.fetchData(null, 'GET', `${CAISSES_URL}/findbybranch/${userBranchId}`, 'loadCaisses');
+        } else {
+            caissesApi.fetchData(null, 'GET', `${CAISSES_URL}/findactive`, 'loadCaisses');
+        }
     };
 
     const loadRequests = () => {
         setLoading(true);
         requestsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadRequests');
-        pendingApi.fetchData(null, 'GET', `${BASE_URL}/findbystatus/PENDING`, 'loadPending');
     };
 
     // When savings account is selected, auto-populate the client
@@ -284,6 +421,7 @@ function WithdrawalRequestPage() {
         if (!validateForm()) return;
         const requestData = {
             ...request,
+            caisseId: selectedCaisseId,
             userAction: getCurrentUser()
         };
         actionsApi.fetchData(requestData, 'POST', `${BASE_URL}/new`, 'create');
@@ -356,6 +494,54 @@ function WithdrawalRequestPage() {
         }
     };
 
+    // Open print dialog for disbursed withdrawals
+    const openPrintDialog = (rowData: WithdrawalRequest) => {
+        if (rowData.status !== 'DISBURSED') {
+            showToast('warn', 'Attention', 'Seuls les retraits decaisses peuvent etre imprimes');
+            return;
+        }
+        setSelectedRequest(rowData);
+        setPrintDialog(true);
+    };
+
+    // Handle print
+    const handlePrint = () => {
+        if (printRef.current) {
+            const printContent = printRef.current.innerHTML.replace(
+                /src="\/layout\//g,
+                `src="${window.location.origin}/layout/`
+            );
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Recu de Retrait - ${selectedRequest?.requestNumber}</title>
+                        <style>
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            body { font-family: Arial, sans-serif; padding: 15mm; }
+                            @page { margin: 15mm; size: A4; }
+                            @media print {
+                                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${printContent}
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            }
+        }
+    };
+
     const cancelRequest = (rowData: WithdrawalRequest) => {
         confirmDialog({
             message: 'Annuler cette demande de retrait ?',
@@ -416,15 +602,15 @@ function WithdrawalRequestPage() {
 
     const actionsBodyTemplate = (rowData: WithdrawalRequest) => {
         const status = rowData.status;
-        const canVerifyId = status === 'PENDING';
-        const canFirstVerify = status === 'ID_VERIFIED' && rowData.dualVerificationRequired;
-        const canSecondVerify = status === 'FIRST_VERIFIED';
-        const canManagerApprove = (status === 'ID_VERIFIED' || status === 'SECOND_VERIFIED') && rowData.requiresManagerApproval;
-        const canDisburse = status === 'APPROVED' || status === 'MANAGER_APPROVED' ||
+        const canVerifyId = status === 'PENDING' && can('EPARGNE_WITHDRAWAL_VERIFY');
+        const canFirstVerify = status === 'ID_VERIFIED' && rowData.dualVerificationRequired && can('EPARGNE_WITHDRAWAL_VERIFY');
+        const canSecondVerify = status === 'FIRST_VERIFIED' && can('EPARGNE_WITHDRAWAL_SECOND_VERIFY');
+        const canManagerApprove = (status === 'ID_VERIFIED' || status === 'SECOND_VERIFIED') && rowData.requiresManagerApproval && can('EPARGNE_WITHDRAWAL_MANAGER_APPROVE');
+        const canDisburse = (status === 'APPROVED' || status === 'MANAGER_APPROVED' ||
             (status === 'ID_VERIFIED' && !rowData.dualVerificationRequired && !rowData.requiresManagerApproval) ||
-            (status === 'SECOND_VERIFIED' && !rowData.requiresManagerApproval);
-        const canReject = !['DISBURSED', 'REJECTED', 'CANCELLED'].includes(status);
-        const canCancel = status === 'PENDING';
+            (status === 'SECOND_VERIFIED' && !rowData.requiresManagerApproval)) && can('EPARGNE_WITHDRAWAL_DISBURSE');
+        const canReject = !['DISBURSED', 'REJECTED', 'CANCELLED'].includes(status) && can('EPARGNE_WITHDRAWAL_REJECT');
+        const canCancel = status === 'PENDING' && can('EPARGNE_WITHDRAWAL_REJECT');
 
         return (
             <div className="flex gap-1 flex-wrap">
@@ -490,6 +676,13 @@ function WithdrawalRequestPage() {
                         tooltip="Annuler"
                     />
                 )}
+                <Button
+                    icon="pi pi-print"
+                    className={`p-button-rounded p-button-sm ${status === 'DISBURSED' ? 'p-button-secondary' : 'p-button-secondary p-button-outlined'}`}
+                    onClick={() => openPrintDialog(rowData)}
+                    tooltip={status === 'DISBURSED' ? "Imprimer le recu" : "Decaissez d'abord le retrait"}
+                    disabled={status !== 'DISBURSED'}
+                />
             </div>
         );
     };
@@ -561,14 +754,61 @@ function WithdrawalRequestPage() {
                         onSavingsAccountChange={handleSavingsAccountChange}
                         onAmountChange={handleAmountChange}
                         accountBalance={accountBalance}
+                        branchLocked={!!selectedCaisseId}
+                        onViewClientDetails={viewClientDetails}
                     />
+                    {/* Agency closed banner */}
+                    {!agencyOpen && (
+                        <div className="p-3 mt-3 border-round bg-red-50 border-red-200" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-ban text-red-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-red-700">Operations bloquees</div>
+                                    <div className="text-red-600 text-sm">
+                                        La journee n'est pas encore ouverte par le chef d'agence. Aucun retrait ne peut etre enregistre.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Caisse selection */}
+                    <div className="grid mt-3">
+                        <div className="col-12 md:col-6">
+                            <div className="field">
+                                <label htmlFor="caisseId" className="font-medium">Caisse du Guichetier</label>
+                                <Dropdown
+                                    id="caisseId"
+                                    value={selectedCaisseId}
+                                    options={caisses.filter((c: any) => c.status === 'OPEN')}
+                                    optionLabel="libelle"
+                                    optionValue="caisseId"
+                                    onChange={(e) => {
+                                        setSelectedCaisseId(e.value);
+                                        setRequest(prev => ({ ...prev, caisseId: e.value }));
+                                    }}
+                                    placeholder="Sélectionner la caisse"
+                                    className="w-full"
+                                    filter
+                                    showClear
+                                />
+                                {selectedCaisseId && (
+                                    <small className="text-green-500">
+                                        <i className="pi pi-check-circle mr-1"></i>
+                                        Caisse sélectionnée - le solde sera mis à jour au décaissement
+                                    </small>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex gap-2 mt-4">
                         <Button
                             label="Soumettre la Demande"
                             icon="pi pi-send"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={request.requestedAmount < 1000}
+                            disabled={request.requestedAmount < 1000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen}
                         />
                         <Button
                             label="Réinitialiser"
@@ -594,7 +834,7 @@ function WithdrawalRequestPage() {
                         <Column
                             field="client"
                             header="Client"
-                            body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                            body={(row) => getClientDisplayName(row.client)}
                         />
                         <Column field="requestDate" header="Date" sortable />
                         <Column
@@ -627,7 +867,7 @@ function WithdrawalRequestPage() {
                         <Column
                             field="client"
                             header="Client"
-                            body={(row) => row.client ? `${row.client.firstName} ${row.client.lastName}` : '-'}
+                            body={(row) => getClientDisplayName(row.client)}
                         />
                         <Column field="requestDate" header="Date" sortable />
                         <Column
@@ -689,23 +929,407 @@ function WithdrawalRequestPage() {
                 onHide={() => setViewDialog(false)}
             >
                 {selectedRequest && (
-                    <WithdrawalRequestForm
-                        request={selectedRequest}
-                        handleChange={() => {}}
-                        handleDropdownChange={() => {}}
-                        handleDateChange={() => {}}
-                        handleNumberChange={() => {}}
-                        clients={clients}
-                        branches={branches}
-                        savingsAccounts={savingsAccounts}
-                        currencies={currencies}
-                        authorizationLevels={authorizationLevels}
-                        isViewMode={true}
-                    />
+                    <>
+                        <WithdrawalRequestForm
+                            request={selectedRequest}
+                            handleChange={() => {}}
+                            handleDropdownChange={() => {}}
+                            handleDateChange={() => {}}
+                            handleNumberChange={() => {}}
+                            clients={clients}
+                            branches={branches}
+                            savingsAccounts={savingsAccounts}
+                            currencies={currencies}
+                            authorizationLevels={authorizationLevels}
+                            isViewMode={true}
+                            onViewClientDetails={viewClientDetails}
+                        />
+                    </>
+                )}
+            </Dialog>
+
+            {/* Dialog pour imprimer le recu */}
+            <Dialog
+                header="Apercu du Recu de Retrait"
+                visible={printDialog}
+                style={{ width: '900px' }}
+                onHide={() => setPrintDialog(false)}
+                footer={
+                    <div className="flex justify-content-end gap-2">
+                        <Button
+                            label="Fermer"
+                            icon="pi pi-times"
+                            onClick={() => setPrintDialog(false)}
+                            className="p-button-text"
+                        />
+                        <Button
+                            label="Imprimer"
+                            icon="pi pi-print"
+                            onClick={handlePrint}
+                            className="p-button-success"
+                        />
+                    </div>
+                }
+            >
+                {selectedRequest && (
+                    <div className="overflow-auto" style={{ maxHeight: '70vh' }}>
+                        <PrintableWithdrawalReceipt
+                            ref={printRef}
+                            withdrawal={selectedRequest}
+                            companyName=" AGRINOVA MICROFINANCE"
+                            companyAddress="Bujumbura, Burundi"
+                            companyPhone="+257 22 XX XX XX"
+                        />
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Dialog pour voir les détails du client */}
+            <Dialog
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-user text-2xl text-primary"></i>
+                        <span>Details du Client</span>
+                    </div>
+                }
+                visible={viewClientDialog}
+                style={{ width: '90vw', maxWidth: '1200px' }}
+                modal
+                onHide={() => setViewClientDialog(false)}
+            >
+                {clientDetail && (
+                    <div className="grid">
+                        {/* Left Column */}
+                        <div className="col-12 md:col-4">
+                            <Card className="mb-3">
+                                <div className="flex flex-column align-items-center text-center mb-3">
+                                    {clientDetail.photoPath ? (
+                                        <Image
+                                            src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(clientDetail.photoPath)}`)}
+                                            alt="Photo du client"
+                                            width="150"
+                                            height="150"
+                                            preview
+                                            imageClassName="border-round-xl shadow-2"
+                                            style={{ objectFit: 'cover' }}
+                                        />
+                                    ) : (
+                                        <Avatar
+                                            icon={clientDetail.clientType === ClientType.BUSINESS ? "pi pi-building" : clientDetail.clientType === ClientType.JOINT_ACCOUNT ? "pi pi-users" : "pi pi-user"}
+                                            size="xlarge"
+                                            shape="circle"
+                                            className={clientDetail.clientType === ClientType.BUSINESS ? "bg-green-100 text-green-600" : clientDetail.clientType === ClientType.JOINT_ACCOUNT ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}
+                                            style={{ width: '120px', height: '120px', fontSize: '3rem' }}
+                                        />
+                                    )}
+                                    <h4 className="m-0 mt-3">
+                                        {clientDetail.clientType === ClientType.JOINT_ACCOUNT
+                                            ? `${clientDetail.firstName || ''} ${clientDetail.lastName || ''} & ${clientDetail.secondFirstName || ''} ${clientDetail.secondLastName || ''}`.trim()
+                                            : (clientDetail.clientType === ClientType.INDIVIDUAL)
+                                                ? `${clientDetail.firstName} ${clientDetail.lastName}`
+                                                : clientDetail.businessName}
+                                    </h4>
+                                    <p className="text-500 m-0">{clientDetail.clientNumber}</p>
+                                    <div className="flex gap-2 mt-2">
+                                        {clientDetail.clientType === ClientType.INDIVIDUAL && <Tag value="Individuel" severity="info" icon="pi pi-user" />}
+                                        {clientDetail.clientType === ClientType.JOINT_ACCOUNT && <Tag value="Compte Conjoint" severity="warning" icon="pi pi-users" />}
+                                        {clientDetail.clientType === ClientType.BUSINESS && <Tag value="Entreprise" severity="success" icon="pi pi-building" />}
+                                        <Tag
+                                            value={clientDetail.status === 'ACTIVE' ? 'Actif' : clientDetail.status === 'PENDING' ? 'En attente' : clientDetail.status === 'SUSPENDED' ? 'Suspendu' : clientDetail.status}
+                                            severity={clientDetail.status === 'ACTIVE' ? 'success' : clientDetail.status === 'PENDING' ? 'info' : clientDetail.status === 'SUSPENDED' ? 'warning' : null}
+                                        />
+                                    </div>
+                                </div>
+                                <Divider />
+                                <div className="flex flex-column gap-2">
+                                    <div className="flex align-items-center gap-2">
+                                        <i className="pi pi-phone text-primary"></i>
+                                        <span className="font-semibold">{clientDetail.phonePrimary || 'N/A'}</span>
+                                    </div>
+                                    {clientDetail.phoneSecondary && (
+                                        <div className="flex align-items-center gap-2">
+                                            <i className="pi pi-phone text-500"></i>
+                                            <span>{clientDetail.phoneSecondary}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex align-items-center gap-2">
+                                        <i className="pi pi-envelope text-primary"></i>
+                                        <span>{clientDetail.email || 'N/A'}</span>
+                                    </div>
+                                </div>
+                                {clientDetail.clientType !== ClientType.BUSINESS && clientDetail.signatureImagePath && (
+                                    <>
+                                        <Divider />
+                                        <div>
+                                            <p className="text-500 mb-2">Signature</p>
+                                            <Image
+                                                src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(clientDetail.signatureImagePath)}`)}
+                                                alt="Signature du client"
+                                                width="150"
+                                                preview
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                            </Card>
+                        </div>
+
+                        {/* Middle Column */}
+                        <div className="col-12 md:col-4">
+                            {(clientDetail.clientType === ClientType.INDIVIDUAL || clientDetail.clientType === ClientType.JOINT_ACCOUNT) && (
+                                <Card title={clientDetail.clientType === ClientType.JOINT_ACCOUNT ? "Titulaire Principal (1ère Personne)" : "Informations Personnelles"} className="mb-3">
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Nom complet</span>
+                                            <span className="font-semibold">{`${clientDetail.lastName || ''} ${clientDetail.firstName || ''} ${clientDetail.middleName || ''}`.trim() || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Genre</span>
+                                            <span className="font-semibold">{clientDetail.gender === 'M' ? 'Masculin' : clientDetail.gender === 'F' ? 'Féminin' : 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Date de naissance</span>
+                                            <span className="font-semibold">{clientDetail.dateOfBirth ? new Date(clientDetail.dateOfBirth).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Lieu de naissance</span>
+                                            <span className="font-semibold">{clientDetail.placeOfBirth || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Nationalité</span>
+                                            <span className="font-semibold">{clientDetail.nationality?.name || 'N/A'}</span>
+                                        </div>
+                                        {clientDetail.clientType === ClientType.INDIVIDUAL && (
+                                            <>
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Etat civil</span>
+                                                    <span className="font-semibold">{clientDetail.maritalStatus?.name || 'N/A'}</span>
+                                                </div>
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Niveau d'étude</span>
+                                                    <span className="font-semibold">{clientDetail.educationLevel?.name || 'N/A'}</span>
+                                                </div>
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Type d'habitation</span>
+                                                    <span className="font-semibold">{clientDetail.housingType?.name || 'N/A'}</span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </Card>
+                            )}
+
+                            {/* Co-titulaire */}
+                            {clientDetail.clientType === ClientType.JOINT_ACCOUNT && (
+                                <Card title="Co-titulaire (2ème Personne)" className="mb-3" style={{ borderLeft: '4px solid #f97316' }}>
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Nom complet</span>
+                                            <span className="font-semibold">{`${clientDetail.secondLastName || ''} ${clientDetail.secondFirstName || ''}`.trim() || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Genre</span>
+                                            <span className="font-semibold">{clientDetail.secondGender === 'M' ? 'Masculin' : clientDetail.secondGender === 'F' ? 'Féminin' : 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Date de naissance</span>
+                                            <span className="font-semibold">{clientDetail.secondDateOfBirth ? new Date(clientDetail.secondDateOfBirth).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Lieu de naissance</span>
+                                            <span className="font-semibold">{clientDetail.secondPlaceOfBirth || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Nationalité</span>
+                                            <span className="font-semibold">{clientDetail.secondNationality?.name || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Téléphone</span>
+                                            <span className="font-semibold">{clientDetail.secondPhonePrimary || 'N/A'}</span>
+                                        </div>
+                                        <Divider />
+                                        <h6 className="m-0 text-primary">Document d'identité</h6>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Type</span>
+                                            <span className="font-semibold">{clientDetail.secondIdDocumentType?.name || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Numéro</span>
+                                            <span className="font-semibold">{clientDetail.secondIdDocumentNumber || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Date de délivrance</span>
+                                            <span className="font-semibold">{clientDetail.secondIdIssueDate ? new Date(clientDetail.secondIdIssueDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Date d'expiration</span>
+                                            <span className="font-semibold">{clientDetail.secondIdExpiryDate ? new Date(clientDetail.secondIdExpiryDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )}
+
+                            {/* Business Info */}
+                            {clientDetail.clientType === ClientType.BUSINESS && (
+                                <Card title="Informations Entreprise" className="mb-3">
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Nom entreprise</span>
+                                            <span className="font-semibold">{clientDetail.businessName || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Numéro RCCM</span>
+                                            <span className="font-semibold">{clientDetail.businessRegistrationNumber || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Type entreprise</span>
+                                            <span className="font-semibold">{clientDetail.businessType || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between">
+                                            <span className="text-500">Date de création</span>
+                                            <span className="font-semibold">{clientDetail.dateOfIncorporation ? new Date(clientDetail.dateOfIncorporation).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )}
+
+                            {/* ID Document */}
+                            <Card title="Document d'Identité" className="mb-3">
+                                <div className="flex flex-column gap-2">
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Type de document</span>
+                                        <span className="font-semibold">{clientDetail.idDocumentType?.name || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Numéro</span>
+                                        <span className="font-semibold">{clientDetail.idDocumentNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Date de délivrance</span>
+                                        <span className="font-semibold">{(clientDetail.idDocumentIssueDate || clientDetail.idIssueDate) ? new Date(clientDetail.idDocumentIssueDate || clientDetail.idIssueDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Date d'expiration</span>
+                                        <span className="font-semibold">{(clientDetail.idDocumentExpiryDate || clientDetail.idExpiryDate) ? new Date(clientDetail.idDocumentExpiryDate || clientDetail.idExpiryDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Délivré par</span>
+                                        <span className="font-semibold">{clientDetail.idDocumentIssuedBy || clientDetail.idIssuePlace || 'N/A'}</span>
+                                    </div>
+                                    {clientDetail.idDocumentScanPath && (
+                                        <div className="mt-2">
+                                            <p className="text-500 mb-2">Document scanné</p>
+                                            {clientDetail.idDocumentScanPath.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/) ? (
+                                                <Image
+                                                    src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(clientDetail.idDocumentScanPath)}`)}
+                                                    alt="Document d'identité"
+                                                    width="200"
+                                                    preview
+                                                    imageClassName="border-round shadow-1"
+                                                />
+                                            ) : (
+                                                <Button
+                                                    icon="pi pi-eye"
+                                                    label="Voir le document"
+                                                    className="p-button-outlined p-button-info p-button-sm"
+                                                    onClick={() => window.open(buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(clientDetail.idDocumentScanPath)}`), '_blank')}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Right Column */}
+                        <div className="col-12 md:col-4">
+                            {/* Address */}
+                            <Card title={clientDetail.clientType === ClientType.JOINT_ACCOUNT ? "Adresse (Titulaire Principal)" : "Adresse"} className="mb-3">
+                                <div className="flex flex-column gap-2">
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Province</span>
+                                        <span className="font-semibold">{clientDetail.province?.name || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Commune</span>
+                                        <span className="font-semibold">{clientDetail.commune?.name || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Zone</span>
+                                        <span className="font-semibold">{clientDetail.zone?.name || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Colline</span>
+                                        <span className="font-semibold">{clientDetail.colline?.name || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Adresse détaillée</span>
+                                        <span className="font-semibold text-right" style={{ maxWidth: '60%' }}>{clientDetail.streetAddress || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </Card>
+
+                            {/* Professional Info */}
+                            <Card title={clientDetail.clientType === ClientType.BUSINESS ? "Secteur d'Activité" : "Informations Professionnelles"} className="mb-3">
+                                <div className="flex flex-column gap-2">
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Secteur d'activité</span>
+                                        <span className="font-semibold">{clientDetail.activitySector?.name || 'N/A'}</span>
+                                    </div>
+                                    {clientDetail.clientType !== ClientType.BUSINESS && (
+                                        <>
+                                            <div className="flex justify-content-between">
+                                                <span className="text-500">Profession</span>
+                                                <span className="font-semibold">{clientDetail.profession || clientDetail.occupation || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex justify-content-between">
+                                                <span className="text-500">Employeur</span>
+                                                <span className="font-semibold">{clientDetail.employerName || clientDetail.employer || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex justify-content-between">
+                                                <span className="text-500">Revenu mensuel</span>
+                                                <span className="font-semibold text-green-600">
+                                                    {clientDetail.monthlyIncome?.toLocaleString('fr-BI') || '0'} BIF
+                                                </span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </Card>
+
+                            {/* Assignment */}
+                            <Card title="Affectation" className="mb-3">
+                                <div className="flex flex-column gap-2">
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Agence</span>
+                                        <span className="font-semibold">{clientDetail.branch?.name || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-content-between">
+                                        <span className="text-500">Agent assigné</span>
+                                        <span className="font-semibold">{clientDetail.assignedOfficer?.firstName ? `${clientDetail.assignedOfficer.firstName} ${clientDetail.assignedOfficer.lastName}` : 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </Card>
+
+                            {/* Notes */}
+                            {clientDetail.notes && (
+                                <Card title="Notes">
+                                    <p className="m-0 text-600">{clientDetail.notes}</p>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
                 )}
             </Dialog>
         </div>
     );
 }
 
-export default WithdrawalRequestPage;
+function ProtectedPageWrapper() {
+    return (
+        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+            <WithdrawalRequestPage />
+        </ProtectedPage>
+    );
+}
+export default ProtectedPageWrapper;

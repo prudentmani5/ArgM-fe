@@ -4,6 +4,7 @@ export class LoanProductGuarantee {
     guaranteeTypeId: number;
     guaranteeType?: any;
     minCoveragePercentage?: number;
+    internalAccountId?: number;
     isMandatory: boolean;
     isActive: boolean;
     createdAt?: string;

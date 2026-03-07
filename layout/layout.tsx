@@ -8,6 +8,7 @@ import AppConfig from './AppConfig';
 import AppRightMenu from './AppRightMenu';
 import AppSidebar from './AppSidebar';
 import AppTopbar from './AppTopbar';
+import AppNavBar from './AppNavBar';
 import { LayoutContext } from './context/layoutcontext';
 import AppBreadcrumb from './AppBreadCrumb';
 import AppFooter from './AppFooter';
@@ -170,9 +171,8 @@ const Layout = (props: ChildContainerProps) => {
             <div className={classNames('layout-container', containerClassName)}>
                 <AppTopbar ref={topbarRef} />
                 <AppRightMenu />
-                <div ref={sidebarRef} className="layout-sidebar" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-                    <AppSidebar />
-                </div>
+                {/* Sidebar hidden: navigation moved to MegaMenu navbar */}
+                <AppNavBar />
                 <div className="layout-content-wrapper">
                     <div>
                         <AppBreadcrumb></AppBreadcrumb>

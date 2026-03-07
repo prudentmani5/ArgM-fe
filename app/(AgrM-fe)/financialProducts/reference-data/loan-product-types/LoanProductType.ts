@@ -6,6 +6,9 @@ export class LoanProductType {
     description?: string;
     descriptionFr?: string;
     isActive: boolean;
+    portfolioAccountId?: number;
+    interestAccountId?: number;
+    penaltyAccountId?: number;
     userAction?: string;
     createdAt?: string;
     updatedAt?: string;

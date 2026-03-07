@@ -13,6 +13,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/housing-statuses');
 
@@ -25,7 +26,7 @@ interface StatutLogement {
     isActive?: boolean;
 }
 
-export default function StatutsLogementPage() {
+function StatutsLogementPageContent() {
     const [statutLogement, setStatutLogement] = useState<StatutLogement>({ isActive: true });
     const [statutsLogement, setStatutsLogement] = useState<StatutLogement[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -210,5 +211,13 @@ export default function StatutsLogementPage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function StatutsLogementPage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <StatutsLogementPageContent />
+        </ProtectedPage>
     );
 }

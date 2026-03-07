@@ -9,6 +9,7 @@ import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import useConsumApi from '../../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../../utils/branchFilter';
 import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '../../../../../utils/pdfExport';
 
 const CLASSIFICATIONS = [
@@ -41,7 +42,9 @@ export default function RapportRetardsPage() {
     }, [data, error]);
 
     const loadRetards = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findoverdue`, 'loadRetards');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findoverduebybranch/${branchId}` : `${BASE_URL}/findoverdue`;
+        fetchData(null, 'GET', url, 'loadRetards');
     };
 
     const formatCurrency = (value: number) => {

@@ -20,6 +20,8 @@ import { Message } from 'primereact/message';
 
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
+import { shouldFilterByBranch } from '../../../../utils/branchFilter';
+import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 
 import {
     DossierContentieux,
@@ -29,6 +31,7 @@ import {
 } from '../types/RemboursementTypes';
 
 const ContentieuxPage = () => {
+    const { can } = useAuthorizedAction();
     const [dossiers, setDossiers] = useState<DossierContentieux[]>([]);
     const [dossier, setDossier] = useState<DossierContentieux>(new DossierContentieuxClass());
     const [activeIndex, setActiveIndex] = useState(0);
@@ -93,7 +96,9 @@ const ContentieuxPage = () => {
     }, [data, error, callType]);
 
     const loadDossiers = () => {
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadDossiers');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? `${BASE_URL}/findbybranch/${branchId}` : `${BASE_URL}/findall`;
+        fetchData(null, 'GET', url, 'loadDossiers');
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -242,7 +247,7 @@ const ContentieuxPage = () => {
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => handleView(rowData)}
             />
-            {rowData.status === 'PENDING_DG_APPROVAL' && (
+            {rowData.status === 'PENDING_DG_APPROVAL' && can('REMBOURSEMENT_RECOVERY_ESCALATE') && (
                 <Button
                     icon="pi pi-check-circle"
                     rounded
@@ -253,7 +258,7 @@ const ContentieuxPage = () => {
                     onClick={() => handleDgApproval(rowData)}
                 />
             )}
-            {['DG_APPROVED', 'FILED', 'HEARING_SCHEDULED', 'AWAITING_JUDGMENT'].includes(rowData.status || '') && (
+            {['DG_APPROVED', 'FILED', 'HEARING_SCHEDULED', 'AWAITING_JUDGMENT'].includes(rowData.status || '') && can('REMBOURSEMENT_RECOVERY_CLOSE') && (
                 <Button
                     icon="pi pi-file-edit"
                     rounded

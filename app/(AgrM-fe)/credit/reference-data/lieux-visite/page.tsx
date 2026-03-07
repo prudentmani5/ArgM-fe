@@ -13,6 +13,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL = buildApiUrl('/api/credit/visit-locations');
 
@@ -25,7 +26,7 @@ interface LieuVisite {
     isActive?: boolean;
 }
 
-export default function LieuxVisitePage() {
+function LieuxVisitePageContent() {
     const [lieuVisite, setLieuVisite] = useState<LieuVisite>({ isActive: true });
     const [lieuxVisite, setLieuxVisite] = useState<LieuVisite[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -210,5 +211,13 @@ export default function LieuxVisitePage() {
                 </TabPanel>
             </TabView>
         </div>
+    );
+}
+
+export default function LieuxVisitePage() {
+    return (
+        <ProtectedPage requiredAuthorities={['CREDIT_SETTINGS']}>
+            <LieuxVisitePageContent />
+        </ProtectedPage>
     );
 }

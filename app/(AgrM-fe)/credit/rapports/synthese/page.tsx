@@ -9,6 +9,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { Tag } from 'primereact/tag';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 export default function SynthesePortefeuillePage() {
     const [demandes, setDemandes] = useState<any[]>([]);
@@ -60,11 +61,15 @@ export default function SynthesePortefeuillePage() {
     }, [branchesApi.data, branchesApi.error]);
 
     const loadDemandes = () => {
-        demandesApi.fetchData(null, 'GET', buildApiUrl('/api/credit/applications/findall'), 'loadDemandes');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? buildApiUrl(`/api/credit/applications/findbybranch/${branchId}`) : buildApiUrl('/api/credit/applications/findall');
+        demandesApi.fetchData(null, 'GET', url, 'loadDemandes');
     };
 
     const loadDecaissements = () => {
-        decaissementsApi.fetchData(null, 'GET', buildApiUrl('/api/credit/disbursements/findall'), 'loadDecaissements');
+        const { filter, branchId } = shouldFilterByBranch();
+        const url = filter ? buildApiUrl(`/api/credit/disbursements/findbybranch/${branchId}`) : buildApiUrl('/api/credit/disbursements/findall');
+        decaissementsApi.fetchData(null, 'GET', url, 'loadDecaissements');
     };
 
     const loadBranches = () => {
