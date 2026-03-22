@@ -10,6 +10,7 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
 import { Image } from 'primereact/image';
@@ -33,6 +34,24 @@ const SAVINGS_URL = `${API_BASE_URL}/api/savings-accounts`;
 const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currencies`;
 const AUTH_LEVELS_URL = `${API_BASE_URL}/api/epargne/withdrawal-authorization-levels`;
 const CAISSES_URL = `${API_BASE_URL}/api/comptability/caisses`;
+
+const DENOMINATIONS = [
+    { field: 'bill10000', label: 'Billets 10 000 FBu', value: 10000 },
+    { field: 'bill5000', label: 'Billets 5 000 FBu', value: 5000 },
+    { field: 'bill2000', label: 'Billets 2 000 FBu', value: 2000 },
+    { field: 'bill1000', label: 'Billets 1 000 FBu', value: 1000 },
+    { field: 'bill500', label: 'Billets 500 FBu', value: 500 },
+    { field: 'coin100', label: 'Pieces 100 FBu', value: 100 },
+    { field: 'coin50', label: 'Pieces 50 FBu', value: 50 },
+    { field: 'coin10', label: 'Pieces 10 FBu', value: 10 },
+    { field: 'coin5', label: 'Pieces 5 FBu', value: 5 },
+    { field: 'coin1', label: 'Pieces 1 FBu', value: 1 },
+];
+
+const formatNumberFBu = (val: number | null | undefined): string => {
+    if (val == null) return '0';
+    return val.toLocaleString('fr-FR');
+};
 
 // Get current user from cookies
 const getCurrentUser = (): string => {
@@ -73,6 +92,11 @@ function WithdrawalRequestPage() {
     const [printDialog, setPrintDialog] = useState(false);
     const [viewClientDialog, setViewClientDialog] = useState(false);
     const [clientDetail, setClientDetail] = useState<any>(null);
+    // Disburse billetage dialog
+    const [disburseBilletageVisible, setDisburseBilletageVisible] = useState(false);
+    const [disburseBilletage, setDisburseBilletage] = useState<Record<string, number>>({});
+    const [disburseRequestId, setDisburseRequestId] = useState<number | null>(null);
+    const [disburseAmount, setDisburseAmount] = useState<number>(0);
     const toast = useRef<Toast>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -125,11 +149,11 @@ function WithdrawalRequestPage() {
         }
     }, [currenciesApi.data, currenciesApi.error]);
 
-    // Handle savings accounts data
+    // Handle savings accounts data (exclude TERM_DEPOSIT - retrait interdit)
     useEffect(() => {
         if (savingsApi.data) {
-            const data = savingsApi.data;
-            setSavingsAccounts(Array.isArray(data) ? data : []);
+            const data = Array.isArray(savingsApi.data) ? savingsApi.data : [];
+            setSavingsAccounts(data.filter((a: any) => a.accountType !== 'TERM_DEPOSIT'));
         }
         if (savingsApi.error) {
             showToast('error', 'Erreur', savingsApi.error.message || 'Erreur lors du chargement des comptes');
@@ -390,6 +414,14 @@ function WithdrawalRequestPage() {
         }));
     };
 
+    const handleDenominationsChange = (denominations: any[], total: number) => {
+        setRequest(prev => ({
+            ...prev,
+            cashDenominations: denominations,
+            totalAmount: total
+        }));
+    };
+
     const validateForm = (): boolean => {
         if (!request.savingsAccountId) {
             showToast('warn', 'Attention', 'Veuillez sélectionner un compte');
@@ -409,6 +441,14 @@ function WithdrawalRequestPage() {
         }
         if (request.requestedAmount > accountBalance - 1000) {
             showToast('warn', 'Attention', 'Solde insuffisant (solde minimum: 1 000 FBU)');
+            return false;
+        }
+        if (!request.totalAmount || request.totalAmount <= 0) {
+            showToast('warn', 'Attention', 'Veuillez saisir le billetage (décompte des billets)');
+            return false;
+        }
+        if (Math.abs((request.totalAmount || 0) - request.requestedAmount) > 0.01) {
+            showToast('warn', 'Attention', `Le total du billetage (${formatNumberFBu(request.totalAmount || 0)} FBu) ne correspond pas au montant demandé (${formatNumberFBu(request.requestedAmount)} FBu)`);
             return false;
         }
         if (request.requestedAmount > 500000) {
@@ -464,17 +504,37 @@ function WithdrawalRequestPage() {
     };
 
     const disburse = (rowData: WithdrawalRequest) => {
-        confirmDialog({
-            message: `Confirmer le décaissement de ${formatCurrency(rowData.requestedAmount)} ?`,
-            header: 'Décaissement',
-            icon: 'pi pi-wallet',
-            acceptClassName: 'p-button-success',
-            acceptLabel: 'Décaisser',
-            rejectLabel: 'Annuler',
-            accept: () => {
-                actionsApi.fetchData({ userAction: getCurrentUser() }, 'POST', `${BASE_URL}/disburse/${rowData.id}`, 'disburse');
-            }
-        });
+        setDisburseRequestId(rowData.id ?? null);
+        setDisburseAmount(rowData.requestedAmount || 0);
+        setDisburseBilletage({});
+        setDisburseBilletageVisible(true);
+    };
+
+    const calculateDisburseBilletageTotal = (): number => {
+        return DENOMINATIONS.reduce((sum, d) => sum + (disburseBilletage[d.field] || 0) * d.value, 0);
+    };
+
+    const handleDisburseBilletageChange = (field: string, value: number) => {
+        setDisburseBilletage(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSubmitDisburse = () => {
+        const billetageTotal = calculateDisburseBilletageTotal();
+        if (billetageTotal <= 0) {
+            showToast('error', 'Billetage requis', 'Veuillez saisir le billetage (billets a remettre au client).');
+            return;
+        }
+        if (disburseAmount > 0 && Math.abs(billetageTotal - disburseAmount) > 0.01) {
+            showToast('error', 'Billetage incorrect', `Le total du billetage (${formatNumberFBu(billetageTotal)} FBu) ne correspond pas au montant du retrait (${formatNumberFBu(disburseAmount)} FBu).`);
+            return;
+        }
+        actionsApi.fetchData(
+            { userAction: getCurrentUser(), billetage: disburseBilletage },
+            'POST',
+            `${BASE_URL}/disburse/${disburseRequestId}`,
+            'disburse'
+        );
+        setDisburseBilletageVisible(false);
     };
 
     const openRejectDialog = (rowData: WithdrawalRequest) => {
@@ -756,6 +816,7 @@ function WithdrawalRequestPage() {
                         accountBalance={accountBalance}
                         branchLocked={!!selectedCaisseId}
                         onViewClientDetails={viewClientDetails}
+                        onDenominationsChange={handleDenominationsChange}
                     />
                     {/* Agency closed banner */}
                     {!agencyOpen && (
@@ -1320,6 +1381,85 @@ function WithdrawalRequestPage() {
                         </div>
                     </div>
                 )}
+            </Dialog>
+            {/* Disburse Billetage Dialog */}
+            <Dialog
+                visible={disburseBilletageVisible}
+                onHide={() => {/* Obligatoire */}}
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-money-bill text-xl text-orange-600"></i>
+                        <span>Billetage - Decaissement Retrait</span>
+                    </div>
+                }
+                style={{ width: '520px' }}
+                modal
+                closable={false}
+                footer={
+                    <div className="flex justify-content-between align-items-center">
+                        <Button label="Annuler" icon="pi pi-times" severity="secondary" outlined onClick={() => setDisburseBilletageVisible(false)} />
+                        <Button
+                            label="Decaisser"
+                            icon="pi pi-wallet"
+                            severity="success"
+                            onClick={handleSubmitDisburse}
+                            loading={actionsApi.loading}
+                            disabled={disburseAmount > 0 && Math.abs(calculateDisburseBilletageTotal() - disburseAmount) > 0.01}
+                        />
+                    </div>
+                }
+            >
+                <div>
+                    <div className="p-3 border-round mb-3 surface-100">
+                        <div className="flex justify-content-between align-items-center">
+                            <span className="text-500">Montant du retrait:</span>
+                            <span className="font-bold text-orange-600 text-lg">{formatNumberFBu(disburseAmount)} FBu</span>
+                        </div>
+                    </div>
+
+                    <DataTable value={DENOMINATIONS} size="small" showGridlines
+                        footer={
+                            <div className="flex justify-content-between align-items-center">
+                                <span className="text-lg font-bold">TOTAL</span>
+                                <span className={`text-lg font-bold ${Math.abs(calculateDisburseBilletageTotal() - disburseAmount) > 0.01 ? 'text-orange-600' : 'text-green-600'}`}>
+                                    {formatNumberFBu(calculateDisburseBilletageTotal())} FBu
+                                </span>
+                            </div>
+                        }>
+                        <Column header="Denomination" body={(d: any) => (
+                            <span className="font-medium">{formatNumberFBu(d.value)} FBu</span>
+                        )} style={{ width: '120px' }} />
+                        <Column header="Quantite" body={(d: any) => (
+                            <InputNumber
+                                value={disburseBilletage[d.field] || 0}
+                                onValueChange={(e) => handleDisburseBilletageChange(d.field, e.value || 0)}
+                                min={0}
+                                showButtons
+                                buttonLayout="horizontal"
+                                incrementButtonIcon="pi pi-plus"
+                                decrementButtonIcon="pi pi-minus"
+                                inputStyle={{ textAlign: 'center', fontWeight: 600, width: '60px' }}
+                            />
+                        )} style={{ width: '180px' }} />
+                        <Column header="Sous-total" body={(d: any) => (
+                            <span className="font-bold text-primary">{formatNumberFBu((disburseBilletage[d.field] || 0) * d.value)} FBu</span>
+                        )} style={{ textAlign: 'right' }} />
+                    </DataTable>
+
+                    {disburseAmount > 0 && (
+                        <div className="mt-3 p-3 border-round" style={{
+                            background: Math.abs(calculateDisburseBilletageTotal() - disburseAmount) > 0.01 ? '#FFF3E0' : '#E8F5E9',
+                            borderLeft: `4px solid ${Math.abs(calculateDisburseBilletageTotal() - disburseAmount) > 0.01 ? '#FF9800' : '#4CAF50'}`
+                        }}>
+                            <div className="flex justify-content-between align-items-center">
+                                <span className="text-600">Difference:</span>
+                                <span className={`font-bold ${Math.abs(calculateDisburseBilletageTotal() - disburseAmount) > 0.01 ? 'text-orange-600' : 'text-green-600'}`}>
+                                    {formatNumberFBu(calculateDisburseBilletageTotal() - disburseAmount)} FBu
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </Dialog>
         </div>
     );

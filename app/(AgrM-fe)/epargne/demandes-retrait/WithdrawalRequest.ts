@@ -97,10 +97,23 @@ export interface WithdrawalRequest {
     depositorRelationship?: string;
     depositorPhone?: string;
     depositorIdNumber?: string;
+    // Billetage (cash denominations)
+    cashDenominations?: CashDenomination[];
+    totalAmount?: number;
     // Relations
     authorizationHistory?: WithdrawalAuthorizationHistory[];
     createdAt?: string;
     updatedAt?: string;
+}
+
+// Cash denomination for withdrawal billetage
+export interface CashDenomination {
+    id?: number;
+    withdrawalRequestId?: number;
+    denomination: number;
+    quantity: number;
+    totalAmount: number;
+    createdAt?: string;
 }
 
 export class WithdrawalRequestClass implements WithdrawalRequest {
@@ -174,6 +187,8 @@ export class WithdrawalRequestClass implements WithdrawalRequest {
     depositorRelationship?: string = '';
     depositorPhone?: string = '';
     depositorIdNumber?: string = '';
+    cashDenominations?: CashDenomination[] = [];
+    totalAmount?: number = 0;
     authorizationHistory?: WithdrawalAuthorizationHistory[] = [];
     createdAt?: string;
     updatedAt?: string;

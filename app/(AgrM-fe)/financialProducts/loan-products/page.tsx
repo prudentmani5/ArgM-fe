@@ -61,8 +61,11 @@ const LoanProductPage = () => {
   const dt = useRef<DataTable<LoanProduct[]>>(null);
   const router = useRouter();
 
+  const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
+
   const { data, loading, error, fetchData, callType } = useConsumApi("");
   const { processRequest } = useConsumApi("");
+  const { data: accountsData, fetchData: fetchAccounts } = useConsumApi("");
 
   // Get connected user from cookies
   const getConnectedUser = (): string => {
@@ -80,7 +83,15 @@ const LoanProductPage = () => {
 
   useEffect(() => {
     loadLoanProducts();
+    fetchAccounts(null, "GET", buildApiUrl("/api/comptability/internal-accounts/findall"), "loadInternalAccounts");
   }, []);
+
+  useEffect(() => {
+    if (accountsData) {
+      const list = Array.isArray(accountsData) ? accountsData : (accountsData as any).content || [];
+      setInternalAccounts(list.filter((a: any) => a.actif !== false));
+    }
+  }, [accountsData]);
 
   useEffect(() => {
     if (data) {
@@ -986,6 +997,14 @@ const LoanProductPage = () => {
                        selectedLoanProduct.targetClientele === "MIXED" ? "Mixte" : "-"}
                     </p>
                   </div>
+                  <div className="col-6 md:col-3">
+                    <label className="text-500 font-medium">Compte Portefeuille</label>
+                    <p className="mt-1 mb-0 font-semibold">
+                      {selectedLoanProduct.portfolioAccount
+                        ? `${selectedLoanProduct.portfolioAccount.accountNumber} - ${selectedLoanProduct.portfolioAccount.libelle}`
+                        : "-"}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1102,6 +1121,49 @@ const LoanProductPage = () => {
                       <p className="mt-1 mb-0 font-semibold">{selectedLoanProduct.earlyRepaymentPenaltyRate?.toFixed(2) || 0}%</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Comptes Internes */}
+            <div className="col-12">
+              <div className="surface-100 border-round p-3 mb-3">
+                <h5 className="m-0 mb-3 text-primary">
+                  <i className="pi pi-book mr-2"></i>Comptes Internes
+                </h5>
+                <div className="grid">
+                  <div className="col-6 md:col-4">
+                    <label className="text-500 font-medium">Compte Portefeuille</label>
+                    <p className="mt-1 mb-0 font-semibold">
+                      {selectedLoanProduct.portfolioAccount
+                        ? `${selectedLoanProduct.portfolioAccount.accountNumber} - ${selectedLoanProduct.portfolioAccount.libelle}`
+                        : "-"}
+                    </p>
+                  </div>
+                  <div className="col-6 md:col-4">
+                    <label className="text-500 font-medium">Compte Intérêts</label>
+                    <p className="mt-1 mb-0 font-semibold">
+                      {selectedLoanProduct.interestAccount
+                        ? `${selectedLoanProduct.interestAccount.accountNumber} - ${selectedLoanProduct.interestAccount.libelle}`
+                        : "-"}
+                    </p>
+                  </div>
+                  <div className="col-6 md:col-4">
+                    <label className="text-500 font-medium">Compte Pénalités</label>
+                    <p className="mt-1 mb-0 font-semibold">
+                      {selectedLoanProduct.penaltyAccount
+                        ? `${selectedLoanProduct.penaltyAccount.accountNumber} - ${selectedLoanProduct.penaltyAccount.libelle}`
+                        : "-"}
+                    </p>
+                  </div>
+                  <div className="col-6 md:col-4">
+                    <label className="text-500 font-medium">Compte Remboursement Anticipé</label>
+                    <p className="mt-1 mb-0 font-semibold">
+                      {selectedLoanProduct.earlyRepaymentAccount
+                        ? `${selectedLoanProduct.earlyRepaymentAccount.accountNumber} - ${selectedLoanProduct.earlyRepaymentAccount.libelle}`
+                        : "-"}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1378,6 +1440,7 @@ const LoanProductPage = () => {
         loanProductGuarantee={selectedGuarantee}
         onSave={saveGuarantee}
         productId={selectedLoanProduct?.id || 0}
+        internalAccounts={internalAccounts}
       />
 
       {/* Delete Guarantee Dialog */}

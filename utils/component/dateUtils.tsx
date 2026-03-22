@@ -62,6 +62,21 @@ export const parseDateString = (dateString: string | null | undefined): Date | n
  * @param date The Date object to format
  * @returns Formatted date string or empty string if date is null/undefined
  */
+/**
+ * Formats a Date object to "yyyy-MM-dd" string (ISO date format, local timezone)
+ * Use this instead of toISOString().split('T')[0] to avoid UTC timezone shift
+ *
+ * @param date The Date object to format
+ * @returns Formatted date string (e.g. "2026-03-21") or empty string if date is null/undefined
+ */
+export const toLocalISODate = (date: Date | null | undefined): string => {
+    if (!date) return '';
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+};
+
 export const formatDateToString = (date: Date | null | undefined): string => {
     if (!date) return '';
     

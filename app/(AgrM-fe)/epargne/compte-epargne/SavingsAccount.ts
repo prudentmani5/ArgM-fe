@@ -19,7 +19,15 @@ export interface SavingsAccount {
     isDormant: boolean;
     dormantDate: string | null;
     requiredSignatures: number;
+    termDurationId: number | null;
+    termStartDate: string | null;
+    maturityDate: string | null;
     internalAccountId: number | null;
+    interestInternalAccountId: number | null;
+    termDepositValidated: boolean;
+    termDepositCount: number;
+    attachmentPath: string | null;
+    attachmentName: string | null;
     notes: string | null;
     userAction: string | null;
     client?: any;
@@ -27,6 +35,8 @@ export interface SavingsAccount {
     currency?: any;
     status?: any;
     internalAccount?: any;
+    interestInternalAccount?: any;
+    termDuration?: any;
 }
 
 export class SavingsAccountClass implements SavingsAccount {
@@ -50,7 +60,15 @@ export class SavingsAccountClass implements SavingsAccount {
     isDormant: boolean = false;
     dormantDate: string | null = null;
     requiredSignatures: number = 1;
+    termDurationId: number | null = null;
+    termStartDate: string | null = null;
+    maturityDate: string | null = null;
     internalAccountId: number | null = null;
+    interestInternalAccountId: number | null = null;
+    termDepositValidated: boolean = false;
+    termDepositCount: number = 0;
+    attachmentPath: string | null = null;
+    attachmentName: string | null = null;
     notes: string | null = null;
     userAction: string | null = null;
 }

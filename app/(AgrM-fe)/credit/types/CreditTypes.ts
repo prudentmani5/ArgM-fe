@@ -178,6 +178,7 @@ export interface TypeGarantie {
     coveragePercent?: number;
     requiresValuation: boolean;
     isActive: boolean;
+    internalAccountId?: number | null;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -191,6 +192,7 @@ export class TypeGarantieClass implements TypeGarantie {
     coveragePercent?: number = 100;
     requiresValuation: boolean = false;
     isActive: boolean = true;
+    internalAccountId?: number | null = null;
 
     constructor(init?: Partial<TypeGarantie>) {
         Object.assign(this, init);

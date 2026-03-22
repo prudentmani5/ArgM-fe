@@ -518,6 +518,17 @@ export class VirementInterne {
   libelleCaisseDest: string;
   validatedBy: string;
   validatedAt: string;
+  // Transfer billetage (denomination breakdown sent by source)
+  transferBill10000: number;
+  transferBill5000: number;
+  transferBill2000: number;
+  transferBill1000: number;
+  transferBill500: number;
+  transferCoin100: number;
+  transferCoin50: number;
+  transferCoin10: number;
+  transferCoin5: number;
+  transferCoin1: number;
 
   constructor() {
     this.virementId = '';
@@ -539,6 +550,16 @@ export class VirementInterne {
     this.libelleCaisseDest = '';
     this.validatedBy = '';
     this.validatedAt = '';
+    this.transferBill10000 = 0;
+    this.transferBill5000 = 0;
+    this.transferBill2000 = 0;
+    this.transferBill1000 = 0;
+    this.transferBill500 = 0;
+    this.transferCoin100 = 0;
+    this.transferCoin50 = 0;
+    this.transferCoin10 = 0;
+    this.transferCoin5 = 0;
+    this.transferCoin1 = 0;
   }
 }
 

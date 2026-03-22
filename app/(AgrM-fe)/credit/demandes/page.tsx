@@ -24,6 +24,7 @@ import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 import { DemandeCredit, DemandeCreditClass } from '../types/DemandeCredit';
 import { AnalyseRevenu, AnalyseRevenuClass, AnalyseDepense, AnalyseDepenseClass, AnalyseCapacite, TypesContrat, EvaluationsRisque } from '../types/AnalyseFinanciere';
 import DemandeCreditForm from './DemandeCreditForm';
+import PrintableScheduleReceipt from './PrintableScheduleReceipt';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
 const CLIENTS_URL = buildApiUrl('/api/clients');
@@ -64,7 +65,7 @@ const WORKFLOW_TRANSITIONS: { [key: string]: string[] } = {
 const DECISION_TO_STATUS: { [key: string]: string } = {
     'APPROUVE': 'APPROVED',
     'APPROUVE_CONDITIONS': 'APPROVED_CONDITIONS',
-    'APPROUVE_MONTANT_REDUIT': 'APPROUVE_MONTANT_REDUIT',
+    'APPROUVE_MONTANT_REDUIT': 'APPROVED_CONDITIONS', // montant réduit uses the same status as conditions
     'AJOURNE': 'AJOURNE',
     'REJETE': 'REJETE',
     'RENVOI_ANALYSE': 'RENVOI_ANALYSE'
@@ -124,7 +125,13 @@ export default function DemandesCreditPage() {
     const [productFees, setProductFees] = useState<any[]>([]);
     const [productGuarantees, setProductGuarantees] = useState<any[]>([]);
 
+    // Preview Echeancier State
+    const [showPreviewEcheancier, setShowPreviewEcheancier] = useState(false);
+    const [previewSchedule, setPreviewSchedule] = useState<any[]>([]);
+    const [previewDemande, setPreviewDemande] = useState<DemandeCredit | null>(null);
+
     const toast = useRef<Toast>(null);
+    const schedulePrintRef = useRef<HTMLDivElement>(null);
 
     const { data, loading, error, fetchData, callType } = useConsumApi('');
 
@@ -257,7 +264,8 @@ export default function DemandesCreditPage() {
             setLoanProducts(allProducts.filter((p: any) => p.status === 'ACTIVE'));
             setStatuts(Array.isArray(statutsData) ? statutsData : statutsData?.content || []);
             setObjetsCredit(Array.isArray(purposesData) ? purposesData : purposesData?.content || []);
-            setSavingsAccounts(Array.isArray(accountsData) ? accountsData : accountsData?.content || []);
+            const allAccounts = Array.isArray(accountsData) ? accountsData : accountsData?.content || [];
+            setSavingsAccounts(allAccounts.filter((a: any) => a.accountType !== 'TERM_DEPOSIT'));
         } catch (err) {
             console.error('Error loading reference data:', err);
             showToast('error', 'Erreur', 'Erreur lors du chargement des donnees de reference');
@@ -555,13 +563,21 @@ export default function DemandesCreditPage() {
 
             // If approved, apply the approved amount/duration as new official values
             if (selectedDecision.isApproval) {
-                if (approvedAmount !== null) {
-                    updatedData.amountApproved = approvedAmount;
-                    updatedData.amountRequested = approvedAmount;
-                }
-                if (approvedDuration !== null) {
-                    updatedData.durationApproved = approvedDuration;
-                    updatedData.durationMonths = approvedDuration;
+                const isEditable = selectedDecision.code === 'APPROUVE_CONDITIONS' || selectedDecision.code === 'APPROUVE_MONTANT_REDUIT';
+                if (isEditable) {
+                    // Approved with changes: use the edited values entered by the committee
+                    if (approvedAmount !== null) {
+                        updatedData.amountApproved = approvedAmount;
+                        updatedData.amountRequested = approvedAmount;
+                    }
+                    if (approvedDuration !== null) {
+                        updatedData.durationApproved = approvedDuration;
+                        updatedData.durationMonths = approvedDuration;
+                    }
+                } else {
+                    // Plain approval: confirm the originally requested values without modification
+                    updatedData.amountApproved = workflowDemande.amountRequested;
+                    updatedData.durationApproved = workflowDemande.durationMonths;
                 }
             }
 
@@ -760,6 +776,124 @@ export default function DemandesCreditPage() {
         return rowData.applicationDate ? new Date(rowData.applicationDate).toLocaleDateString('fr-FR') : 'N/A';
     };
 
+    const generatePreviewSchedule = (demande: DemandeCredit) => {
+        const principal = demande.amountRequested || 0;
+        const annualRate = demande.interestRate || 0;
+        const months = demande.durationMonths || 0;
+
+        if (principal <= 0 || months <= 0) {
+            showToast('warn', 'Attention', 'Montant et duree doivent etre renseignes pour simuler l\'echeancier');
+            return;
+        }
+
+        const monthlyRate = annualRate / 100 / 12;
+        const schedule: any[] = [];
+        let remainingPrincipal = principal;
+
+        // Determine amortization method from loan product
+        const product = loanProducts.find((p: any) => p.id === demande.loanProductId);
+        const methodCode = product?.interestCalculationMethod?.code || '';
+        const isLinear = methodCode.toUpperCase().includes('LINEAR') || methodCode.toUpperCase().includes('LINEAIRE');
+
+        if (isLinear) {
+            // Linear (flat): equal monthly payments
+            // Total Interest = Capital * (Rate/100) * (Duration/12)
+            const totalInterest = Math.round(principal * (annualRate / 100) * (months / 12));
+            const totalToRepay = principal + totalInterest;
+            const monthlyPayment = Math.round(totalToRepay / months);
+            const fixedInterest = Math.round(totalInterest / months);
+            const fixedPrincipal = monthlyPayment - fixedInterest;
+
+            for (let i = 1; i <= months; i++) {
+                const isLast = i === months;
+                const interestDue = fixedInterest;
+                const principalDue = isLast ? remainingPrincipal : fixedPrincipal;
+                const totalDue = isLast ? (remainingPrincipal + interestDue) : monthlyPayment;
+                const dueDate = new Date(demande.applicationDate || new Date());
+                dueDate.setMonth(dueDate.getMonth() + i);
+
+                schedule.push({
+                    installmentNumber: i,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    principalDue,
+                    interestDue,
+                    totalDue,
+                    remainingPrincipal: remainingPrincipal - principalDue
+                });
+                remainingPrincipal -= principalDue;
+            }
+        } else {
+            // Degressive (annuity): constant monthly payment, decreasing interest, increasing capital
+            // A = C * i / (1 - (1+i)^(-n))
+            const annuity = monthlyRate > 0
+                ? Math.round(principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -months)))
+                : Math.round(principal / months);
+
+            for (let i = 1; i <= months; i++) {
+                const isLast = i === months;
+                const interestDue = Math.round(remainingPrincipal * monthlyRate);
+                const principalDue = isLast ? remainingPrincipal : (annuity - interestDue);
+                const totalDue = isLast ? (remainingPrincipal + interestDue) : annuity;
+                const dueDate = new Date(demande.applicationDate || new Date());
+                dueDate.setMonth(dueDate.getMonth() + i);
+
+                schedule.push({
+                    installmentNumber: i,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    principalDue,
+                    interestDue,
+                    totalDue,
+                    remainingPrincipal: remainingPrincipal - principalDue
+                });
+                remainingPrincipal -= principalDue;
+            }
+        }
+
+        setPreviewSchedule(schedule);
+        setPreviewDemande(demande);
+        setShowPreviewEcheancier(true);
+    };
+
+    const getPreviewMethodLabel = () => {
+        if (!previewDemande) return '';
+        const product = loanProducts.find((p: any) => p.id === previewDemande.loanProductId);
+        const code = product?.interestCalculationMethod?.code || '';
+        return code.toUpperCase().includes('LINEAR') || code.toUpperCase().includes('LINEAIRE') ? 'Lineaire' : 'Francais (Degressif)';
+    };
+
+    const handlePrintSchedule = () => {
+        if (schedulePrintRef.current) {
+            const printContent = schedulePrintRef.current.innerHTML.replace(
+                /src="\/layout\//g,
+                `src="${window.location.origin}/layout/`
+            );
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Echeancier - ${previewDemande?.applicationNumber || ''}</title>
+                        <style>
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            body { font-family: Arial, sans-serif; padding: 10mm; }
+                            @page { margin: 10mm; }
+                            @media print {
+                                body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            }
+                        </style>
+                    </head>
+                    <body>${printContent}</body>
+                    </html>
+                `);
+                printWindow.document.close();
+                setTimeout(() => {
+                    printWindow.print();
+                }, 500);
+            }
+        }
+    };
+
     const actionsBodyTemplate = (rowData: DemandeCredit) => {
         const isCommitteeStatus = rowData.status?.code === 'PENDING_COMMITTEE';
         const isFinalStatus = ['DISBURSED', 'REJETE'].includes(rowData.status?.code || '');
@@ -780,6 +914,7 @@ export default function DemandesCreditPage() {
                 <Button icon="pi pi-history" rounded text severity="secondary" onClick={() => window.location.href = `/credit/historique-workflow/${rowData.id}`} tooltip="Historique Workflow" />
                 <Button icon="pi pi-chart-line" rounded text severity="success" onClick={() => window.location.href = `/credit/dossier/${rowData.id}`} tooltip="Voir dossier complet" />
                 <Button icon="pi pi-calculator" rounded text severity="info" onClick={() => handleOpenAnalyseDialog(rowData)} tooltip="Analyse financiere" />
+                <Button icon="pi pi-calendar" rounded text severity="help" onClick={() => generatePreviewSchedule(rowData)} tooltip="Simuler Echeancier" />
                 <Button icon="pi pi-map-marker" rounded text severity="help" onClick={() => window.location.href = `/credit/visites/${rowData.id}`} tooltip="Visite terrain" />
                 <Button icon="pi pi-file" rounded text severity="warning" onClick={() => window.location.href = `/credit/documents/${rowData.id}`} tooltip="Documents" />
                 <Button icon="pi pi-trash" rounded text severity="danger" onClick={() => handleDelete(rowData)} tooltip="Supprimer" disabled={!rowData.status?.allowsEdit || !can('CREDIT_DELETE')} />
@@ -871,7 +1006,7 @@ export default function DemandesCreditPage() {
                         <Column field="creditPurpose.nameFr" header="Objet" sortable filter />
                         <Column field="userAction" header="Utilisateur" sortable filter />
                         <Column header="Statut" body={statusBodyTemplate} sortable />
-                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '280px' }} />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '320px' }} />
                     </DataTable>
                 </TabPanel>
             </TabView>
@@ -1245,48 +1380,71 @@ export default function DemandesCreditPage() {
                             />
                         </div>
 
-                        {selectedDecision && (selectedDecision.code === 'APPROUVE_MONTANT_REDUIT' || selectedDecision.isApproval) && (
-                            <>
-                                <div className="field col-6">
-                                    <label className="font-semibold">Montant Approuve (BIF)</label>
-                                    <InputNumber
-                                        value={approvedAmount}
-                                        onValueChange={(e) => {
-                                            const val = e.value ?? null;
-                                            if (val !== null && val > (workflowDemande?.amountRequested || 0)) {
-                                                setApprovedAmount(workflowDemande?.amountRequested || null);
-                                            } else {
-                                                setApprovedAmount(val);
-                                            }
-                                        }}
-                                        className={`w-full ${approvedAmount !== null && approvedAmount > (workflowDemande?.amountRequested || 0) ? 'p-invalid' : ''}`}
-                                        mode="currency"
-                                        currency="BIF"
-                                        locale="fr-FR"
-                                        max={workflowDemande?.amountRequested || undefined}
-                                    />
-                                    <small className="text-500">Max: {(workflowDemande?.amountRequested || 0).toLocaleString('fr-FR')} BIF</small>
-                                </div>
-                                <div className="field col-6">
-                                    <label className="font-semibold">Duree Approuvee (mois)</label>
-                                    <InputNumber
-                                        value={approvedDuration}
-                                        onValueChange={(e) => {
-                                            const val = e.value ?? null;
-                                            if (val !== null && val > (workflowDemande?.durationMonths || 0)) {
-                                                setApprovedDuration(workflowDemande?.durationMonths || null);
-                                            } else {
-                                                setApprovedDuration(val);
-                                            }
-                                        }}
-                                        className={`w-full ${approvedDuration !== null && approvedDuration > (workflowDemande?.durationMonths || 0) ? 'p-invalid' : ''}`}
-                                        suffix=" mois"
-                                        max={workflowDemande?.durationMonths || undefined}
-                                    />
-                                    <small className="text-500">Max: {workflowDemande?.durationMonths || 0} mois</small>
-                                </div>
-                            </>
-                        )}
+                        {selectedDecision && selectedDecision.isApproval && (() => {
+                            const isEditable = selectedDecision.code === 'APPROUVE_CONDITIONS' || selectedDecision.code === 'APPROUVE_MONTANT_REDUIT';
+                            return (
+                                <>
+                                    {!isEditable && (
+                                        <div className="col-12 mb-2">
+                                            <div className="flex align-items-center gap-2 p-2 border-round surface-100">
+                                                <i className="pi pi-check-circle text-green-600"></i>
+                                                <span className="text-sm text-600">Approbation du dossier tel quel — le montant et la durée demandés sont confirmés sans modification.</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {isEditable && (
+                                        <div className="col-12 mb-2">
+                                            <div className="flex align-items-center gap-2 p-2 border-round" style={{ backgroundColor: '#fff3cd' }}>
+                                                <i className="pi pi-pencil text-orange-600"></i>
+                                                <span className="text-sm text-600">Modifiez le montant et/ou la durée approuvés — ces valeurs remplaceront celles du dossier.</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="field col-6">
+                                        <label className="font-semibold">Montant Approuve (BIF)</label>
+                                        <InputNumber
+                                            value={approvedAmount}
+                                            onValueChange={(e) => {
+                                                if (!isEditable) return;
+                                                const val = e.value ?? null;
+                                                if (val !== null && val > (workflowDemande?.amountRequested || 0)) {
+                                                    setApprovedAmount(workflowDemande?.amountRequested || null);
+                                                } else {
+                                                    setApprovedAmount(val);
+                                                }
+                                            }}
+                                            disabled={!isEditable}
+                                            className={`w-full ${approvedAmount !== null && approvedAmount > (workflowDemande?.amountRequested || 0) ? 'p-invalid' : ''}`}
+                                            mode="currency"
+                                            currency="BIF"
+                                            locale="fr-FR"
+                                            max={workflowDemande?.amountRequested || undefined}
+                                        />
+                                        <small className="text-500">Max: {(workflowDemande?.amountRequested || 0).toLocaleString('fr-FR')} BIF</small>
+                                    </div>
+                                    <div className="field col-6">
+                                        <label className="font-semibold">Duree Approuvee (mois)</label>
+                                        <InputNumber
+                                            value={approvedDuration}
+                                            onValueChange={(e) => {
+                                                if (!isEditable) return;
+                                                const val = e.value ?? null;
+                                                if (val !== null && val > (workflowDemande?.durationMonths || 0)) {
+                                                    setApprovedDuration(workflowDemande?.durationMonths || null);
+                                                } else {
+                                                    setApprovedDuration(val);
+                                                }
+                                            }}
+                                            disabled={!isEditable}
+                                            className={`w-full ${approvedDuration !== null && approvedDuration > (workflowDemande?.durationMonths || 0) ? 'p-invalid' : ''}`}
+                                            suffix=" mois"
+                                            max={workflowDemande?.durationMonths || undefined}
+                                        />
+                                        <small className="text-500">Max: {workflowDemande?.durationMonths || 0} mois</small>
+                                    </div>
+                                </>
+                            );
+                        })()}
 
                         <div className="field col-12">
                             <label className="font-semibold">Notes du Comite</label>
@@ -1311,6 +1469,138 @@ export default function DemandesCreditPage() {
                                 />
                             </div>
                         </div>
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Dialog Preview Echeancier */}
+            <Dialog
+                visible={showPreviewEcheancier}
+                onHide={() => setShowPreviewEcheancier(false)}
+                header={`Simulation Echeancier - ${previewDemande?.applicationNumber || ''}`}
+                style={{ width: '75vw' }}
+                modal
+                maximizable
+                footer={
+                    <div>
+                        <Button
+                            label="Fermer"
+                            icon="pi pi-times"
+                            onClick={() => setShowPreviewEcheancier(false)}
+                            className="p-button-text"
+                        />
+                        <Button
+                            label="Imprimer Engagement"
+                            icon="pi pi-print"
+                            onClick={handlePrintSchedule}
+                            className="p-button-success"
+                        />
+                    </div>
+                }
+            >
+                {previewDemande && (
+                    <div className="mb-3 p-3 surface-100 border-round">
+                        <div className="grid">
+                            <div className="col-3">
+                                <span className="text-500 text-sm">Client</span>
+                                <p className="font-semibold m-0">{previewDemande.client ? `${previewDemande.client.firstName} ${previewDemande.client.lastName}` : 'N/A'}</p>
+                            </div>
+                            <div className="col-3">
+                                <span className="text-500 text-sm">Montant</span>
+                                <p className="font-semibold m-0">{(previewDemande.amountRequested || 0).toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}</p>
+                            </div>
+                            <div className="col-2">
+                                <span className="text-500 text-sm">Taux</span>
+                                <p className="font-semibold m-0">{previewDemande.interestRate} %</p>
+                            </div>
+                            <div className="col-2">
+                                <span className="text-500 text-sm">Duree</span>
+                                <p className="font-semibold m-0">{previewDemande.durationMonths} mois</p>
+                            </div>
+                            <div className="col-2">
+                                <span className="text-500 text-sm">Methode</span>
+                                <p className="font-semibold m-0">
+                                    {(() => {
+                                        const product = loanProducts.find((p: any) => p.id === previewDemande.loanProductId);
+                                        const code = product?.interestCalculationMethod?.code || '';
+                                        return code.toUpperCase().includes('LINEAR') || code.toUpperCase().includes('LINEAIRE') ? 'Lineaire' : 'Francais (Degressif)';
+                                    })()}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <DataTable
+                    value={previewSchedule}
+                    paginator
+                    rows={12}
+                    rowsPerPageOptions={[6, 12, 24, 60]}
+                    className="p-datatable-sm"
+                    emptyMessage="Aucune echeance"
+                >
+                    <Column field="installmentNumber" header="N°" style={{ width: '5%' }} />
+                    <Column
+                        field="dueDate"
+                        header="Date Echeance"
+                        body={(row) => new Date(row.dueDate).toLocaleDateString('fr-FR')}
+                        style={{ width: '15%' }}
+                    />
+                    <Column
+                        field="principalDue"
+                        header="Capital"
+                        body={(row) => row.principalDue?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                        style={{ width: '18%' }}
+                    />
+                    <Column
+                        field="interestDue"
+                        header="Interets"
+                        body={(row) => row.interestDue?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                        style={{ width: '18%' }}
+                    />
+                    <Column
+                        field="totalDue"
+                        header="Total a Payer"
+                        body={(row) => <span className="font-semibold">{row.totalDue?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}</span>}
+                        style={{ width: '18%' }}
+                    />
+                    <Column
+                        field="remainingPrincipal"
+                        header="Capital Restant"
+                        body={(row) => row.remainingPrincipal?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                        style={{ width: '18%' }}
+                    />
+                </DataTable>
+                {previewSchedule.length > 0 && (
+                    <div className="mt-3 p-3 surface-100 border-round flex justify-content-between">
+                        <div>
+                            <span className="text-500">Total Capital: </span>
+                            <span className="font-bold">{previewSchedule.reduce((sum: number, r: any) => sum + r.principalDue, 0).toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}</span>
+                        </div>
+                        <div>
+                            <span className="text-500">Total Interets: </span>
+                            <span className="font-bold text-orange-600">{previewSchedule.reduce((sum: number, r: any) => sum + r.interestDue, 0).toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}</span>
+                        </div>
+                        <div>
+                            <span className="text-500">Total General: </span>
+                            <span className="font-bold text-primary">{previewSchedule.reduce((sum: number, r: any) => sum + r.totalDue, 0).toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}</span>
+                        </div>
+                    </div>
+                )}
+                <div className="mt-2 p-2 surface-50 border-round">
+                    <p className="text-sm text-color-secondary m-0">
+                        <i className="pi pi-info-circle mr-1"></i>
+                        Ceci est une simulation indicative. L'echeancier reel sera genere lors du decaissement.
+                    </p>
+                </div>
+                {/* Hidden printable receipt */}
+                {previewDemande && previewSchedule.length > 0 && (
+                    <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+                        <PrintableScheduleReceipt
+                            ref={schedulePrintRef}
+                            demande={previewDemande}
+                            schedule={previewSchedule}
+                            method={getPreviewMethodLabel()}
+                        />
                     </div>
                 )}
             </Dialog>

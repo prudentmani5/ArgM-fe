@@ -8,7 +8,7 @@
     z-index: 998;
     display: flex;
     align-items: center;
-    padding: 0 1rem;
+    padding: 0 0.25rem;
     background-color: var(--topbar-bg);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     overflow: visible;
@@ -32,23 +32,23 @@
             > .p-menuitem {
                 > .p-menuitem-content {
                     > .p-menuitem-link {
-                        padding: 0.5rem 0.65rem;
+                        padding: 0.5rem 0.45rem;
                         white-space: nowrap;
                         border-radius: var(--border-radius);
 
                         .p-menuitem-text {
                             font-weight: 600;
-                            font-size: 0.8rem;
+                            font-size: 0.75rem;
                             color: var(--topbar-item-text-color);
                         }
 
                         .p-menuitem-icon {
-                            font-size: 0.9rem;
+                            font-size: 0.8rem;
                             color: var(--topbar-item-text-color);
                         }
 
                         .p-submenu-icon {
-                            font-size: 0.7rem;
+                            font-size: 0.65rem;
                             color: var(--topbar-item-text-color);
                         }
 

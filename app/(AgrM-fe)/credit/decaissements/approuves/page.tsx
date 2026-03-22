@@ -19,6 +19,7 @@ import { shouldFilterByBranch } from '@/utils/branchFilter';
 const BASE_URL = buildApiUrl('/api/credit/applications');
 const DISBURSEMENT_URL = buildApiUrl('/api/credit/disbursements');
 const SAVINGS_ACCOUNTS_URL = buildApiUrl('/api/savings-accounts');
+const PRODUCTS_URL = buildApiUrl('/api/financial-products/loan-products');
 
 const ModesDecaissement = [
     { code: 'ESPECES', label: 'Espèces' },
@@ -36,6 +37,8 @@ export default function DecaissementsApprouvesPage() {
     const [selectedDemande, setSelectedDemande] = useState<any>(null);
     const [disbursement, setDisbursement] = useState<any>({});
     const [submitting, setSubmitting] = useState(false);
+    const [productFees, setProductFees] = useState<any[]>([]);
+    const [productGuarantees, setProductGuarantees] = useState<any[]>([]);
     const toast = useRef<Toast>(null);
 
     const { data, loading, error, fetchData, callType } = useConsumApi('');
@@ -136,8 +139,10 @@ export default function DecaissementsApprouvesPage() {
         return new Date(dateString).toLocaleDateString('fr-FR');
     };
 
-    const openDisbursementDialog = (rowData: any) => {
+    const openDisbursementDialog = async (rowData: any) => {
         setSelectedDemande(rowData);
+        setProductFees([]);
+        setProductGuarantees([]);
         setDisbursement({
             applicationId: rowData.id,
             disbursementDate: new Date().toISOString(),
@@ -145,6 +150,24 @@ export default function DecaissementsApprouvesPage() {
             targetSavingsAccountId: rowData.savingsAccountId || null
         });
         setDisbursementDialog(true);
+        // Load product fees and guarantees for breakdown
+        if (rowData.loanProductId) {
+            try {
+                const token = Cookies.get('token');
+                const headers: any = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+                const [feesRes, guaranteesRes] = await Promise.all([
+                    fetch(`${PRODUCTS_URL}/${rowData.loanProductId}/fees`, { headers, credentials: 'include' }),
+                    fetch(`${PRODUCTS_URL}/${rowData.loanProductId}/guarantees`, { headers, credentials: 'include' })
+                ]);
+                const fees = feesRes.ok ? await feesRes.json() : [];
+                const guarantees = guaranteesRes.ok ? await guaranteesRes.json() : [];
+                setProductFees(Array.isArray(fees) ? fees : []);
+                setProductGuarantees(Array.isArray(guarantees) ? guarantees : []);
+            } catch {
+                setProductFees([]);
+                setProductGuarantees([]);
+            }
+        }
     };
 
     const submitDisbursement = async () => {
@@ -283,31 +306,97 @@ export default function DecaissementsApprouvesPage() {
                 visible={disbursementDialog}
                 header="Décaissement du Crédit"
                 modal
-                style={{ width: '500px' }}
+                style={{ width: '620px' }}
                 footer={disbursementDialogFooter}
                 onHide={() => setDisbursementDialog(false)}
             >
-                {selectedDemande && (
+                {selectedDemande && (() => {
+                    const approvedAmount = selectedDemande.amountApproved || selectedDemande.amountRequested || 0;
+                    const totalFrais = productFees.reduce((sum: number, fee: any) => {
+                        if (fee.percentageRate != null && fee.percentageRate > 0) return sum + (fee.percentageRate / 100) * approvedAmount;
+                        return sum + (fee.fixedAmount || 0);
+                    }, 0);
+                    const totalCaution = productGuarantees.reduce((sum: number, g: any) => sum + ((g.minCoveragePercentage || 0) / 100) * approvedAmount, 0);
+                    const montantNet = approvedAmount - totalFrais - totalCaution;
+
+                    return (
                     <div>
-                        <div className="surface-100 p-3 border-round mb-4">
+                        {/* Dossier info */}
+                        <div className="surface-100 p-3 border-round mb-3">
                             <div className="grid">
                                 <div className="col-6">
-                                    <p className="text-500 m-0">N° Dossier</p>
+                                    <p className="text-500 m-0 text-sm">N° Dossier</p>
                                     <p className="font-bold m-0">{selectedDemande.applicationNumber}</p>
                                 </div>
                                 <div className="col-6">
-                                    <p className="text-500 m-0">Client</p>
+                                    <p className="text-500 m-0 text-sm">Client</p>
                                     <p className="font-bold m-0">
                                         {selectedDemande.client ?
-                                            `${selectedDemande.client.firstName} ${selectedDemande.client.lastName}` :
-                                            '-'}
+                                            `${selectedDemande.client.firstName} ${selectedDemande.client.lastName}` : '-'}
                                     </p>
                                 </div>
-                                <div className="col-12 mt-2">
-                                    <p className="text-500 m-0">Montant Approuvé</p>
-                                    <p className="font-bold text-xl text-green-600 m-0">{formatCurrency(selectedDemande.amountApproved || selectedDemande.amountRequested)}</p>
+                            </div>
+                        </div>
+
+                        {/* Amount breakdown */}
+                        <div className="mb-3">
+                            <div className="grid">
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-2 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Montant Approuvé</div>
+                                        <div className="text-lg font-bold text-primary">{formatCurrency(approvedAmount)}</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-2 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">
+                                            <i className="pi pi-minus-circle text-orange-500 mr-1"></i>Total Frais
+                                        </div>
+                                        <div className="text-lg font-bold text-orange-500">{formatCurrency(totalFrais)}</div>
+                                        {productFees.map((fee: any, i: number) => {
+                                            const amt = (fee.percentageRate != null && fee.percentageRate > 0) ? (fee.percentageRate / 100) * approvedAmount : (fee.fixedAmount || 0);
+                                            return (
+                                                <div key={i} className="text-xs text-500 flex justify-content-between mt-1">
+                                                    <span>{fee.feeNameFr || fee.feeName || fee.feeType?.nameFr || 'Frais'}:</span>
+                                                    <span className="font-semibold">{formatCurrency(amt)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-2 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">
+                                            <i className="pi pi-minus-circle text-red-500 mr-1"></i>Caution
+                                        </div>
+                                        <div className="text-lg font-bold text-red-500">{formatCurrency(totalCaution)}</div>
+                                        {productGuarantees.map((g: any, i: number) => {
+                                            const amt = ((g.minCoveragePercentage || 0) / 100) * approvedAmount;
+                                            return (
+                                                <div key={i} className="text-xs text-500 flex justify-content-between mt-1">
+                                                    <span>{g.guaranteeType?.nameFr || g.guaranteeType?.name || 'Caution'}:</span>
+                                                    <span className="font-semibold">{formatCurrency(amt)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="border-2 border-primary p-2 border-round text-center" style={{ borderStyle: 'solid' }}>
+                                        <div className="text-xs text-500 mb-1">
+                                            <i className="pi pi-check-circle text-green-600 mr-1"></i>Net Client
+                                        </div>
+                                        <div className="text-lg font-bold text-green-600">{formatCurrency(montantNet)}</div>
+                                        <div className="text-xs text-500">{approvedAmount > 0 ? `${((montantNet / approvedAmount) * 100).toFixed(1)}%` : ''}</div>
+                                    </div>
                                 </div>
                             </div>
+                            {totalFrais > 0 && (
+                                <div className="text-xs text-500 mt-1 p-2 surface-50 border-round">
+                                    <i className="pi pi-info-circle mr-1"></i>
+                                    {formatCurrency(approvedAmount)} − {formatCurrency(totalFrais)} − {formatCurrency(totalCaution)} = <strong className="text-green-600">{formatCurrency(montantNet)}</strong>
+                                </div>
+                            )}
                         </div>
 
                         <div className="field">
@@ -386,7 +475,8 @@ export default function DecaissementsApprouvesPage() {
                             />
                         </div>
                     </div>
-                )}
+                    );
+                })()}
             </Dialog>
         </div>
     );

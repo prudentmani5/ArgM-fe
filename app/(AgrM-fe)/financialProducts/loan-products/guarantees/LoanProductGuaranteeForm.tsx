@@ -161,9 +161,18 @@ const LoanProductGuaranteeForm: React.FC<LoanProductGuaranteeFormProps> = ({
               value={formData.internalAccountId || null}
               options={internalAccounts}
               onChange={(e) => handleChange("internalAccountId", e.value)}
+              optionLabel="libelle"
+              optionValue="accountId"
               placeholder="Sélectionner un compte interne"
               filter
+              filterPlaceholder="Rechercher..."
               showClear
+              itemTemplate={(option) => (
+                <div className="flex align-items-center gap-2">
+                  <span className="font-mono text-xs text-500">{option.codeCompte}</span>
+                  <span>{option.libelle}</span>
+                </div>
+              )}
             />
           </div>
         </div>

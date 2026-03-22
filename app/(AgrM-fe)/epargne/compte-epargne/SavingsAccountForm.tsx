@@ -19,6 +19,7 @@ interface SavingsAccountFormProps {
     currencies: any[];
     statuses: any[];
     internalAccounts?: any[];
+    termDurations?: any[];
     isViewMode?: boolean;
     branchLocked?: boolean;
     selectedClientType?: string;
@@ -41,6 +42,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
     currencies,
     statuses,
     internalAccounts = [],
+    termDurations = [],
     isViewMode = false,
     branchLocked = false,
     selectedClientType
@@ -234,6 +236,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                 </div>
             </div>
 
+            {savingsAccount.accountType !== 'TERM_DEPOSIT' && (
             <div className="surface-100 p-3 border-round mb-4">
                 <h5 className="m-0 mb-3 text-primary">
                     <i className="pi pi-dollar mr-2"></i>
@@ -337,6 +340,127 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                     </div>
                 </div>
             </div>
+            )}
+
+            {savingsAccount.accountType === 'TERM_DEPOSIT' && (
+            <div className="surface-100 p-3 border-round mb-4">
+                <h5 className="m-0 mb-3 text-primary">
+                    <i className="pi pi-info-circle mr-2"></i>
+                    Restrictions - Dépôt à Terme
+                </h5>
+                <div className="formgrid grid">
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="termDurationId" className="font-medium">Durée du Terme *</label>
+                        <Dropdown
+                            id="termDurationId"
+                            value={savingsAccount.termDurationId}
+                            options={termDurations}
+                            onChange={(e) => {
+                                const td = termDurations.find((t: any) => t.id === e.value);
+                                handleDropdownChange('termDurationId', e.value);
+                                if (td) {
+                                    handleNumberChange('interestRate', td.interestRate);
+                                    // Calculate maturity date if start date exists
+                                    if (savingsAccount.termStartDate) {
+                                        const startDate = new Date(savingsAccount.termStartDate);
+                                        startDate.setMonth(startDate.getMonth() + td.months);
+                                        handleDateChange('maturityDate', startDate);
+                                    }
+                                }
+                            }}
+                            optionLabel="nameFr"
+                            optionValue="id"
+                            placeholder="Sélectionner la durée"
+                            disabled={isViewMode}
+                            className="w-full"
+                            itemTemplate={(item: any) => (
+                                <span>{item.nameFr} ({item.months} mois) - {item.interestRate?.toFixed(2)}%</span>
+                            )}
+                            valueTemplate={(item: any, props: any) => {
+                                if (item) {
+                                    return <span>{item.nameFr} ({item.months} mois) - {item.interestRate?.toFixed(2)}%</span>;
+                                }
+                                return <span>{props?.placeholder}</span>;
+                            }}
+                        />
+                    </div>
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="interestRate" className="font-medium">Taux d'Intérêt (%)</label>
+                        <InputNumber
+                            id="interestRate"
+                            value={savingsAccount.interestRate}
+                            onValueChange={(e) => handleNumberChange('interestRate', e.value)}
+                            mode="decimal"
+                            suffix=" %"
+                            min={0}
+                            max={100}
+                            minFractionDigits={2}
+                            maxFractionDigits={2}
+                            disabled={isViewMode || !!savingsAccount.termDurationId}
+                            className="w-full"
+                        />
+                        {savingsAccount.termDurationId && (
+                            <small className="text-500">Taux défini par la durée sélectionnée</small>
+                        )}
+                    </div>
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="openingDate" className="font-medium">Date d'Ouverture *</label>
+                        <Calendar
+                            id="openingDate"
+                            value={savingsAccount.openingDate ? new Date(savingsAccount.openingDate) : null}
+                            onChange={(e) => handleDateChange('openingDate', e.value as Date | null)}
+                            dateFormat="dd/mm/yy"
+                            disabled={isViewMode}
+                            showIcon
+                            className="w-full"
+                        />
+                    </div>
+                </div>
+                <div className="formgrid grid">
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="termStartDate" className="font-medium">Date de Début du Terme *</label>
+                        <Calendar
+                            id="termStartDate"
+                            value={savingsAccount.termStartDate ? new Date(savingsAccount.termStartDate) : null}
+                            onChange={(e) => {
+                                const date = e.value as Date | null;
+                                handleDateChange('termStartDate', date);
+                                // Calculate maturity date
+                                const td = termDurations.find((t: any) => t.id === savingsAccount.termDurationId);
+                                if (date && td) {
+                                    const maturity = new Date(date);
+                                    maturity.setMonth(maturity.getMonth() + td.months);
+                                    handleDateChange('maturityDate', maturity);
+                                }
+                            }}
+                            dateFormat="dd/mm/yy"
+                            disabled={isViewMode}
+                            showIcon
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="maturityDate" className="font-medium">Date d'Échéance</label>
+                        <Calendar
+                            id="maturityDate"
+                            value={savingsAccount.maturityDate ? new Date(savingsAccount.maturityDate) : null}
+                            dateFormat="dd/mm/yy"
+                            disabled
+                            showIcon
+                            className="w-full"
+                        />
+                        <small className="text-500">Calculée automatiquement</small>
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                    <Tag value="Virement autorisé" severity="success" icon="pi pi-check" />
+                    <Tag value="Dépôt interdit" severity="danger" icon="pi pi-times" />
+                    <Tag value="Retrait interdit" severity="danger" icon="pi pi-times" />
+                    <Tag value="Demande crédit interdite" severity="danger" icon="pi pi-times" />
+                    <Tag value="Remboursement interdit" severity="danger" icon="pi pi-times" />
+                </div>
+            </div>
+            )}
 
             <div className="surface-100 p-3 border-round">
                 <h5 className="m-0 mb-3 text-primary">

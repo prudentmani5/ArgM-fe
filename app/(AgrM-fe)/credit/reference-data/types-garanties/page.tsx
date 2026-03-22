@@ -12,23 +12,37 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
+import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { TypeGarantie, TypeGarantieClass } from '../../types/CreditTypes';
 
 const BASE_URL = buildApiUrl('/api/credit/guarantee-types');
+const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts');
 
 function TypesGarantiesPageContent() {
     const [typeGarantie, setTypeGarantie] = useState<TypeGarantie>(new TypeGarantieClass());
     const [typesGaranties, setTypesGaranties] = useState<TypeGarantie[]>([]);
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
     const [isViewMode, setIsViewMode] = useState(false);
     const toast = useRef<Toast>(null);
 
     const { data, loading, error, fetchData, callType } = useConsumApi('');
+    const { data: accountsData, fetchData: fetchAccounts } = useConsumApi('');
 
-    useEffect(() => { loadTypesGaranties(); }, []);
+    useEffect(() => {
+        loadTypesGaranties();
+        fetchAccounts(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findall`, 'loadInternalAccounts');
+    }, []);
+
+    useEffect(() => {
+        if (accountsData) {
+            const list = Array.isArray(accountsData) ? accountsData : accountsData.content || [];
+            setInternalAccounts(list.filter((a: any) => a.actif !== false));
+        }
+    }, [accountsData]);
 
     useEffect(() => {
         if (data) {
@@ -192,8 +206,42 @@ function TypesGarantiesPageContent() {
                                 </div>
                             </div>
 
+                            <div className="field col-12 md:col-6">
+                                <label htmlFor="internalAccountId" className="font-semibold">
+                                    <i className="pi pi-building mr-1 text-primary"></i>
+                                    Compte Interne (Caution)
+                                </label>
+                                <Dropdown
+                                    id="internalAccountId"
+                                    value={typeGarantie.internalAccountId ?? null}
+                                    options={internalAccounts}
+                                    onChange={(e) => handleNumberChange('internalAccountId', e.value)}
+                                    optionLabel="libelle"
+                                    optionValue="accountId"
+                                    placeholder="Sélectionner un compte interne..."
+                                    className="w-full"
+                                    disabled={isViewMode}
+                                    showClear
+                                    filter
+                                    filterPlaceholder="Rechercher un compte..."
+                                    itemTemplate={(option) => (
+                                        <div className="flex align-items-center gap-2">
+                                            <span className="font-mono text-xs text-500">{option.codeCompte}</span>
+                                            <span>{option.libelle}</span>
+                                        </div>
+                                    )}
+                                    valueTemplate={(option) => option ? (
+                                        <div className="flex align-items-center gap-2">
+                                            <span className="font-mono text-xs text-500">{option.codeCompte}</span>
+                                            <span>{option.libelle}</span>
+                                        </div>
+                                    ) : <span className="text-400">Aucun compte lié</span>}
+                                />
+                                <small className="text-500">Compte qui reçoit les montants de caution lors des décaissements</small>
+                            </div>
+
                             <div className="field col-12 md:col-4">
-                                <div className="flex align-items-center gap-2">
+                                <div className="flex align-items-center gap-2 mt-3">
                                     <Checkbox inputId="isActive" checked={typeGarantie.isActive || false} onChange={(e) => handleCheckboxChange('isActive', e.checked ?? false)} disabled={isViewMode} />
                                     <label htmlFor="isActive" className="font-semibold">Actif</label>
                                 </div>
@@ -215,6 +263,16 @@ function TypesGarantiesPageContent() {
                         <Column field="nameFr" header="Nom" sortable filter />
                         <Column field="coveragePercent" header="Couverture %" sortable body={(rowData) => `${rowData.coveragePercent || 0}%`} />
                         <Column field="requiresValuation" header="Évaluation requise" body={(rowData) => <i className={`pi ${rowData.requiresValuation ? 'pi-check text-green-500' : 'pi-times text-red-500'}`} />} />
+                        <Column header="Compte Interne" body={(rowData) => {
+                            const account = internalAccounts.find(a => a.accountId === rowData.internalAccountId);
+                            return account ? (
+                                <div className="flex align-items-center gap-1">
+                                    <i className="pi pi-building text-primary text-xs"></i>
+                                    <span className="text-xs font-mono text-500">{account.codeCompte}</span>
+                                    <span className="text-sm">{account.libelle}</span>
+                                </div>
+                            ) : <span className="text-400 text-sm">—</span>;
+                        }} />
                         <Column header="Statut" body={statusBodyTemplate} />
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '150px' }} />
                     </DataTable>

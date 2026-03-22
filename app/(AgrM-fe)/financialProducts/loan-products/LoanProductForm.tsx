@@ -34,11 +34,13 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [interestCalcMethods, setInterestCalcMethods] = useState<any[]>([]);
   const [paymentFrequencies, setPaymentFrequencies] = useState<any[]>([]);
+  const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
 
   const { processRequest: loadProductTypes } = useConsumApi();
   const { processRequest: loadCurrencies } = useConsumApi();
   const { processRequest: loadInterestCalcMethods } = useConsumApi();
   const { processRequest: loadPaymentFrequencies } = useConsumApi();
+  const { processRequest: loadInternalAccounts } = useConsumApi();
 
   const targetClienteleOptions = [
     { label: "Individuel", value: "INDIVIDUAL" },
@@ -68,6 +70,10 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
         currencyId: loanProduct.currency?.id || loanProduct.currencyId,
         interestCalculationMethodId: loanProduct.interestCalculationMethod?.id || loanProduct.interestCalculationMethodId,
         paymentFrequencyId: loanProduct.paymentFrequency?.id || loanProduct.paymentFrequencyId,
+        portfolioAccountId: loanProduct.portfolioAccount?.accountId || loanProduct.portfolioAccountId,
+        interestAccountId: loanProduct.interestAccount?.accountId || loanProduct.interestAccountId,
+        penaltyAccountId: loanProduct.penaltyAccount?.accountId || loanProduct.penaltyAccountId,
+        earlyRepaymentAccountId: loanProduct.earlyRepaymentAccount?.accountId || loanProduct.earlyRepaymentAccountId,
       });
     } else {
       setFormData(new LoanProduct());
@@ -82,7 +88,7 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
 
   const loadReferenceData = async () => {
     try {
-      const [ptResponse, currResponse, icmResponse, pfResponse] = await Promise.all([
+      const [ptResponse, currResponse, icmResponse, pfResponse, iaResponse] = await Promise.all([
         loadProductTypes({
           route: "/api/financial-products/reference/loan-product-types/findall",
           method: "GET",
@@ -99,12 +105,23 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
           route: "/api/financial-products/reference/payment-frequencies/findall",
           method: "GET",
         }),
+        loadInternalAccounts({
+          route: "/api/comptability/internal-accounts/findall",
+          method: "GET",
+        }),
       ]);
 
       if (ptResponse?.data) setProductTypes(ptResponse.data);
       if (currResponse?.data) setCurrencies(currResponse.data);
       if (icmResponse?.data) setInterestCalcMethods(icmResponse.data);
       if (pfResponse?.data) setPaymentFrequencies(pfResponse.data);
+      if (iaResponse?.data) {
+        const items = Array.isArray(iaResponse.data) ? iaResponse.data : iaResponse.data.content || [];
+        setInternalAccounts(items.map((a: any) => ({
+          value: a.accountId,
+          label: `${a.accountNumber} - ${a.libelle}`,
+        })));
+      }
     } catch (error) {
       console.error("Erreur lors du chargement des données de référence:", error);
     }
@@ -138,6 +155,10 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
       currency: { id: formData.currencyId },
       interestCalculationMethod: { id: formData.interestCalculationMethodId },
       paymentFrequency: { id: formData.paymentFrequencyId },
+      portfolioAccount: formData.portfolioAccountId ? { accountId: formData.portfolioAccountId } : null,
+      interestAccount: formData.interestAccountId ? { accountId: formData.interestAccountId } : null,
+      penaltyAccount: formData.penaltyAccountId ? { accountId: formData.penaltyAccountId } : null,
+      earlyRepaymentAccount: formData.earlyRepaymentAccountId ? { accountId: formData.earlyRepaymentAccountId } : null,
     };
 
     onSave(dataToSend);
@@ -318,6 +339,26 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
                         options={statusOptions}
                         onChange={(e) => handleChange("status", e.value)}
                         placeholder="Sélectionner"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="portfolioAccountId" className="font-medium">
+                        Compte Portefeuille
+                      </label>
+                      <Dropdown
+                        id="portfolioAccountId"
+                        value={formData.portfolioAccountId || null}
+                        options={internalAccounts}
+                        onChange={(e) => handleChange("portfolioAccountId", e.value)}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Sélectionner un compte"
+                        filter
+                        showClear
+                        filterPlaceholder="Rechercher..."
                       />
                     </div>
                   </div>
@@ -641,6 +682,79 @@ const LoanProductForm: React.FC<LoanProductFormProps> = ({
                         onValueChange={(e) => handleChange("maxGracePeriodDays", e.value || 0)}
                         min={0}
                         suffix=" jours"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Comptes Internes */}
+            <div className="col-12">
+              <Card className="shadow-2 mt-3">
+                <div className="flex align-items-center gap-2 mb-3">
+                  <i className="pi pi-book text-primary" style={{ fontSize: "1.2rem" }}></i>
+                  <span className="font-semibold text-lg">Comptes Internes</span>
+                </div>
+                <Divider className="mt-0" />
+
+                <div className="grid">
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="interestAccountId" className="font-medium">
+                        Compte Intérêts
+                      </label>
+                      <Dropdown
+                        id="interestAccountId"
+                        value={formData.interestAccountId || null}
+                        options={internalAccounts}
+                        onChange={(e) => handleChange("interestAccountId", e.value)}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Sélectionner un compte d'intérêts"
+                        filter
+                        showClear
+                        filterPlaceholder="Rechercher..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="penaltyAccountId" className="font-medium">
+                        Compte Pénalités
+                      </label>
+                      <Dropdown
+                        id="penaltyAccountId"
+                        value={formData.penaltyAccountId || null}
+                        options={internalAccounts}
+                        onChange={(e) => handleChange("penaltyAccountId", e.value)}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Sélectionner un compte de pénalités"
+                        filter
+                        showClear
+                        filterPlaceholder="Rechercher..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-12 md:col-6">
+                    <div className="field">
+                      <label htmlFor="earlyRepaymentAccountId" className="font-medium">
+                        Compte Remboursement Anticipé
+                      </label>
+                      <Dropdown
+                        id="earlyRepaymentAccountId"
+                        value={formData.earlyRepaymentAccountId || null}
+                        options={internalAccounts}
+                        onChange={(e) => handleChange("earlyRepaymentAccountId", e.value)}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Sélectionner un compte de remboursement anticipé"
+                        filter
+                        showClear
+                        filterPlaceholder="Rechercher..."
                       />
                     </div>
                   </div>

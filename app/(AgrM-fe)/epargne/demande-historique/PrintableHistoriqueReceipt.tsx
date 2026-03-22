@@ -41,6 +41,7 @@ const operationTypeLabels: { [key: string]: string } = {
     'INTEREST': 'Intérêt',
     'TRANSFER_IN': 'Transfert +',
     'TRANSFER_OUT': 'Transfert -',
+    'LOAN_PAYMENT': 'Remboursement',
     'ADJUSTMENT': 'Ajustement'
 };
 

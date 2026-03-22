@@ -10,9 +10,9 @@ import { Dropdown } from 'primereact/dropdown';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Toast } from 'primereact/toast';
-import { Avatar } from 'primereact/avatar';
 import { Tag } from 'primereact/tag';
-import { Chart } from 'primereact/chart';
+import { Divider } from 'primereact/divider';
+import { ProgressSpinner } from 'primereact/progressspinner';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
 
@@ -35,6 +35,8 @@ interface ReportFilter {
     endDate?: Date;
     provinceId?: number;
     communeId?: number;
+    zoneId?: number;
+    collineId?: number;
     status?: string;
     category?: string;
 }
@@ -51,6 +53,8 @@ function ReportsPage() {
     const [loading, setLoading] = useState(false);
     const [provinces, setProvinces] = useState<any[]>([]);
     const [communes, setCommunes] = useState<any[]>([]);
+    const [zones, setZones] = useState<any[]>([]);
+    const [collines, setCollines] = useState<any[]>([]);
 
     const { data, error, fetchData, callType } = useConsumApi('');
     const { data: refData, fetchData: fetchRefData, callType: refCallType } = useConsumApi('');
@@ -98,13 +102,17 @@ function ReportsPage() {
         loadReferenceData();
     }, []);
 
-    // Handle reference data (provinces, communes)
+    // Handle reference data (provinces, communes, zones, collines)
     useEffect(() => {
         if (refData) {
             if (refCallType === 'loadProvinces') {
                 setProvinces(Array.isArray(refData) ? refData : []);
             } else if (refCallType === 'loadCommunes') {
                 setCommunes(Array.isArray(refData) ? refData : []);
+            } else if (refCallType === 'loadZones') {
+                setZones(Array.isArray(refData) ? refData : []);
+            } else if (refCallType === 'loadCollines') {
+                setCollines(Array.isArray(refData) ? refData : []);
             }
         }
     }, [refData, refCallType]);
@@ -125,10 +133,15 @@ function ReportsPage() {
 
     const loadReferenceData = () => {
         fetchRefData(null, 'GET', buildApiUrl('/api/reference-data/provinces/findall'), 'loadProvinces');
-        // Load communes after a short delay to avoid race condition
         setTimeout(() => {
             fetchRefData(null, 'GET', buildApiUrl('/api/reference-data/communes/findall'), 'loadCommunes');
         }, 300);
+        setTimeout(() => {
+            fetchRefData(null, 'GET', buildApiUrl('/api/reference-data/zones/findall'), 'loadZones');
+        }, 600);
+        setTimeout(() => {
+            fetchRefData(null, 'GET', buildApiUrl('/api/reference-data/collines/findall'), 'loadCollines');
+        }, 900);
     };
 
     const generateReport = () => {
@@ -143,10 +156,11 @@ function ReportsPage() {
             return;
         }
 
-        // Create printable content
         const isClientReport = activeIndex === 0;
         const reportTitle = isClientReport ? 'Rapport des Clients' : 'Rapport des Groupes';
-        const dateRange = `Du ${filter.startDate?.toLocaleDateString('fr-FR')} au ${filter.endDate?.toLocaleDateString('fr-FR')}`;
+        const dateRange = filter.startDate && filter.endDate
+            ? `Du ${filter.startDate.toLocaleDateString('fr-FR')} au ${filter.endDate.toLocaleDateString('fr-FR')}`
+            : 'Toutes les dates';
 
         let tableHeaders = '';
         let tableRows = '';
@@ -159,6 +173,8 @@ function ReportsPage() {
                 <th>Téléphone</th>
                 <th>Province</th>
                 <th>Commune</th>
+                <th>Zone</th>
+                <th>Quartier/Colline</th>
                 <th>Statut</th>
             `;
             tableRows = reportData.map(row => `
@@ -169,6 +185,8 @@ function ReportsPage() {
                     <td>${row.phonePrimary || '-'}</td>
                     <td>${row.provinceName || '-'}</td>
                     <td>${row.communeName || '-'}</td>
+                    <td>${row.zoneName || '-'}</td>
+                    <td>${row.collineName || '-'}</td>
                     <td>${row.status || '-'}</td>
                 </tr>
             `).join('');
@@ -178,6 +196,8 @@ function ReportsPage() {
                 <th>Nom du Groupe</th>
                 <th>Membres</th>
                 <th>Province</th>
+                <th>Commune</th>
+                <th>Zone</th>
                 <th>Date Formation</th>
                 <th>Statut</th>
             `;
@@ -187,6 +207,8 @@ function ReportsPage() {
                     <td>${row.groupName || '-'}</td>
                     <td>${row.currentMemberCount || 0}</td>
                     <td>${row.provinceName || '-'}</td>
+                    <td>${row.communeName || '-'}</td>
+                    <td>${row.zoneName || '-'}</td>
                     <td>${row.formationDate || '-'}</td>
                     <td>${row.status || '-'}</td>
                 </tr>
@@ -209,12 +231,15 @@ function ReportsPage() {
                 <title>${reportTitle}</title>
                 <style>
                     body { font-family: Arial, sans-serif; margin: 20px; }
-                    h1 { color: #333; text-align: center; }
-                    .date-range { text-align: center; color: #666; margin-bottom: 20px; }
+                    .header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #4a90a4; padding-bottom:10px; margin-bottom:20px; }
+                    .logo-section { display:flex; align-items:center; gap:10px; }
+                    .company-name { font-size:16px; font-weight:bold; color:#1e3a5f; margin:0; }
+                    .company-info { font-size:10px; color:#64748b; margin:2px 0 0 0; }
+                    .doc-title { font-size:14px; font-weight:bold; color:#1e3a5f; }
                     .stats { display: flex; justify-content: space-around; margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; }
                     .stat-box { text-align: center; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
+                    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
                     th { background-color: #4a90a4; color: white; }
                     tr:nth-child(even) { background-color: #f9f9f9; }
                     .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #999; }
@@ -222,8 +247,19 @@ function ReportsPage() {
                 </style>
             </head>
             <body>
-                <h1>${reportTitle}</h1>
-                <p class="date-range">${dateRange}</p>
+                <div class="header">
+                    <div class="logo-section">
+                        <img src="/layout/images/logo/logoAgrinova.PNG" alt="Logo" style="height:60px;width:60px;object-fit:contain" />
+                        <div>
+                            <h1 class="company-name">AgrM MICROFINANCE</h1>
+                            <p class="company-info">Bujumbura, Burundi</p>
+                        </div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="doc-title">${reportTitle}</div>
+                        <p style="font-size:9px;color:#64748b;margin-top:4px">${dateRange}</p>
+                    </div>
+                </div>
                 ${statsSection}
                 <table>
                     <thead><tr>${tableHeaders}</tr></thead>
@@ -259,7 +295,7 @@ function ReportsPage() {
         let rows: string[][] = [];
 
         if (isClientReport) {
-            headers = ['N° Client', 'Prénom', 'Nom', 'Téléphone', 'Province', 'Commune', 'Statut'];
+            headers = ['N° Client', 'Prénom', 'Nom', 'Téléphone', 'Province', 'Commune', 'Zone', 'Quartier/Colline', 'Statut'];
             rows = reportData.map(row => [
                 row.clientNumber || '',
                 row.firstName || '',
@@ -267,15 +303,19 @@ function ReportsPage() {
                 row.phonePrimary || '',
                 row.provinceName || '',
                 row.communeName || '',
+                row.zoneName || '',
+                row.collineName || '',
                 row.status || ''
             ]);
         } else {
-            headers = ['Code Groupe', 'Nom du Groupe', 'Membres', 'Province', 'Date Formation', 'Statut'];
+            headers = ['Code Groupe', 'Nom du Groupe', 'Membres', 'Province', 'Commune', 'Zone', 'Date Formation', 'Statut'];
             rows = reportData.map(row => [
                 row.groupCode || '',
                 row.groupName || '',
                 String(row.currentMemberCount || 0),
                 row.provinceName || '',
+                row.communeName || '',
+                row.zoneName || '',
                 row.formationDate || '',
                 row.status || ''
             ]);
@@ -286,6 +326,12 @@ function ReportsPage() {
         rows.forEach(row => {
             csvContent += row.map(cell => `"${cell}"`).join(';') + '\n';
         });
+
+        // Add totals row
+        if (statistics) {
+            csvContent += '\n';
+            csvContent += `"Total";"${statistics.total || 0}";;"Actifs";"${statistics.active || 0}";;"En Attente";"${statistics.pending || 0}";;;\n`;
+        }
 
         // Create and download the file
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -300,221 +346,6 @@ function ReportsPage() {
 
         showToast('success', 'Export Excel', 'Le fichier CSV a été téléchargé avec succès');
     };
-
-    const renderStatisticsCards = () => {
-        if (!statistics) return null;
-
-        return (
-            <div className="grid mb-4">
-                <div className="col-12 md:col-3">
-                    <Card className="bg-blue-50">
-                        <div className="flex align-items-center gap-3">
-                            <Avatar icon="pi pi-users" size="large" className="bg-blue-500 text-white" />
-                            <div>
-                                <div className="text-500 text-sm mb-1">Total</div>
-                                <div className="text-2xl font-bold text-900">{statistics.total || 0}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-                <div className="col-12 md:col-3">
-                    <Card className="bg-green-50">
-                        <div className="flex align-items-center gap-3">
-                            <Avatar icon="pi pi-check-circle" size="large" className="bg-green-500 text-white" />
-                            <div>
-                                <div className="text-500 text-sm mb-1">Actifs</div>
-                                <div className="text-2xl font-bold text-900">{statistics.active || 0}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-                <div className="col-12 md:col-3">
-                    <Card className="bg-orange-50">
-                        <div className="flex align-items-center gap-3">
-                            <Avatar icon="pi pi-clock" size="large" className="bg-orange-500 text-white" />
-                            <div>
-                                <div className="text-500 text-sm mb-1">En Attente</div>
-                                <div className="text-2xl font-bold text-900">{statistics.pending || 0}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-                <div className="col-12 md:col-3">
-                    <Card className="bg-red-50">
-                        <div className="flex align-items-center gap-3">
-                            <Avatar icon="pi pi-times-circle" size="large" className="bg-red-500 text-white" />
-                            <div>
-                                <div className="text-500 text-sm mb-1">Inactifs</div>
-                                <div className="text-2xl font-bold text-900">{statistics.inactive || 0}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            </div>
-        );
-    };
-
-    const renderClientFilters = () => (
-        <div className="grid">
-            <div className="col-12 md:col-6">
-                <div className="field">
-                    <label htmlFor="reportType" className="font-bold">Type de Rapport</label>
-                    <Dropdown
-                        id="reportType"
-                        value={filter.reportType}
-                        options={clientReportTypes}
-                        onChange={(e) => setFilter({ ...filter, reportType: e.value })}
-                        placeholder="Sélectionner un type de rapport"
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-3">
-                <div className="field">
-                    <label htmlFor="startDate" className="font-bold">Date Début</label>
-                    <Calendar
-                        id="startDate"
-                        value={filter.startDate}
-                        onChange={(e) => setFilter({ ...filter, startDate: e.value as Date })}
-                        dateFormat="dd/mm/yy"
-                        showIcon
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-3">
-                <div className="field">
-                    <label htmlFor="endDate" className="font-bold">Date Fin</label>
-                    <Calendar
-                        id="endDate"
-                        value={filter.endDate}
-                        onChange={(e) => setFilter({ ...filter, endDate: e.value as Date })}
-                        dateFormat="dd/mm/yy"
-                        showIcon
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-4">
-                <div className="field">
-                    <label htmlFor="province" className="font-bold">Province</label>
-                    <Dropdown
-                        id="province"
-                        value={filter.provinceId}
-                        options={provinces}
-                        onChange={(e) => setFilter({ ...filter, provinceId: e.value })}
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Toutes les provinces"
-                        showClear
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-4">
-                <div className="field">
-                    <label htmlFor="commune" className="font-bold">Commune</label>
-                    <Dropdown
-                        id="commune"
-                        value={filter.communeId}
-                        options={communes.filter(c => !filter.provinceId || c.province?.id === filter.provinceId)}
-                        onChange={(e) => setFilter({ ...filter, communeId: e.value })}
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Toutes les communes"
-                        showClear
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-4">
-                <div className="field">
-                    <label htmlFor="status" className="font-bold">Statut</label>
-                    <Dropdown
-                        id="status"
-                        value={filter.status}
-                        options={clientStatusOptions}
-                        onChange={(e) => setFilter({ ...filter, status: e.value })}
-                        placeholder="Tous les statuts"
-                        className="w-full"
-                    />
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderGroupFilters = () => (
-        <div className="grid">
-            <div className="col-12 md:col-6">
-                <div className="field">
-                    <label htmlFor="reportType" className="font-bold">Type de Rapport</label>
-                    <Dropdown
-                        id="reportType"
-                        value={filter.reportType}
-                        options={groupReportTypes}
-                        onChange={(e) => setFilter({ ...filter, reportType: e.value })}
-                        placeholder="Sélectionner un type de rapport"
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-3">
-                <div className="field">
-                    <label htmlFor="startDate" className="font-bold">Date Début</label>
-                    <Calendar
-                        id="startDate"
-                        value={filter.startDate}
-                        onChange={(e) => setFilter({ ...filter, startDate: e.value as Date })}
-                        dateFormat="dd/mm/yy"
-                        showIcon
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-3">
-                <div className="field">
-                    <label htmlFor="endDate" className="font-bold">Date Fin</label>
-                    <Calendar
-                        id="endDate"
-                        value={filter.endDate}
-                        onChange={(e) => setFilter({ ...filter, endDate: e.value as Date })}
-                        dateFormat="dd/mm/yy"
-                        showIcon
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-6">
-                <div className="field">
-                    <label htmlFor="province" className="font-bold">Province</label>
-                    <Dropdown
-                        id="province"
-                        value={filter.provinceId}
-                        options={provinces}
-                        onChange={(e) => setFilter({ ...filter, provinceId: e.value })}
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Toutes les provinces"
-                        showClear
-                        className="w-full"
-                    />
-                </div>
-            </div>
-            <div className="col-12 md:col-6">
-                <div className="field">
-                    <label htmlFor="status" className="font-bold">Statut du Groupe</label>
-                    <Dropdown
-                        id="status"
-                        value={filter.status}
-                        options={groupStatusOptions}
-                        onChange={(e) => setFilter({ ...filter, status: e.value })}
-                        placeholder="Tous les statuts"
-                        className="w-full"
-                    />
-                </div>
-            </div>
-        </div>
-    );
 
     const statusBodyTemplate = (rowData: any) => {
         const statusMap: Record<string, { label: string; severity: any }> = {
@@ -531,151 +362,406 @@ function ReportsPage() {
         return <Tag value={status.label} severity={status.severity} />;
     };
 
-    return (
+    const renderLocationFilters = () => (
         <>
-            <Toast ref={toast} />
-
-            <div className="card">
-                <div className="flex align-items-center justify-content-between mb-4">
-                    <div className="flex align-items-center gap-3">
-                        <Avatar icon="pi pi-chart-bar" size="xlarge" shape="circle" className="bg-indigo-500 text-white" />
-                        <div>
-                            <h4 className="m-0 mb-1">Rapports et Statistiques</h4>
-                            <p className="text-500 m-0 text-sm">Générez des rapports détaillés sur les clients et groupes solidaires</p>
-                        </div>
-                    </div>
-                </div>
-
-                <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
-                    <TabPanel header="Rapports Clients" leftIcon="pi pi-user mr-2">
-                        <Card title="Critères de Filtrage" className="mb-4">
-                            {renderClientFilters()}
-                            <div className="flex justify-content-end gap-2 mt-3">
-                                <Button
-                                    label="Réinitialiser"
-                                    icon="pi pi-refresh"
-                                    severity="secondary"
-                                    outlined
-                                    onClick={() => setFilter({
-                                        reportType: ReportType.CLIENT_LIST,
-                                        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                                        endDate: new Date()
-                                    })}
-                                />
-                                <Button
-                                    label="Générer le Rapport"
-                                    icon="pi pi-chart-line"
-                                    loading={loading}
-                                    onClick={generateReport}
-                                />
-                            </div>
-                        </Card>
-
-                        {renderStatisticsCards()}
-
-                        {reportData.length > 0 && (
-                            <Card title="Résultats du Rapport">
-                                <div className="flex justify-content-end gap-2 mb-3">
-                                    <Button
-                                        label="Exporter PDF"
-                                        icon="pi pi-file-pdf"
-                                        severity="danger"
-                                        outlined
-                                        onClick={exportToPDF}
-                                    />
-                                    <Button
-                                        label="Exporter Excel"
-                                        icon="pi pi-file-excel"
-                                        severity="success"
-                                        outlined
-                                        onClick={exportToExcel}
-                                    />
-                                </div>
-                                <DataTable
-                                    value={reportData}
-                                    paginator
-                                    rows={10}
-                                    rowsPerPageOptions={[5, 10, 25, 50]}
-                                    stripedRows
-                                    showGridlines
-                                >
-                                    <Column field="clientNumber" header="N° Client" sortable />
-                                    <Column field="firstName" header="Prénom" sortable />
-                                    <Column field="lastName" header="Nom" sortable />
-                                    <Column field="phonePrimary" header="Téléphone" />
-                                    <Column field="provinceName" header="Province" sortable body={(rowData) => rowData.provinceName || rowData.province?.name || '-'} />
-                                    <Column field="communeName" header="Commune" sortable body={(rowData) => rowData.communeName || rowData.commune?.name || '-'} />
-                                    <Column header="Statut" body={statusBodyTemplate} sortable />
-                                </DataTable>
-                            </Card>
-                        )}
-                    </TabPanel>
-
-                    <TabPanel header="Rapports Groupes" leftIcon="pi pi-users mr-2">
-                        <Card title="Critères de Filtrage" className="mb-4">
-                            {renderGroupFilters()}
-                            <div className="flex justify-content-end gap-2 mt-3">
-                                <Button
-                                    label="Réinitialiser"
-                                    icon="pi pi-refresh"
-                                    severity="secondary"
-                                    outlined
-                                    onClick={() => setFilter({
-                                        reportType: ReportType.GROUP_LIST,
-                                        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                                        endDate: new Date()
-                                    })}
-                                />
-                                <Button
-                                    label="Générer le Rapport"
-                                    icon="pi pi-chart-line"
-                                    loading={loading}
-                                    onClick={generateReport}
-                                />
-                            </div>
-                        </Card>
-
-                        {renderStatisticsCards()}
-
-                        {reportData.length > 0 && (
-                            <Card title="Résultats du Rapport">
-                                <div className="flex justify-content-end gap-2 mb-3">
-                                    <Button
-                                        label="Exporter PDF"
-                                        icon="pi pi-file-pdf"
-                                        severity="danger"
-                                        outlined
-                                        onClick={exportToPDF}
-                                    />
-                                    <Button
-                                        label="Exporter Excel"
-                                        icon="pi pi-file-excel"
-                                        severity="success"
-                                        outlined
-                                        onClick={exportToExcel}
-                                    />
-                                </div>
-                                <DataTable
-                                    value={reportData}
-                                    paginator
-                                    rows={10}
-                                    rowsPerPageOptions={[5, 10, 25, 50]}
-                                    stripedRows
-                                    showGridlines
-                                >
-                                    <Column field="groupCode" header="Code Groupe" sortable />
-                                    <Column field="groupName" header="Nom du Groupe" sortable />
-                                    <Column field="currentMemberCount" header="Membres" sortable />
-                                    <Column field="provinceName" header="Province" sortable />
-                                    <Column field="formationDate" header="Date Formation" sortable />
-                                    <Column header="Statut" body={statusBodyTemplate} sortable />
-                                </DataTable>
-                            </Card>
-                        )}
-                    </TabPanel>
-                </TabView>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="province">Province</label>
+                <Dropdown
+                    id="province"
+                    value={filter.provinceId}
+                    options={provinces}
+                    onChange={(e) => setFilter({ ...filter, provinceId: e.value, communeId: undefined, zoneId: undefined, collineId: undefined })}
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Toutes les provinces"
+                    showClear
+                    filter
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="commune">Commune</label>
+                <Dropdown
+                    id="commune"
+                    value={filter.communeId}
+                    options={communes.filter(c => !filter.provinceId || c.province?.id === filter.provinceId)}
+                    onChange={(e) => setFilter({ ...filter, communeId: e.value, zoneId: undefined, collineId: undefined })}
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Toutes les communes"
+                    showClear
+                    filter
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="zone">Zone</label>
+                <Dropdown
+                    id="zone"
+                    value={filter.zoneId}
+                    options={zones.filter(z => !filter.communeId || z.commune?.id === filter.communeId)}
+                    onChange={(e) => setFilter({ ...filter, zoneId: e.value, collineId: undefined })}
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Toutes les zones"
+                    showClear
+                    filter
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="colline">Quartier / Colline</label>
+                <Dropdown
+                    id="colline"
+                    value={filter.collineId}
+                    options={collines.filter(cl => !filter.zoneId || cl.zone?.id === filter.zoneId)}
+                    onChange={(e) => setFilter({ ...filter, collineId: e.value })}
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Tous les quartiers"
+                    showClear
+                    filter
+                    className="w-full"
+                />
             </div>
         </>
+    );
+
+    const renderClientFilters = () => (
+        <div className="formgrid grid">
+            <div className="field col-12 md:col-6">
+                <label htmlFor="reportType">Type de Rapport</label>
+                <Dropdown
+                    id="reportType"
+                    value={filter.reportType}
+                    options={clientReportTypes}
+                    onChange={(e) => setFilter({ ...filter, reportType: e.value })}
+                    placeholder="Sélectionner un type de rapport"
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="startDate">Date Début</label>
+                <Calendar
+                    id="startDate"
+                    value={filter.startDate}
+                    onChange={(e) => setFilter({ ...filter, startDate: e.value as Date })}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="endDate">Date Fin</label>
+                <Calendar
+                    id="endDate"
+                    value={filter.endDate}
+                    onChange={(e) => setFilter({ ...filter, endDate: e.value as Date })}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    className="w-full"
+                />
+            </div>
+            {renderLocationFilters()}
+            <div className="field col-12 md:col-3">
+                <label htmlFor="status">Statut</label>
+                <Dropdown
+                    id="status"
+                    value={filter.status}
+                    options={clientStatusOptions}
+                    onChange={(e) => setFilter({ ...filter, status: e.value })}
+                    placeholder="Tous les statuts"
+                    showClear
+                    className="w-full"
+                />
+            </div>
+        </div>
+    );
+
+    const renderGroupFilters = () => (
+        <div className="formgrid grid">
+            <div className="field col-12 md:col-6">
+                <label htmlFor="reportType">Type de Rapport</label>
+                <Dropdown
+                    id="reportType"
+                    value={filter.reportType}
+                    options={groupReportTypes}
+                    onChange={(e) => setFilter({ ...filter, reportType: e.value })}
+                    placeholder="Sélectionner un type de rapport"
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="startDate">Date Début</label>
+                <Calendar
+                    id="startDate"
+                    value={filter.startDate}
+                    onChange={(e) => setFilter({ ...filter, startDate: e.value as Date })}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="endDate">Date Fin</label>
+                <Calendar
+                    id="endDate"
+                    value={filter.endDate}
+                    onChange={(e) => setFilter({ ...filter, endDate: e.value as Date })}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    className="w-full"
+                />
+            </div>
+            {renderLocationFilters()}
+            <div className="field col-12 md:col-3">
+                <label htmlFor="status">Statut du Groupe</label>
+                <Dropdown
+                    id="status"
+                    value={filter.status}
+                    options={groupStatusOptions}
+                    onChange={(e) => setFilter({ ...filter, status: e.value })}
+                    placeholder="Tous les statuts"
+                    showClear
+                    className="w-full"
+                />
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="card">
+            <Toast ref={toast} />
+
+            <div className="flex align-items-center justify-content-between mb-4">
+                <div className="flex align-items-center gap-2">
+                    <i className="pi pi-chart-bar text-4xl text-primary"></i>
+                    <div>
+                        <h2 className="m-0">Rapports et Statistiques</h2>
+                        <p className="m-0 text-500">Rapports détaillés sur les clients et groupes solidaires</p>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <Button label="PDF" icon="pi pi-file-pdf" severity="danger" onClick={exportToPDF} disabled={reportData.length === 0} />
+                    <Button label="Excel" icon="pi pi-file-excel" severity="success" onClick={exportToExcel} disabled={reportData.length === 0} />
+                </div>
+            </div>
+
+            <Divider />
+
+            <TabView activeIndex={activeIndex} onTabChange={(e) => { setActiveIndex(e.index); setReportData([]); setStatistics(null); }}>
+                <TabPanel header="Rapports Clients" leftIcon="pi pi-user mr-2">
+                    <Card className="mb-4">
+                        <h5 className="m-0 mb-3">
+                            <i className="pi pi-filter mr-2"></i>
+                            Critères de Recherche
+                        </h5>
+                        {renderClientFilters()}
+                        <div className="flex justify-content-end gap-2 mt-3">
+                            <Button
+                                label="Réinitialiser"
+                                icon="pi pi-refresh"
+                                severity="secondary"
+                                outlined
+                                onClick={() => setFilter({
+                                    reportType: ReportType.CLIENT_LIST,
+                                    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                    endDate: new Date()
+                                })}
+                            />
+                            <Button
+                                label="Générer le Rapport"
+                                icon="pi pi-search"
+                                loading={loading}
+                                onClick={generateReport}
+                            />
+                        </div>
+                    </Card>
+
+                    {/* Statistiques */}
+                    {statistics && (
+                        <div className="grid mb-4">
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-blue-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-users text-4xl text-blue-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">Total</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.total || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-green-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-check-circle text-4xl text-green-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">Actifs</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.active || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-orange-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-clock text-4xl text-orange-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">En Attente</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.pending || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-red-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-times-circle text-4xl text-red-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">Inactifs</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.inactive || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tableau des résultats */}
+                    {loading ? (
+                        <div className="flex justify-content-center p-5">
+                            <ProgressSpinner />
+                        </div>
+                    ) : (
+                        <DataTable
+                            value={reportData}
+                            paginator
+                            rows={10}
+                            rowsPerPageOptions={[10, 25, 50]}
+                            emptyMessage="Aucune donnée. Veuillez générer un rapport."
+                            className="p-datatable-sm"
+                            stripedRows
+                        >
+                            <Column field="clientNumber" header="N° Client" sortable />
+                            <Column field="firstName" header="Prénom" sortable />
+                            <Column field="lastName" header="Nom" sortable />
+                            <Column field="phonePrimary" header="Téléphone" />
+                            <Column field="provinceName" header="Province" sortable body={(rowData) => rowData.provinceName || '-'} />
+                            <Column field="communeName" header="Commune" sortable body={(rowData) => rowData.communeName || '-'} />
+                            <Column field="zoneName" header="Zone" sortable body={(rowData) => rowData.zoneName || '-'} />
+                            <Column field="collineName" header="Quartier/Colline" sortable body={(rowData) => rowData.collineName || '-'} />
+                            <Column header="Statut" body={statusBodyTemplate} sortable />
+                        </DataTable>
+                    )}
+                </TabPanel>
+
+                <TabPanel header="Rapports Groupes" leftIcon="pi pi-users mr-2">
+                    <Card className="mb-4">
+                        <h5 className="m-0 mb-3">
+                            <i className="pi pi-filter mr-2"></i>
+                            Critères de Recherche
+                        </h5>
+                        {renderGroupFilters()}
+                        <div className="flex justify-content-end gap-2 mt-3">
+                            <Button
+                                label="Réinitialiser"
+                                icon="pi pi-refresh"
+                                severity="secondary"
+                                outlined
+                                onClick={() => setFilter({
+                                    reportType: ReportType.GROUP_LIST,
+                                    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                    endDate: new Date()
+                                })}
+                            />
+                            <Button
+                                label="Générer le Rapport"
+                                icon="pi pi-search"
+                                loading={loading}
+                                onClick={generateReport}
+                            />
+                        </div>
+                    </Card>
+
+                    {/* Statistiques */}
+                    {statistics && (
+                        <div className="grid mb-4">
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-blue-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-users text-4xl text-blue-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">Total</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.total || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-green-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-check-circle text-4xl text-green-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">Actifs</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.active || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-orange-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-clock text-4xl text-orange-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">En Attente</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.pending || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                            <div className="col-12 md:col-3">
+                                <Card className="bg-red-50">
+                                    <div className="flex align-items-center gap-3">
+                                        <i className="pi pi-times-circle text-4xl text-red-500"></i>
+                                        <div>
+                                            <p className="text-500 m-0">Inactifs</p>
+                                            <p className="text-2xl font-bold m-0">{statistics.inactive || 0}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tableau des résultats */}
+                    {loading ? (
+                        <div className="flex justify-content-center p-5">
+                            <ProgressSpinner />
+                        </div>
+                    ) : (
+                        <DataTable
+                            value={reportData}
+                            paginator
+                            rows={10}
+                            rowsPerPageOptions={[10, 25, 50]}
+                            emptyMessage="Aucune donnée. Veuillez générer un rapport."
+                            className="p-datatable-sm"
+                            stripedRows
+                        >
+                            <Column field="groupCode" header="Code Groupe" sortable />
+                            <Column field="groupName" header="Nom du Groupe" sortable />
+                            <Column field="currentMemberCount" header="Membres" sortable />
+                            <Column field="provinceName" header="Province" sortable body={(rowData) => rowData.provinceName || '-'} />
+                            <Column field="communeName" header="Commune" sortable body={(rowData) => rowData.communeName || '-'} />
+                            <Column field="zoneName" header="Zone" sortable body={(rowData) => rowData.zoneName || '-'} />
+                            <Column field="formationDate" header="Date Formation" sortable />
+                            <Column header="Statut" body={statusBodyTemplate} sortable />
+                        </DataTable>
+                    )}
+                </TabPanel>
+            </TabView>
+        </div>
     );
 }
 

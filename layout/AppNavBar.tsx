@@ -122,18 +122,18 @@ const AppNavBar = () => {
                     'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE', 'EPARGNE_DEPOSIT_CANCEL',
                     'EPARGNE_TERM_DEPOSIT_CREATE', 'EPARGNE_TERM_DEPOSIT_MANAGE', 'EPARGNE_TERM_DEPOSIT_CLOSE',
                     'EPARGNE_COMPULSORY_CREATE', 'EPARGNE_COMPULSORY_RELEASE',
-                    'ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING'
+                    'ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING', 'CAISSE_ACKNOWLEDGE_RECEIPT'
                 ]) : false,
                 items: [
                     {
                         label: 'Operations Journalieres',
                         visible: appUser ? hasAnyAuthority(appUser, [
-                            'ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING',
+                            'ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING', 'CAISSE_ACKNOWLEDGE_RECEIPT',
                             'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE',
                             'EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE'
                         ]) : false,
                         items: [
-                            { label: 'Gestion de Caisse', icon: 'pi pi-wallet', to: '/epargne/gestion-caisse', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING']) : false },
+                            { label: 'Gestion de Caisse', icon: 'pi pi-wallet', to: '/epargne/gestion-caisse', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING', 'CAISSE_ACKNOWLEDGE_RECEIPT']) : false },
                             { label: 'Bordereaux de Depot', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE']) : false },
                             { label: 'Demandes de Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE']) : false }
                         ]
@@ -163,7 +163,9 @@ const AppNavBar = () => {
                             { label: 'Virements', icon: 'pi pi-arrow-right-arrow-left', to: '/epargne/virements' },
                             { label: 'Carnet de Chèques', icon: 'pi pi-book', to: '/epargne/carnet-cheque' },
                             { label: 'Demande de Situation', icon: 'pi pi-file', to: '/epargne/demande-situation' },
-                            { label: 'Demande d\'Historique', icon: 'pi pi-history', to: '/epargne/demande-historique' }
+                            { label: 'Demande d\'Historique', icon: 'pi pi-history', to: '/epargne/demande-historique' },
+                            { label: 'Attestation Non Redevabilité', icon: 'pi pi-verified', to: '/epargne/attestation-non-redevabilite' },
+                            { label: 'Attestation d\'Engagement', icon: 'pi pi-shield', to: '/epargne/attestation-engagement' }
                         ]
                     },
                     { label: 'Clôture Journalière', icon: 'pi pi-lock', to: '/epargne/cloture-journaliere', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DAILY_CLOSING', 'ACCOUNTING_CASH_MANAGEMENT']) : false },
@@ -181,7 +183,9 @@ const AppNavBar = () => {
                             { label: 'Rapport Demandes Situation', icon: 'pi pi-file', to: '/epargne/rapports/demandes-situation' },
                             { label: 'Rapport Demandes Historique', icon: 'pi pi-history', to: '/epargne/rapports/demandes-historique' },
                             { label: 'Rapport Frais de Tenue', icon: 'pi pi-money-bill', to: '/epargne/rapports/frais-tenue-compte' },
-                            { label: 'Rapport Virements', icon: 'pi pi-arrows-h', to: '/epargne/rapports/virements' }
+                            { label: 'Rapport Virements', icon: 'pi pi-arrows-h', to: '/epargne/rapports/virements' },
+                            { label: 'Rapport Comptes Réguliers', icon: 'pi pi-book', to: '/epargne/rapports/comptes-reguliers' },
+                            { label: 'Rapport Comptes DAT', icon: 'pi pi-lock', to: '/epargne/rapports/comptes-dat' }
                         ]
                     }
                 ]
@@ -385,7 +389,10 @@ const AppNavBar = () => {
                     'ACCOUNTING_DELETE', 'ACCOUNTING_DAILY_CLOSING', 'ACCOUNTING_SETTINGS',
                     'ACCOUNTING_CLOSING_EXECUTE', 'ACCOUNTING_CLOSING_REVERSE',
                     'ACCOUNTING_MONTHLY_CLOSING', 'ACCOUNTING_ANNUAL_CLOSING', 'ACCOUNTING_CASH_MANAGEMENT',
-                    'ACCOUNTING_REPORT_VIEW', 'ACCOUNTING_REPORT_EXPORT'
+                    'ACCOUNTING_REPORT_VIEW', 'ACCOUNTING_REPORT_EXPORT',
+                    'ACCOUNTING_INTERNAL_ACCOUNTS', 'ACCOUNTING_INTERNAL_DEPOT', 'ACCOUNTING_INTERNAL_RETRAIT',
+                    'ACCOUNTING_INTERNAL_TRANSFERT', 'ACCOUNTING_INTERNAL_TOGGLE_STATUS',
+                    'ACCOUNTING_INTERNAL_VALIDATE_DEPOT', 'ACCOUNTING_INTERNAL_VALIDATE_RETRAIT', 'ACCOUNTING_INTERNAL_VALIDATE_TRANSFERT'
                 ]) : false,
                 items: [
                     {
@@ -412,7 +419,7 @@ const AppNavBar = () => {
                         ]
                     },
                     { label: 'Gestion de Caisse', icon: 'pi pi-wallet', to: '/comptability/caisse', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_CASH_MANAGEMENT']) : false },
-                    { label: 'Comptes Internes', icon: 'pi pi-building', to: '/comptability/comptes-internes', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_INTERNAL_ACCOUNTS']) : false },
+                    { label: 'Comptes Internes', icon: 'pi pi-building', to: '/comptability/comptes-internes', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_INTERNAL_ACCOUNTS', 'ACCOUNTING_INTERNAL_DEPOT', 'ACCOUNTING_INTERNAL_RETRAIT', 'ACCOUNTING_INTERNAL_TRANSFERT', 'ACCOUNTING_INTERNAL_TOGGLE_STATUS', 'ACCOUNTING_INTERNAL_VALIDATE_DEPOT', 'ACCOUNTING_INTERNAL_VALIDATE_RETRAIT', 'ACCOUNTING_INTERNAL_VALIDATE_TRANSFERT']) : false },
                     { label: 'Frais de Tenue de Compte', icon: 'pi pi-money-bill', to: '/epargne/frais-tenue-compte', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_SETTINGS', 'EPARGNE_FEE_EXECUTE']) : false },
                     {
                         label: 'Rapports',
@@ -442,10 +449,58 @@ const AppNavBar = () => {
                 ]) : false,
                 items: [
                     { label: 'Tableau de Bord', icon: 'pi pi-th-large', to: '/rapprochement', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                    { label: 'Rapprochement Bancaire', icon: 'pi pi-building', to: '/rapprochement/rapprochements', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE']) : false },
                     { label: 'Relevés Bancaires', icon: 'pi pi-file-import', to: '/rapprochement/releves', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_CREATE']) : false },
-                    { label: 'Rapprochements', icon: 'pi pi-check-circle', to: '/rapprochement/rapprochements', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE']) : false },
+                    { label: 'Rapprochement Caisse', icon: 'pi pi-wallet', to: '/rapprochement/rapprochement-caisse', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                    { label: 'Portefeuille Crédits', icon: 'pi pi-briefcase', to: '/rapprochement/rapprochement-credits', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                    { label: 'Dépôts Épargne', icon: 'pi pi-money-bill', to: '/rapprochement/rapprochement-depots', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
                     { label: 'Gestion des Écarts', icon: 'pi pi-exclamation-triangle', to: '/rapprochement/ecarts', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
                     { label: 'Rapports', icon: 'pi pi-print', to: '/rapprochement/rapports', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_REPORT']) : false }
+                ]
+            },
+            {
+                label: 'Dépenses',
+                icon: 'pi pi-wallet',
+                routePrefix: '/depenses',
+                visible: appUser ? hasAnyAuthority(appUser, [
+                    'DEPENSE_VIEW', 'DEPENSE_CREATE', 'DEPENSE_UPDATE', 'DEPENSE_DELETE',
+                    'DEPENSE_APPROVE_N1', 'DEPENSE_APPROVE_N2', 'DEPENSE_APPROVE_N3',
+                    'DEPENSE_PAY', 'DEPENSE_JUSTIFY', 'DEPENSE_CLOSE',
+                    'DEPENSE_PETITE_CAISSE', 'DEPENSE_BUDGET', 'DEPENSE_REPORT', 'DEPENSE_SETTINGS'
+                ]) : false,
+                items: [
+
+
+                     {
+                        label: 'Données de Référence',
+                        visible: appUser ? hasAnyAuthority(appUser, ['DEPENSE_SETTINGS']) : false,
+                        items: [
+                            { label: 'Catégories de Dépenses', icon: 'pi pi-tags', to: '/depenses/reference-data/categories-depense' },
+                            { label: 'Niveaux de Priorité', icon: 'pi pi-flag', to: '/depenses/reference-data/niveaux-priorite' },
+                            { label: 'Modes de Paiement', icon: 'pi pi-credit-card', to: '/depenses/reference-data/modes-paiement' },
+                            { label: 'Seuils d\'Approbation', icon: 'pi pi-sliders-h', to: '/depenses/reference-data/seuils-approbation' },
+                            { label: 'Fournisseurs', icon: 'pi pi-users', to: '/depenses/reference-data/fournisseurs' }
+                        ]
+                    },
+                    {
+                        label: 'Gestion des Dépenses',
+                        visible: appUser ? hasAnyAuthority(appUser, ['DEPENSE_VIEW', 'DEPENSE_CREATE', 'DEPENSE_UPDATE', 'DEPENSE_APPROVE_N1', 'DEPENSE_APPROVE_N2', 'DEPENSE_APPROVE_N3', 'DEPENSE_PAY', 'DEPENSE_JUSTIFY', 'DEPENSE_CLOSE']) : false,
+                        items: [
+                            { label: 'Demandes de Dépenses', icon: 'pi pi-file', to: '/depenses/demandes' },
+                            { label: 'Approbations', icon: 'pi pi-check-square', to: '/depenses/approbations' },
+                            { label: 'Paiements', icon: 'pi pi-money-bill', to: '/depenses/paiements' },
+                            { label: 'Budgets', icon: 'pi pi-chart-bar', to: '/depenses/budgets' },
+                            { label: 'Petite Caisse', icon: 'pi pi-wallet', to: '/depenses/petite-caisse' }
+                        ]
+                    },
+                   
+                    {
+                        label: 'Rapports & Analyses',
+                        visible: appUser ? hasAnyAuthority(appUser, ['DEPENSE_REPORT']) : false,
+                        items: [
+                            { label: 'Rapports Dépenses', icon: 'pi pi-chart-pie', to: '/depenses/rapports' }
+                        ]
+                    }
                 ]
             },
             {

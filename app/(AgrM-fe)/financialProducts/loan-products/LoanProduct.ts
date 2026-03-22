@@ -29,6 +29,14 @@ export class LoanProduct {
     requiresGuarantors: boolean;
     minGuarantors?: number;
     requiresCollateral: boolean;
+    portfolioAccountId?: number;
+    portfolioAccount?: any;
+    interestAccountId?: number;
+    interestAccount?: any;
+    penaltyAccountId?: number;
+    penaltyAccount?: any;
+    earlyRepaymentAccountId?: number;
+    earlyRepaymentAccount?: any;
     description?: string;
     descriptionFr?: string;
     status: string; // DRAFT, ACTIVE, SUSPENDED, DISCONTINUED

@@ -10,13 +10,13 @@ import { InputText } from 'primereact/inputtext';
 import { Tag } from 'primereact/tag';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
-import { Divider } from 'primereact/divider';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { shouldFilterByBranch } from '../../../../utils/branchFilter';
 
 import PaiementForm from './PaiementForm';
+import PrintablePaymentReceipt from './PrintablePaymentReceipt';
 import {
     PaiementCredit,
     PaiementCreditClass,
@@ -43,6 +43,7 @@ const PaiementsPage = () => {
     const [selectedLoan, setSelectedLoan] = useState<any>(null);
 
     const toast = useRef<Toast>(null);
+    const printRef = useRef<HTMLDivElement>(null);
     // Use separate hooks for different API calls to avoid race conditions
     const { data: paiementsData, loading: loadingPaiements, error: paiementsError, fetchData: fetchPaiements } = useConsumApi('');
     const { data: modesData, loading: loadingModes, error: modesError, fetchData: fetchModes } = useConsumApi('');
@@ -245,14 +246,18 @@ const PaiementsPage = () => {
     const handleDisbursementSelect = (disbursement: any) => {
         setSelectedLoan(disbursement);
 
-        // Update payment with selected loan info - include credit details
+        // Get savingsAccountId from the application linked to the disbursement
+        const savingsAccId = disbursement.application?.savingsAccountId || disbursement.savingsAccountId || null;
+
+        // Update payment with selected loan info - include credit details and savings account
         setPaiement(prev => ({
             ...prev,
             loanId: disbursement.loanId || disbursement.loan?.id || disbursement.id,
             applicationNumber: disbursement.applicationNumber || '',
             disbursementNumber: disbursement.disbursementNumber || '',
             clientName: disbursement.clientName || '',
-            paymentDate: new Date().toISOString().split('T')[0]
+            paymentDate: new Date().toISOString().split('T')[0],
+            sourceSavingsAccountId: savingsAccId
         }));
 
         setShowLoanSelectionDialog(false);
@@ -307,6 +312,43 @@ const PaiementsPage = () => {
     const handlePrintReceipt = (rowData: PaiementCredit) => {
         setSelectedPaiement(rowData);
         setShowReceiptDialog(true);
+    };
+
+    const handlePrint = () => {
+        if (printRef.current) {
+            const printContent = printRef.current.innerHTML.replace(
+                /src="\/layout\//g,
+                `src="${window.location.origin}/layout/`
+            );
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Reçu de Paiement - ${selectedPaiement?.paymentNumber}</title>
+                        <style>
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            body { font-family: Arial, sans-serif; padding: 15mm; }
+                            @page { margin: 15mm; }
+                            @media print {
+                                body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${printContent}
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            }
+        }
     };
 
     // Column body templates
@@ -563,74 +605,34 @@ const PaiementsPage = () => {
                 visible={showReceiptDialog}
                 onHide={() => setShowReceiptDialog(false)}
                 header="Reçu de Paiement"
-                style={{ width: '40vw' }}
+                style={{ width: '60vw' }}
                 modal
                 footer={
                     <div>
                         <Button
                             label="Fermer"
                             icon="pi pi-times"
-                            severity="secondary"
                             onClick={() => setShowReceiptDialog(false)}
+                            className="p-button-text"
                         />
                         <Button
                             label="Imprimer"
                             icon="pi pi-print"
-                            onClick={() => window.print()}
+                            onClick={handlePrint}
+                            className="p-button-success"
                         />
                     </div>
                 }
             >
                 {selectedPaiement && (
-                    <div className="p-4">
-                        <div className="text-center mb-4">
-                            <h3 className="m-0">REÇU DE PAIEMENT</h3>
-                            <p className="text-color-secondary">{selectedPaiement.paymentNumber}</p>
-                        </div>
-
-                        <Divider />
-
-                        <div className="grid">
-                            <div className="col-6">
-                                <p><strong>Date:</strong> {dateBodyTemplate(selectedPaiement.paymentDate)}</p>
-                                <p><strong>N° Dossier:</strong> {selectedPaiement.applicationNumber || '-'}</p>
-                                <p><strong>N° Décaissement:</strong> {selectedPaiement.disbursementNumber || '-'}</p>
-                                <p><strong>Client:</strong> {selectedPaiement.clientName || '-'}</p>
-                                <p><strong>N° Reçu:</strong> {selectedPaiement.receiptNumber || '-'}</p>
-                            </div>
-                            <div className="col-6 text-right">
-                                <h2 className="text-primary m-0">
-                                    {currencyBodyTemplate(selectedPaiement.amountReceived)}
-                                </h2>
-                                <p className="text-color-secondary">Montant Reçu</p>
-                            </div>
-                        </div>
-
-                        <Divider />
-
-                        <h5>Répartition du Paiement</h5>
-                        <div className="grid">
-                            <div className="col-6">
-                                <p><strong>Pénalités:</strong></p>
-                                <p><strong>Intérêts:</strong></p>
-                                <p><strong>Capital:</strong></p>
-                                <p><strong>Assurance:</strong></p>
-                                <p><strong>Frais:</strong></p>
-                            </div>
-                            <div className="col-6 text-right">
-                                <p>{currencyBodyTemplate(selectedPaiement.allocatedToPenalty)}</p>
-                                <p>{currencyBodyTemplate(selectedPaiement.allocatedToInterest)}</p>
-                                <p>{currencyBodyTemplate(selectedPaiement.allocatedToPrincipal)}</p>
-                                <p>{currencyBodyTemplate(selectedPaiement.allocatedToInsurance)}</p>
-                                <p>{currencyBodyTemplate(selectedPaiement.allocatedToFees)}</p>
-                            </div>
-                        </div>
-
-                        <Divider />
-
-                        <div className="text-center text-color-secondary">
-                            <small>Merci pour votre paiement</small>
-                        </div>
+                    <div className="overflow-auto" style={{ maxHeight: '70vh' }}>
+                        <PrintablePaymentReceipt
+                            ref={printRef}
+                            payment={selectedPaiement}
+                            companyName=" AGRINOVA MICROFINANCE"
+                            companyAddress="Bujumbura, Burundi"
+                            companyPhone="+257 22 XX XX XX"
+                        />
                     </div>
                 )}
             </Dialog>

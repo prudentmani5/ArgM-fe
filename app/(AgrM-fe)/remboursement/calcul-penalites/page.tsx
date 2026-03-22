@@ -386,21 +386,21 @@ export default function CalculPenalitesPage() {
                                 <Card title="Paramètres de Calcul" className="h-full">
                                     <div className="formgrid grid">
                                         <div className="field col-12 md:col-6">
-                                            <label htmlFor="code" className="font-semibold">Code *</label>
+                                            <label htmlFor="code" className="font-semibold">Code</label>
                                             <InputText
                                                 id="code"
                                                 value={config.code || ''}
-                                                onChange={(e) => setConfig({ ...config, code: e.target.value })}
                                                 className="w-full"
+                                                disabled
                                             />
                                         </div>
                                         <div className="field col-12 md:col-6">
-                                            <label htmlFor="name" className="font-semibold">Nom *</label>
+                                            <label htmlFor="name" className="font-semibold">Nom</label>
                                             <InputText
                                                 id="name"
                                                 value={config.name || ''}
-                                                onChange={(e) => setConfig({ ...config, name: e.target.value })}
                                                 className="w-full"
+                                                disabled
                                             />
                                         </div>
 
@@ -411,13 +411,11 @@ export default function CalculPenalitesPage() {
                                             <InputNumber
                                                 id="dailyRate"
                                                 value={config.dailyRate}
-                                                onValueChange={(e) => setConfig({ ...config, dailyRate: e.value ?? 0 })}
-                                                min={0}
-                                                max={5}
                                                 minFractionDigits={2}
                                                 maxFractionDigits={5}
                                                 className="w-full"
                                                 suffix=" %"
+                                                disabled
                                             />
                                             <small className="text-500">
                                                 Taux appliqué chaque jour sur le montant impayé
@@ -431,11 +429,9 @@ export default function CalculPenalitesPage() {
                                             <InputNumber
                                                 id="maxCapPercentage"
                                                 value={config.maxCapPercentage}
-                                                onValueChange={(e) => setConfig({ ...config, maxCapPercentage: e.value ?? 0 })}
-                                                min={0}
-                                                max={100}
                                                 className="w-full"
                                                 suffix=" %"
+                                                disabled
                                             />
                                             <small className="text-500">
                                                 % maximum du capital restant dû
@@ -450,8 +446,8 @@ export default function CalculPenalitesPage() {
                                                 id="calculationBase"
                                                 value={config.calculationBase}
                                                 options={BASES_CALCUL_PENALITE}
-                                                onChange={(e) => setConfig({ ...config, calculationBase: e.value })}
                                                 className="w-full"
+                                                disabled
                                             />
                                         </div>
 
@@ -462,24 +458,21 @@ export default function CalculPenalitesPage() {
                                             <InputTextarea
                                                 id="description"
                                                 value={config.description || ''}
-                                                onChange={(e) => setConfig({ ...config, description: e.target.value })}
                                                 className="w-full"
                                                 rows={3}
+                                                disabled
+                                            />
+                                        </div>
+
+                                        <div className="col-12">
+                                            <Message
+                                                severity="info"
+                                                text="Pour modifier ces paramètres, rendez-vous dans Remboursement > Données de Référence > Configurations Pénalités."
+                                                className="w-full"
                                             />
                                         </div>
                                     </div>
                                 </Card>
-                            </div>
-
-                            {/* Save Button */}
-                            <div className="col-12 flex justify-content-end">
-                                <Button
-                                    label="Enregistrer la Configuration"
-                                    icon="pi pi-save"
-                                    className="p-button-success"
-                                    onClick={handleSaveConfiguration}
-                                    loading={saving}
-                                />
                             </div>
                         </div>
                     </TabPanel>

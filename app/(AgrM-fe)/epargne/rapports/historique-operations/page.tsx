@@ -11,7 +11,6 @@ import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
-import { AutoComplete } from 'primereact/autocomplete';
 import { InputText } from 'primereact/inputtext';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
@@ -37,16 +36,6 @@ interface OperationHistory {
     clientName: string;
 }
 
-interface AccountSuggestion {
-    id: number;
-    accountNumber: string;
-    currentBalance: number;
-    clientId: number;
-    clientName: string;
-    clientNumber: string;
-    status: any;
-}
-
 const RapportHistoriqueOperationsPage = () => {
     const toast = useRef<Toast>(null);
 
@@ -60,9 +49,9 @@ const RapportHistoriqueOperationsPage = () => {
     const [dateTo, setDateTo] = useState<Date | null>(null);
     const [branchId, setBranchId] = useState<number | null>(null);
     const [operationType, setOperationType] = useState<string | null>(null);
-    const [selectedAccount, setSelectedAccount] = useState<AccountSuggestion | null>(null);
-    const [accountSuggestions, setAccountSuggestions] = useState<AccountSuggestion[]>([]);
+    const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
     const [clientName, setClientName] = useState<string>('');
+    const [savingsAccounts, setSavingsAccounts] = useState<any[]>([]);
 
     // Reference data
     const [branches, setBranches] = useState<any[]>([]);
@@ -104,22 +93,16 @@ const RapportHistoriqueOperationsPage = () => {
         }
     }, [branchesApi.data, branchesApi.error]);
 
-    // Handle account search results
+    // Handle savings accounts data
     useEffect(() => {
-        if (savingsApi.data && savingsApi.callType === 'searchAccounts') {
-            const accounts = Array.isArray(savingsApi.data) ? savingsApi.data : (savingsApi.data.content || []);
-            const suggestions = accounts.map((acc: any) => ({
-                id: acc.id,
-                accountNumber: acc.accountNumber,
-                currentBalance: acc.currentBalance || 0,
-                clientId: acc.client?.id,
-                clientName: getClientDisplayName(acc.client),
-                clientNumber: acc.client?.clientNumber || '',
-                status: acc.status
-            }));
-            setAccountSuggestions(suggestions);
+        if (savingsApi.data) {
+            const data = Array.isArray(savingsApi.data) ? savingsApi.data : [];
+            setSavingsAccounts(data);
         }
-    }, [savingsApi.data, savingsApi.callType]);
+        if (savingsApi.error) {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des comptes' });
+        }
+    }, [savingsApi.data, savingsApi.error]);
 
     // Handle report data
     useEffect(() => {
@@ -146,44 +129,39 @@ const RapportHistoriqueOperationsPage = () => {
 
     const loadReferenceData = () => {
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
+        savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/findallactive`, 'loadSavingsAccounts');
     };
 
-    const searchAccounts = (event: { query: string }) => {
-        if (event.query.length >= 2) {
-            savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/search?searchTerm=${encodeURIComponent(event.query)}&page=0&size=15`, 'searchAccounts');
-        }
-    };
-
-    const onAccountSelect = (e: any) => {
-        const account = e.value as AccountSuggestion;
-        setSelectedAccount(account);
-        // Auto-fill client name from the selected account
-        if (account) {
-            setClientName(account.clientNumber ? `${account.clientNumber} - ${account.clientName}` : account.clientName);
+    const handleAccountChange = (accountId: number | null) => {
+        setSelectedAccountId(accountId);
+        if (accountId) {
+            const account = savingsAccounts.find((a: any) => a.id === accountId);
+            if (account && account.client) {
+                const name = getClientDisplayName(account.client);
+                setClientName(account.client.clientNumber ? `${account.client.clientNumber} - ${name}` : name);
+            }
         } else {
             setClientName('');
         }
     };
 
-    const onAccountClear = () => {
-        setSelectedAccount(null);
-        setClientName('');
-    };
+    const getSelectedAccount = () => savingsAccounts.find((a: any) => a.id === selectedAccountId) || null;
 
     const generateReport = () => {
-        if (!selectedAccount) {
+        if (!selectedAccountId) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner un compte' });
             return;
         }
 
+        const account = getSelectedAccount();
         setLoading(true);
         const params = new URLSearchParams();
         if (dateFrom) params.append('dateFrom', dateFrom.toISOString().split('T')[0]);
         if (dateTo) params.append('dateTo', dateTo.toISOString().split('T')[0]);
         if (branchId) params.append('branchId', branchId.toString());
         if (operationType) params.append('operationType', operationType);
-        if (selectedAccount.clientId) params.append('clientId', selectedAccount.clientId.toString());
-        params.append('accountId', selectedAccount.id.toString());
+        if (account?.client?.id) params.append('clientId', account.client.id.toString());
+        params.append('accountId', selectedAccountId.toString());
 
         reportApi.fetchData(null, 'GET', `${REPORTS_URL}/operation-history?${params.toString()}`, 'generateReport');
     };
@@ -198,10 +176,11 @@ const RapportHistoriqueOperationsPage = () => {
         const companyAddress = 'Bujumbura, Burundi';
         const companyPhone = '+257 22 XX XX XX';
 
+        const account = getSelectedAccount();
         const reportTitle = 'RELEVÉ DE COMPTE';
-        const accountNumber = selectedAccount?.accountNumber || '-';
+        const accountNumber = account?.accountNumber || '-';
         const clientFullName = clientName || '-';
-        const currentBalance = selectedAccount?.currentBalance || totals.closingBalance || 0;
+        const currentBalance = account?.currentBalance || totals.closingBalance || 0;
 
         const dateRange = dateFrom && dateTo
             ? `Du ${dateFrom.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} au ${dateTo.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`
@@ -694,9 +673,10 @@ const RapportHistoriqueOperationsPage = () => {
         // Create CSV content with BOM for Excel UTF-8 support
         let csvContent = '\uFEFF';
 
+        const account = getSelectedAccount();
         // Header info
-        if (selectedAccount) {
-            csvContent += `Compte;${selectedAccount.accountNumber}\n`;
+        if (account) {
+            csvContent += `Compte;${account.accountNumber}\n`;
         }
         if (clientName) {
             csvContent += `Client;${clientName}\n`;
@@ -739,7 +719,7 @@ const RapportHistoriqueOperationsPage = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `historique_operations_${selectedAccount?.accountNumber || ''}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `historique_operations_${account?.accountNumber || ''}_${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -801,18 +781,6 @@ const RapportHistoriqueOperationsPage = () => {
         return <Tag value={rowData.status} severity={getSeverity(rowData.status)} />;
     };
 
-    const accountItemTemplate = (account: AccountSuggestion) => {
-        return (
-            <div className="flex align-items-center gap-2">
-                <div>
-                    <span className="font-bold">{account.accountNumber}</span>
-                    <span className="text-500 ml-2">- {account.clientNumber} {account.clientName}</span>
-                </div>
-                <Tag value={formatCurrency(account.currentBalance)} severity="info" className="ml-auto" />
-            </div>
-        );
-    };
-
     return (
         <div className="card">
             <Toast ref={toast} />
@@ -842,28 +810,26 @@ const RapportHistoriqueOperationsPage = () => {
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-6">
                         <label htmlFor="account">N° Compte *</label>
-                        <AutoComplete
+                        <Dropdown
                             id="account"
-                            value={selectedAccount}
-                            suggestions={accountSuggestions}
-                            completeMethod={searchAccounts}
-                            field="accountNumber"
-                            onChange={(e) => {
-                                if (typeof e.value === 'string') {
-                                    setSelectedAccount(null);
-                                    setClientName('');
-                                } else if (e.value) {
-                                    const account = e.value as AccountSuggestion;
-                                    setSelectedAccount(account);
-                                    setClientName(account.clientNumber ? `${account.clientNumber} - ${account.clientName}` : account.clientName);
-                                }
-                            }}
-                            onSelect={onAccountSelect}
-                            onClear={onAccountClear}
-                            placeholder="Rechercher un compte (N° compte, nom client)..."
+                            value={selectedAccountId}
+                            options={savingsAccounts}
+                            onChange={(e) => handleAccountChange(e.value)}
+                            optionLabel="accountNumber"
+                            optionValue="id"
+                            placeholder="Sélectionner le compte d'épargne..."
+                            filter
+                            filterBy="accountNumber,client.firstName,client.lastName,client.businessName,client.clientNumber"
+                            filterPlaceholder="Rechercher par numéro de compte ou nom client"
+                            showClear
                             className="w-full"
-                            dropdown
-                            itemTemplate={accountItemTemplate}
+                            itemTemplate={(item: any) => (
+                                <span>{item.accountNumber} - {item.client?.clientNumber} {getClientDisplayName(item.client)}</span>
+                            )}
+                            valueTemplate={(item: any, props: any) => {
+                                if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
+                                return <span>{props?.placeholder}</span>;
+                            }}
                         />
                     </div>
                     <div className="field col-12 md:col-6">
@@ -931,7 +897,7 @@ const RapportHistoriqueOperationsPage = () => {
                         icon="pi pi-search"
                         onClick={generateReport}
                         loading={loading}
-                        disabled={!selectedAccount}
+                        disabled={!selectedAccountId}
                     />
                 </div>
             </Card>

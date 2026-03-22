@@ -8,13 +8,14 @@ import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Calendar } from 'primereact/calendar';
-import { VirementBatch, VirementBatchDetail, DEFAULT_COMMISSION_RATE } from './Virement';
+import { VirementBatch, VirementBatchDetail, DEFAULT_COMMISSION_RATE, BatchSourceType, BATCH_SOURCE_TYPE_OPTIONS } from './Virement';
 import { getClientDisplayName } from '@/utils/clientUtils';
 
 interface VirementBatchFormProps {
     batch: VirementBatch;
     setBatch: (batch: VirementBatch) => void;
     savingsAccounts: any[];
+    internalAccounts: any[];
     branches: any[];
     isViewMode?: boolean;
 }
@@ -23,6 +24,7 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
     batch,
     setBatch,
     savingsAccounts,
+    internalAccounts,
     branches,
     isViewMode = false
 }) => {
@@ -34,9 +36,17 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
         return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
     };
 
+    const sourceType: BatchSourceType = batch.sourceType || 'SAVINGS';
+    const isSavingsSource = sourceType === 'SAVINGS';
+
     // Source account info
-    const sourceAccount = savingsAccounts.find(a => a.id === batch.sourceSavingsAccountId);
-    const sourceBalance = sourceAccount?.availableBalance || sourceAccount?.currentBalance || 0;
+    const sourceAccount = isSavingsSource
+        ? savingsAccounts.find(a => a.id === batch.sourceSavingsAccountId)
+        : internalAccounts.find(a => a.accountId === batch.sourceInternalAccountId);
+    const sourceBalance = isSavingsSource
+        ? (sourceAccount?.availableBalance || sourceAccount?.currentBalance || 0)
+        : (sourceAccount?.soldeActuel || 0);
+    const hasSourceSelected = isSavingsSource ? !!batch.sourceSavingsAccountId : !!batch.sourceInternalAccountId;
 
     // Calculate total allocated to destinations
     const totalAllocated = batch.details.reduce((sum, d) => sum + (d.amount || 0), 0);
@@ -64,20 +74,56 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
         && !isDuplicate(destAccountId)
         && !isSameAsSource(destAccountId)
         && destAmount <= remainingBalance
-        && batch.sourceSavingsAccountId !== undefined;
+        && hasSourceSelected;
 
-    const handleSourceChange = (accountId: number) => {
-        const account = savingsAccounts.find(a => a.id === accountId);
+    const handleSourceTypeChange = (type: BatchSourceType) => {
         setBatch({
             ...batch,
-            sourceSavingsAccountId: accountId,
-            sourceClient: account?.client,
-            details: [], // Reset destinations when source changes
+            sourceType: type,
+            sourceSavingsAccountId: undefined,
+            sourceInternalAccountId: undefined,
+            sourceClient: undefined,
+            sourceInternalAccount: undefined,
+            details: [],
             totalAmount: 0,
             commissionAmount: 0,
             totalDebitAmount: 0,
             numberOfTransfers: 0
         });
+        setDestAccountId(null);
+        setDestAmount(0);
+    };
+
+    const handleSourceChange = (accountId: number) => {
+        if (isSavingsSource) {
+            const account = savingsAccounts.find(a => a.id === accountId);
+            setBatch({
+                ...batch,
+                sourceSavingsAccountId: accountId,
+                sourceInternalAccountId: undefined,
+                sourceClient: account?.client,
+                sourceInternalAccount: undefined,
+                details: [],
+                totalAmount: 0,
+                commissionAmount: 0,
+                totalDebitAmount: 0,
+                numberOfTransfers: 0
+            });
+        } else {
+            const account = internalAccounts.find(a => a.accountId === accountId);
+            setBatch({
+                ...batch,
+                sourceInternalAccountId: accountId,
+                sourceSavingsAccountId: undefined,
+                sourceInternalAccount: account,
+                sourceClient: undefined,
+                details: [],
+                totalAmount: 0,
+                commissionAmount: 0,
+                totalDebitAmount: 0,
+                numberOfTransfers: 0
+            });
+        }
         setDestAccountId(null);
         setDestAmount(0);
     };
@@ -157,7 +203,7 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                     Compte Source (Débit)
                 </h5>
                 <div className="formgrid grid">
-                    <div className="field col-12 md:col-4">
+                    <div className="field col-12 md:col-3">
                         <label htmlFor="batchBranchId" className="font-medium">Agence *</label>
                         <Dropdown
                             id="batchBranchId"
@@ -172,31 +218,66 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                             className="w-full"
                         />
                     </div>
-                    <div className="field col-12 md:col-4">
-                        <label htmlFor="batchSourceAccount" className="font-medium">Compte Source *</label>
+                    <div className="field col-12 md:col-2">
+                        <label htmlFor="batchSourceType" className="font-medium">Type Source *</label>
                         <Dropdown
-                            id="batchSourceAccount"
-                            value={batch.sourceSavingsAccountId}
-                            options={savingsAccounts}
-                            onChange={(e) => handleSourceChange(e.value)}
-                            optionLabel="accountNumber"
-                            optionValue="id"
-                            placeholder="Sélectionner le compte source..."
+                            id="batchSourceType"
+                            value={sourceType}
+                            options={BATCH_SOURCE_TYPE_OPTIONS}
+                            onChange={(e) => handleSourceTypeChange(e.value)}
                             disabled={isViewMode}
-                            filter
-                            filterBy="accountNumber"
-                            filterPlaceholder="Rechercher par numéro de compte"
                             className="w-full"
-                            itemTemplate={(item: any) => (
-                                <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.availableBalance || item.currentBalance || 0)})</span>
-                            )}
-                            valueTemplate={(item: any, props: any) => {
-                                if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
-                                return <span>{props?.placeholder}</span>;
-                            }}
                         />
                     </div>
                     <div className="field col-12 md:col-4">
+                        <label htmlFor="batchSourceAccount" className="font-medium">Compte Source *</label>
+                        {isSavingsSource ? (
+                            <Dropdown
+                                id="batchSourceAccount"
+                                value={batch.sourceSavingsAccountId}
+                                options={savingsAccounts}
+                                onChange={(e) => handleSourceChange(e.value)}
+                                optionLabel="accountNumber"
+                                optionValue="id"
+                                placeholder="Sélectionner le compte source..."
+                                disabled={isViewMode}
+                                filter
+                                filterBy="accountNumber"
+                                filterPlaceholder="Rechercher par numéro de compte"
+                                className="w-full"
+                                itemTemplate={(item: any) => (
+                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.availableBalance || item.currentBalance || 0)})</span>
+                                )}
+                                valueTemplate={(item: any, props: any) => {
+                                    if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
+                                    return <span>{props?.placeholder}</span>;
+                                }}
+                            />
+                        ) : (
+                            <Dropdown
+                                id="batchSourceAccountInternal"
+                                value={batch.sourceInternalAccountId}
+                                options={internalAccounts}
+                                onChange={(e) => handleSourceChange(e.value)}
+                                optionLabel="codeCompte"
+                                optionValue="accountId"
+                                placeholder="Sélectionner le compte interne..."
+                                disabled={isViewMode}
+                                filter
+                                filterBy="codeCompte,libelle"
+                                filterPlaceholder="Rechercher par code ou libellé"
+                                className="w-full"
+                                itemTemplate={(item: any) => (
+                                    <span>{item.codeCompte} - {item.libelle} ({formatCurrency(item.soldeActuel || 0)})</span>
+                                )}
+                                valueTemplate={(item: any, props: any) => {
+                                    if (item) return <span>{item.codeCompte} - {item.libelle}</span>;
+                                    return <span>{props?.placeholder}</span>;
+                                }}
+                            />
+                        )}
+                    </div>
+                    <div className="field col-12 md:col-3">
                         <label htmlFor="batchDate" className="font-medium">Date *</label>
                         <Calendar
                             id="batchDate"
@@ -209,7 +290,7 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                         />
                     </div>
                 </div>
-                {batch.sourceSavingsAccountId && (
+                {hasSourceSelected && (
                     <div className="mt-2 p-2 surface-50 border-round">
                         <div className="flex align-items-center gap-3">
                             <div className="flex align-items-center gap-2">
@@ -280,7 +361,7 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                         />
                     </div>
                 </div>
-                {batch.sourceSavingsAccountId && totalDebitAmount > sourceBalance && (
+                {hasSourceSelected && totalDebitAmount > sourceBalance && (
                     <div className="mt-2 p-2 border-round bg-red-50" style={{ border: '1px solid #ef4444' }}>
                         <div className="flex align-items-center gap-2">
                             <i className="pi pi-exclamation-triangle text-red-500"></i>
@@ -331,7 +412,7 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                 </h5>
 
                 {/* Add destination row */}
-                {!isViewMode && batch.sourceSavingsAccountId && (
+                {!isViewMode && hasSourceSelected && (
                     <div className="formgrid grid align-items-end mb-3 p-3 surface-50 border-round">
                         <div className="field col-12 md:col-5 mb-0">
                             <label className="font-medium">Compte Destination</label>

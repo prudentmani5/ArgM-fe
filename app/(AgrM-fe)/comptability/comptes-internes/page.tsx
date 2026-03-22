@@ -18,9 +18,22 @@ import { InputTextarea } from 'primereact/inputtextarea';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
-import { InternalAccount, InternalAccountClass, InternalAccountOperation } from '../types';
+import { InternalAccount, InternalAccountClass, InternalAccountOperation, CptCashCount } from '../types';
 import InternalAccountForm from './InternalAccountForm';
 import { useAuthorities } from '../../../../hooks/useAuthorities';
+
+const DENOMINATIONS = [
+    { field: 'bill10000', label: 'Billets 10 000 FBu', value: 10000 },
+    { field: 'bill5000', label: 'Billets 5 000 FBu', value: 5000 },
+    { field: 'bill2000', label: 'Billets 2 000 FBu', value: 2000 },
+    { field: 'bill1000', label: 'Billets 1 000 FBu', value: 1000 },
+    { field: 'bill500', label: 'Billets 500 FBu', value: 500 },
+    { field: 'coin100', label: 'Pieces 100 FBu', value: 100 },
+    { field: 'coin50', label: 'Pieces 50 FBu', value: 50 },
+    { field: 'coin10', label: 'Pieces 10 FBu', value: 10 },
+    { field: 'coin5', label: 'Pieces 5 FBu', value: 5 },
+    { field: 'coin1', label: 'Pieces 1 FBu', value: 1 },
+];
 
 const formatNumber = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0';
@@ -50,6 +63,7 @@ export default function ComptesInternesPage() {
     const { data: manualOpData, loading: manualOpLoading, error: manualOpError, fetchData: fetchManualOp, callType: manualOpCallType } = useConsumApi('');
     const { data: operationsData, loading: operationsLoading, error: operationsError, fetchData: fetchOperations, callType: operationsCallType } = useConsumApi('');
     const { data: validateData, loading: validateLoading, error: validateError, fetchData: fetchValidate, callType: validateCallType } = useConsumApi('');
+    const { data: billetageData, loading: billetageLoading, error: billetageError, fetchData: fetchBilletage, callType: billetageCallType } = useConsumApi('');
 
     // Data lists
     const [accounts, setAccounts] = useState<any[]>([]);
@@ -85,6 +99,15 @@ export default function ComptesInternesPage() {
     const [selectedAccountForMvt, setSelectedAccountForMvt] = useState<any>(null);
     const [dateDebut, setDateDebut] = useState<Date | null>(null);
     const [dateFin, setDateFin] = useState<Date | null>(null);
+
+    // Billetage
+    const [billetageVisible, setBilletageVisible] = useState(false);
+    const [billetageAccount, setBilletageAccount] = useState<any>(null);
+    const [billetageCount, setBilletageCount] = useState<CptCashCount>(new CptCashCount());
+    const [billetageOperationType, setBilletageOperationType] = useState<string>('');
+
+    // Active tab
+    const [activeTabIndex, setActiveTabIndex] = useState(0);
 
     // Global filter
     const [globalFilter, setGlobalFilter] = useState('');
@@ -191,26 +214,43 @@ export default function ComptesInternesPage() {
         if (manualOpData) {
             switch (manualOpCallType) {
                 case 'depotAccount':
-                    toast.current?.show({ severity: 'info', summary: 'Opération créée', detail: 'Dépôt créé, en attente de validation', life: 4000 });
+                    toast.current?.show({ severity: 'info', summary: 'Opération créée', detail: `Dépôt de ${formatNumber(manualOpData.montant)} FBU sur ${selectedAccount?.accountNumber} - ${selectedAccount?.libelle}. En attente de validation.`, life: 5000 });
+                    // Trigger billetage for depot
+                    if (selectedAccount) {
+                        setBilletageAccount({ ...selectedAccount, lastOpMontant: manualOpData.montant });
+                        setBilletageOperationType('Depot');
+                        setBilletageCount(new CptCashCount());
+                        setBilletageVisible(true);
+                    }
                     setDepotDialog(false);
                     setManualMontant(0);
                     setManualLibelle('');
                     loadOperations();
+                    setActiveTabIndex(2);
                     break;
                 case 'retraitAccount':
-                    toast.current?.show({ severity: 'info', summary: 'Opération créée', detail: 'Retrait créé, en attente de validation', life: 4000 });
+                    toast.current?.show({ severity: 'info', summary: 'Opération créée', detail: `Retrait de ${formatNumber(manualOpData.montant)} FBU sur ${selectedAccount?.accountNumber} - ${selectedAccount?.libelle}. En attente de validation.`, life: 5000 });
+                    // Trigger billetage for retrait
+                    if (selectedAccount) {
+                        setBilletageAccount({ ...selectedAccount, lastOpMontant: manualOpData.montant });
+                        setBilletageOperationType('Retrait');
+                        setBilletageCount(new CptCashCount());
+                        setBilletageVisible(true);
+                    }
                     setRetraitDialog(false);
                     setManualMontant(0);
                     setManualLibelle('');
                     loadOperations();
+                    setActiveTabIndex(2);
                     break;
                 case 'transfertAccount':
-                    toast.current?.show({ severity: 'info', summary: 'Opération créée', detail: 'Transfert créé, en attente de validation', life: 4000 });
+                    toast.current?.show({ severity: 'info', summary: 'Opération créée', detail: `Transfert de ${formatNumber(manualOpData.montant)} FBU de ${selectedAccount?.accountNumber} vers ${transfertDestAccount?.accountNumber}. En attente de validation.`, life: 5000 });
                     setTransfertDialog(false);
                     setManualMontant(0);
                     setManualLibelle('');
                     setTransfertDestAccount(null);
                     loadOperations();
+                    setActiveTabIndex(2);
                     break;
             }
         }
@@ -218,6 +258,28 @@ export default function ComptesInternesPage() {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: manualOpError.message || 'Une erreur est survenue', life: 5000 });
         }
     }, [manualOpData, manualOpError, manualOpCallType]);
+
+    // Handle billetage response
+    useEffect(() => {
+        if (billetageData && billetageCallType === 'saveBilletage') {
+            const result = billetageData as any;
+            const ecart = result.ecart || 0;
+            toast.current?.show({
+                severity: Math.abs(ecart) > 0.01 ? 'warn' : 'success',
+                summary: 'Billetage enregistre',
+                detail: Math.abs(ecart) > 0.01
+                    ? `Total physique: ${formatNumber(result.totalPhysique)} FBu — Ecart: ${formatNumber(ecart)} FBu`
+                    : `Total physique: ${formatNumber(result.totalPhysique)} FBu — Pas d'ecart`,
+                life: 5000
+            });
+            setBilletageVisible(false);
+            setBilletageAccount(null);
+            setBilletageCount(new CptCashCount());
+        }
+        if (billetageError && billetageCallType === 'saveBilletage') {
+            toast.current?.show({ severity: 'error', summary: 'Erreur', detail: billetageError.message || 'Erreur lors du billetage', life: 5000 });
+        }
+    }, [billetageData, billetageError, billetageCallType]);
 
     const loadAccounts = () => {
         fetchAccounts(null, 'GET', `${BASE_URL}/findall`, 'loadAccounts');
@@ -337,6 +399,10 @@ export default function ComptesInternesPage() {
 
     const executeRetrait = () => {
         if (!selectedAccount?.accountId || manualMontant <= 0) return;
+        if (manualMontant > (selectedAccount?.soldeActuel ?? 0)) {
+            toast.current?.show({ severity: 'warn', summary: 'Solde insuffisant', detail: `Le solde actuel (${formatNumber(selectedAccount?.soldeActuel)} FBU) est insuffisant pour un retrait de ${formatNumber(manualMontant)} FBU.`, life: 5000 });
+            return;
+        }
         fetchManualOp({
             montant: manualMontant,
             libelle: manualLibelle,
@@ -350,6 +416,10 @@ export default function ComptesInternesPage() {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Le compte source et destination doivent être différents', life: 3000 });
             return;
         }
+        if (manualMontant > (selectedAccount?.soldeActuel ?? 0)) {
+            toast.current?.show({ severity: 'warn', summary: 'Solde insuffisant', detail: `Le solde actuel du compte source (${formatNumber(selectedAccount?.soldeActuel)} FBU) est insuffisant pour un transfert de ${formatNumber(manualMontant)} FBU.`, life: 5000 });
+            return;
+        }
         fetchManualOp({
             sourceAccountId: selectedAccount.accountId,
             destAccountId: transfertDestAccount.accountId,
@@ -357,6 +427,31 @@ export default function ComptesInternesPage() {
             libelle: manualLibelle,
             userAction: getUserAction()
         }, 'POST', `${BASE_URL}/transfert`, 'transfertAccount');
+    };
+
+    // Billetage handlers
+    const CAISSE_BASE_URL = buildApiUrl('/api/comptability/caisses');
+
+    const calculateBilletageTotal = (): number => {
+        return DENOMINATIONS.reduce((sum, d) => sum + ((billetageCount as any)[d.field] || 0) * d.value, 0);
+    };
+
+    const handleBilletageDenominationChange = (field: string, value: number) => {
+        setBilletageCount(prev => ({ ...prev, [field]: value || 0 }));
+    };
+
+    const handleSaveBilletage = () => {
+        if (!billetageAccount) return;
+        // Try to find linked caisse by compteComptable
+        const linkedCaisseId = billetageAccount.caisseId || billetageAccount.accountId;
+        const dataToSend = { ...billetageCount, userAction: getUserAction() };
+        fetchBilletage(dataToSend, 'POST', `${CAISSE_BASE_URL}/billetage/${linkedCaisseId}`, 'saveBilletage');
+    };
+
+    const handleSkipBilletage = () => {
+        setBilletageVisible(false);
+        setBilletageAccount(null);
+        setBilletageCount(new CptCashCount());
     };
 
     // Operation validation
@@ -446,6 +541,14 @@ export default function ComptesInternesPage() {
 
     const canValidateOp = (op: any) => {
         if (op.status !== 'PENDING') return false;
+        // Check if source account is active
+        const sourceAcc = accounts.find((a: any) => a.accountId === op.sourceAccountId);
+        if (sourceAcc && !sourceAcc.actif) return false;
+        // Check if dest account is active (for transfers)
+        if (op.destAccountId) {
+            const destAcc = accounts.find((a: any) => a.accountId === op.destAccountId);
+            if (destAcc && !destAcc.actif) return false;
+        }
         switch (op.operationType) {
             case 'DEPOT': return canValidateDepot;
             case 'RETRAIT': return canValidateRetrait;
@@ -632,7 +735,7 @@ export default function ComptesInternesPage() {
                         Comptes Internes
                     </h4>
 
-                    <TabView>
+                    <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
                         {/* Tab 1: Account List */}
                         <TabPanel header="Comptes Internes" leftIcon="pi pi-list mr-2">
                             <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
@@ -1040,6 +1143,100 @@ export default function ComptesInternesPage() {
                                         rows={3}
                                         placeholder="Indiquer le motif du rejet..."
                                         className="w-full"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </Dialog>
+
+                    {/* Billetage Dialog */}
+                    <Dialog
+                        visible={billetageVisible}
+                        onHide={handleSkipBilletage}
+                        header={
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-money-bill text-xl text-primary"></i>
+                                <span>Billetage - Comptage Physique</span>
+                            </div>
+                        }
+                        style={{ width: '520px' }}
+                        modal
+                        closable={false}
+                        footer={
+                            <div className="flex justify-content-between">
+                                <Button label="Passer" icon="pi pi-forward" severity="secondary" outlined onClick={handleSkipBilletage} />
+                                <Button label="Enregistrer le Billetage" icon="pi pi-check" severity="success" onClick={handleSaveBilletage} loading={billetageLoading} />
+                            </div>
+                        }
+                    >
+                        {billetageAccount && (
+                            <div>
+                                <div className="p-3 border-round mb-3 surface-100">
+                                    <div className="flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div>
+                                            <span className="text-500">Compte: </span>
+                                            <span className="font-bold">{billetageAccount.accountNumber}</span>
+                                            <span className="text-500 ml-2">— {billetageAccount.libelle}</span>
+                                        </div>
+                                        <Tag value={billetageOperationType} severity={billetageOperationType === 'Depot' ? 'success' : 'danger'} />
+                                    </div>
+                                    <div className="mt-2">
+                                        <span className="text-500">Montant de l'operation: </span>
+                                        <span className="font-bold text-blue-600">{formatNumber(billetageAccount.lastOpMontant)} FBu</span>
+                                    </div>
+                                </div>
+
+                                <DataTable value={DENOMINATIONS} size="small" showGridlines
+                                    footer={
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-lg font-bold">TOTAL</span>
+                                            <span className="text-lg font-bold text-green-600">{formatNumber(calculateBilletageTotal())} FBu</span>
+                                        </div>
+                                    }>
+                                    <Column header="Denomination" body={(d: any) => (
+                                        <span className="font-medium">{formatNumber(d.value)} FBu</span>
+                                    )} style={{ width: '120px' }} />
+                                    <Column header="Quantite" body={(d: any) => (
+                                        <InputNumber
+                                            value={(billetageCount as any)[d.field] || 0}
+                                            onValueChange={(e) => handleBilletageDenominationChange(d.field, e.value || 0)}
+                                            min={0}
+                                            showButtons
+                                            buttonLayout="horizontal"
+                                            incrementButtonIcon="pi pi-plus"
+                                            decrementButtonIcon="pi pi-minus"
+                                            inputStyle={{ textAlign: 'center', fontWeight: 600, width: '60px' }}
+                                        />
+                                    )} style={{ width: '180px' }} />
+                                    <Column header="Sous-total" body={(d: any) => (
+                                        <span className="font-bold text-primary">{formatNumber(((billetageCount as any)[d.field] || 0) * d.value)} FBu</span>
+                                    )} style={{ textAlign: 'right' }} />
+                                </DataTable>
+
+                                <div className="mt-3 p-3 border-round" style={{
+                                    background: Math.abs(calculateBilletageTotal() - (billetageAccount.lastOpMontant ?? 0)) > 0.01 ? '#FFF3E0' : '#E8F5E9',
+                                    borderLeft: `4px solid ${Math.abs(calculateBilletageTotal() - (billetageAccount.lastOpMontant ?? 0)) > 0.01 ? '#FF9800' : '#4CAF50'}`
+                                }}>
+                                    <div className="flex justify-content-between align-items-center mb-2">
+                                        <span className="text-600">Montant operation:</span>
+                                        <span className="font-bold text-blue-600">{formatNumber(billetageAccount.lastOpMontant)} FBu</span>
+                                    </div>
+                                    <div className="flex justify-content-between align-items-center">
+                                        <span className="font-semibold">Ecart:</span>
+                                        <span className={`font-bold text-lg ${Math.abs(calculateBilletageTotal() - (billetageAccount.lastOpMontant ?? 0)) > 0.01 ? 'text-orange-600' : 'text-green-600'}`}>
+                                            {formatNumber(calculateBilletageTotal() - (billetageAccount.lastOpMontant ?? 0))} FBu
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="field mt-3">
+                                    <label className="font-semibold">Notes</label>
+                                    <InputTextarea
+                                        value={billetageCount.notes || ''}
+                                        onChange={(e) => setBilletageCount(prev => ({ ...prev, notes: e.target.value }))}
+                                        rows={2}
+                                        className="w-full"
+                                        placeholder="Observations sur le comptage..."
                                     />
                                 </div>
                             </div>

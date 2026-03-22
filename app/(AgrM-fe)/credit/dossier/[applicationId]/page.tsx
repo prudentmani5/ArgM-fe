@@ -193,6 +193,20 @@ export default function DossierCreditPage() {
     const mensualiteDemandee = (application?.amountRequested || 0) / (application?.durationMonths || 1);
     const ratioEndettement = totalRevenusVerifies > 0 ? (mensualiteDemandee / totalRevenusVerifies) * 100 : 0;
 
+    // Disbursement breakdown calculations
+    const amountRequested = application?.amountRequested || 0;
+    const totalFrais = productFees.reduce((sum, fee) => {
+        if (fee.percentageRate != null && fee.percentageRate > 0) {
+            return sum + (fee.percentageRate / 100) * amountRequested;
+        }
+        return sum + (fee.fixedAmount || 0);
+    }, 0);
+    const totalCaution = productGuarantees.reduce((sum, g) => {
+        const pct = g.minCoveragePercentage || 0;
+        return sum + (pct / 100) * amountRequested;
+    }, 0);
+    const montantNetClient = amountRequested - totalFrais - totalCaution;
+
     // Status template for visits
     const visitStatusTemplate = (row: any) => {
         const status = StatutsVisite.find(s => s.code === row.visitStatus);
@@ -381,6 +395,83 @@ export default function DossierCreditPage() {
                                 )}
                             </>
                         )}
+
+                        {/* Disbursement Breakdown */}
+                        <div className="col-12">
+                            <Card title={<span><i className="pi pi-wallet mr-2 text-primary"></i>Simulation de Décaissement</span>}>
+                                <div className="grid">
+                                    <div className="col-12 md:col-3">
+                                        <div className="surface-100 p-3 border-round text-center">
+                                            <div className="text-500 mb-1 text-sm">Montant Total Demandé</div>
+                                            <div className="text-2xl font-bold text-primary">{formatCurrency(amountRequested)}</div>
+                                        </div>
+                                    </div>
+                                    <div className="col-12 md:col-3">
+                                        <div className="surface-100 p-3 border-round text-center">
+                                            <div className="text-500 mb-1 text-sm">
+                                                <i className="pi pi-minus-circle text-orange-500 mr-1"></i>
+                                                Total Frais
+                                            </div>
+                                            <div className="text-2xl font-bold text-orange-500">{formatCurrency(totalFrais)}</div>
+                                            {productFees.length > 0 && (
+                                                <div className="mt-2 text-left">
+                                                    {productFees.map((fee: any, idx: number) => {
+                                                        const feeAmount = (fee.percentageRate != null && fee.percentageRate > 0)
+                                                            ? (fee.percentageRate / 100) * amountRequested
+                                                            : (fee.fixedAmount || 0);
+                                                        return (
+                                                            <div key={idx} className="text-xs text-500 flex justify-content-between">
+                                                                <span>{fee.feeNameFr || fee.feeName || fee.feeType?.nameFr || 'Frais'}:</span>
+                                                                <span className="font-semibold">{formatCurrency(feeAmount)}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="col-12 md:col-3">
+                                        <div className="surface-100 p-3 border-round text-center">
+                                            <div className="text-500 mb-1 text-sm">
+                                                <i className="pi pi-minus-circle text-red-500 mr-1"></i>
+                                                Caution / Garantie
+                                            </div>
+                                            <div className="text-2xl font-bold text-red-500">{formatCurrency(totalCaution)}</div>
+                                            {productGuarantees.length > 0 && (
+                                                <div className="mt-2 text-left">
+                                                    {productGuarantees.map((g: any, idx: number) => {
+                                                        const cautionAmount = ((g.minCoveragePercentage || 0) / 100) * amountRequested;
+                                                        return (
+                                                            <div key={idx} className="text-xs text-500 flex justify-content-between">
+                                                                <span>{g.guaranteeType?.nameFr || g.guaranteeType?.name || 'Caution'}:</span>
+                                                                <span className="font-semibold">{formatCurrency(cautionAmount)}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="col-12 md:col-3">
+                                        <div className="border-2 border-primary p-3 border-round text-center" style={{ borderStyle: 'solid' }}>
+                                            <div className="text-500 mb-1 text-sm">
+                                                <i className="pi pi-check-circle text-green-600 mr-1"></i>
+                                                Montant Net Reçu par le Client
+                                            </div>
+                                            <div className="text-2xl font-bold text-green-600">{formatCurrency(montantNetClient)}</div>
+                                            <div className="text-xs text-500 mt-1">
+                                                {amountRequested > 0 ? `${((montantNetClient / amountRequested) * 100).toFixed(1)}% du montant demandé` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="surface-50 p-2 border-round mt-3 text-sm text-500">
+                                    <i className="pi pi-info-circle mr-1"></i>
+                                    Formule: Montant Net = Montant Demandé − Frais − Caution
+                                    {totalFrais > 0 && <span> ({formatCurrency(amountRequested)} − {formatCurrency(totalFrais)} − {formatCurrency(totalCaution)} = <strong className="text-green-600">{formatCurrency(montantNetClient)}</strong>)</span>}
+                                </div>
+                            </Card>
+                        </div>
                     </div>
                 </TabPanel>
 

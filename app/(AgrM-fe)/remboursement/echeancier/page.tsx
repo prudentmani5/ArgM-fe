@@ -59,6 +59,7 @@ const EcheancierPage = () => {
     const { data, loading, error, fetchData, callType } = useConsumApi('');
     const BASE_URL = buildApiUrl('/api/remboursement/schedules');
     const DISBURSEMENTS_URL = buildApiUrl('/api/credit/disbursements');
+    const LOAN_PRODUCTS_URL = buildApiUrl('/api/financial-products/loan-products');
 
     // Store loan IDs that are fully paid (either through early repayment or normal payments)
     const [fullyPaidLoanIds, setFullyPaidLoanIds] = useState<number[]>([]);
@@ -133,6 +134,20 @@ const EcheancierPage = () => {
                     showToast('success', 'Succès', 'Échéance supprimée');
                     loadEcheanciers();
                     break;
+                case 'loadLoanProduct':
+                    if (data) {
+                        const methodCode = data.interestCalculationMethod?.code || '';
+                        // Map interest calculation method code to amortization method
+                        let amortMethod = 'FRENCH';
+                        if (methodCode.toUpperCase().includes('LINEAR') || methodCode.toUpperCase().includes('LINEAIRE')) {
+                            amortMethod = 'LINEAR';
+                        }
+                        setGenerateParams(prev => ({
+                            ...prev,
+                            amortizationMethod: amortMethod
+                        }));
+                    }
+                    break;
                 case 'generate':
                     showToast('success', 'Succès', 'Échéancier généré avec succès');
                     setShowGenerateDialog(false);
@@ -170,7 +185,8 @@ const EcheancierPage = () => {
 
         // Auto-populate generate params from selected disbursement
         const application = disbursement.application || {};
-        const interestRate = disbursement.interestRate || 0;
+        // Interest rate comes from credit application (approved rate takes priority)
+        const interestRate = application.interestRateApproved || application.interestRate || 0;
 
         setGenerateParams({
             loanId: disbursement.id, // Use disbursement ID (references mod4_disbursements)
@@ -180,8 +196,13 @@ const EcheancierPage = () => {
             interestRate: interestRate,
             termMonths: application.durationMonths || 12,
             startDate: new Date(),
-            amortizationMethod: 'FRENCH'
+            amortizationMethod: 'FRENCH' // Default, will be updated from loan product
         });
+
+        // Fetch loan product to get amortization method (interestCalculationMethod)
+        if (application.loanProductId) {
+            fetchData(null, 'GET', `${LOAN_PRODUCTS_URL}/findbyid/${application.loanProductId}`, 'loadLoanProduct');
+        }
 
         setShowLoanSelectionDialog(false);
         setShowGenerateDialog(true);
@@ -463,26 +484,15 @@ const EcheancierPage = () => {
                 onClick={() => handleView(rowData)}
             />
             {rowData.status !== 'PAID' && rowData.status !== 'PARTIAL' && (
-                <>
-                    <Button
-                        icon="pi pi-pencil"
-                        rounded
-                        text
-                        severity="warning"
-                        tooltip="Modifier"
-                        tooltipOptions={{ position: 'top' }}
-                        onClick={() => handleEdit(rowData)}
-                    />
-                    <Button
-                        icon="pi pi-trash"
-                        rounded
-                        text
-                        severity="danger"
-                        tooltip="Supprimer"
-                        tooltipOptions={{ position: 'top' }}
-                        onClick={() => handleDelete(rowData)}
-                    />
-                </>
+                <Button
+                    icon="pi pi-pencil"
+                    rounded
+                    text
+                    severity="warning"
+                    tooltip="Modifier"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleEdit(rowData)}
+                />
             )}
         </div>
     );
@@ -679,8 +689,8 @@ const EcheancierPage = () => {
                         <InputNumber
                             id="genPrincipal"
                             value={generateParams.principal}
-                            onValueChange={(e) => setGenerateParams(prev => ({ ...prev, principal: e.value ?? null }))}
                             className="w-full"
+                            disabled={true}
                             mode="currency"
                             currency="BIF"
                             locale="fr-BI"
@@ -691,8 +701,8 @@ const EcheancierPage = () => {
                         <InputNumber
                             id="genInterestRate"
                             value={generateParams.interestRate}
-                            onValueChange={(e) => setGenerateParams(prev => ({ ...prev, interestRate: e.value ?? null }))}
                             className="w-full"
+                            disabled={true}
                             suffix="%"
                             minFractionDigits={2}
                         />
@@ -702,8 +712,8 @@ const EcheancierPage = () => {
                         <InputNumber
                             id="genTermMonths"
                             value={generateParams.termMonths}
-                            onValueChange={(e) => setGenerateParams(prev => ({ ...prev, termMonths: e.value ?? null }))}
                             className="w-full"
+                            disabled={true}
                             suffix=" mois"
                         />
                     </div>
@@ -712,8 +722,8 @@ const EcheancierPage = () => {
                         <Calendar
                             id="genStartDate"
                             value={generateParams.startDate}
-                            onChange={(e) => setGenerateParams(prev => ({ ...prev, startDate: e.value as Date }))}
                             className="w-full"
+                            disabled={true}
                             dateFormat="dd/mm/yy"
                             showIcon
                         />
@@ -724,8 +734,8 @@ const EcheancierPage = () => {
                             id="genMethod"
                             value={generateParams.amortizationMethod}
                             options={amortizationMethods}
-                            onChange={(e) => setGenerateParams(prev => ({ ...prev, amortizationMethod: e.value }))}
                             className="w-full"
+                            disabled={true}
                         />
                     </div>
                 </div>

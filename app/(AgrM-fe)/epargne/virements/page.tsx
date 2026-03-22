@@ -232,8 +232,13 @@ function VirementPage() {
     };
 
     const handleBatchSubmit = () => {
-        if (!batch.sourceSavingsAccountId) {
+        const isInternalSource = batch.sourceType === 'INTERNAL';
+        if (!isInternalSource && !batch.sourceSavingsAccountId) {
             showToast('warn', 'Attention', 'Veuillez sélectionner le compte source');
+            return;
+        }
+        if (isInternalSource && !batch.sourceInternalAccountId) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner le compte interne source');
             return;
         }
         if (!batch.branchId) {
@@ -250,7 +255,9 @@ function VirementPage() {
         }
 
         const data = {
-            sourceSavingsAccountId: batch.sourceSavingsAccountId,
+            sourceType: batch.sourceType || 'SAVINGS',
+            sourceSavingsAccountId: isInternalSource ? null : batch.sourceSavingsAccountId,
+            sourceInternalAccountId: isInternalSource ? batch.sourceInternalAccountId : null,
             branchId: batch.branchId,
             commissionRate: batch.commissionRate,
             motif: batch.motif,
@@ -400,6 +407,9 @@ function VirementPage() {
     const batchSourceTemplate = (rowData: VirementBatch) => {
         if (rowData.sourceClient) {
             return getClientDisplayName(rowData.sourceClient);
+        }
+        if (rowData.sourceInternalAccount) {
+            return `${rowData.sourceInternalAccount.codeCompte} - ${rowData.sourceInternalAccount.libelle}`;
         }
         return rowData.sourceSavingsAccount?.accountNumber || '-';
     };
@@ -910,6 +920,7 @@ function VirementPage() {
                         batch={batch}
                         setBatch={setBatch}
                         savingsAccounts={savingsAccounts}
+                        internalAccounts={internalAccounts}
                         branches={branches}
                     />
                     <div className="flex gap-2 mt-4">
@@ -1106,6 +1117,7 @@ function VirementPage() {
                             batch={selectedBatch}
                             setBatch={() => {}}
                             savingsAccounts={savingsAccounts}
+                            internalAccounts={internalAccounts}
                             branches={branches}
                             isViewMode={true}
                         />

@@ -63,13 +63,10 @@ export default function DemandeCreditForm({
         if (!option) return null;
         const clientName = option.client ? `${option.client.firstName} ${option.client.lastName}` : '';
         return (
-            <div className="flex flex-column">
-                <div className="flex align-items-center gap-2">
-                    <span className="font-semibold">{option.accountNumber}</span>
-                    <span className="text-500">-</span>
-                    <span>{clientName}</span>
-                </div>
-                <small className="text-500">Solde: {formatCurrency(option.currentBalance || 0)}</small>
+            <div className="flex align-items-center gap-2">
+                <span className="font-semibold">{option.accountNumber}</span>
+                <span className="text-500">-</span>
+                <span>{clientName}</span>
             </div>
         );
     };

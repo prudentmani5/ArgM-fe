@@ -111,11 +111,11 @@ function DepositSlipPage() {
         }
     }, [currenciesApi.data, currenciesApi.error]);
 
-    // Handle savings accounts data
+    // Handle savings accounts data (exclude TERM_DEPOSIT - dépôt interdit)
     useEffect(() => {
         if (savingsApi.data) {
-            const data = savingsApi.data;
-            setSavingsAccounts(Array.isArray(data) ? data : []);
+            const data = Array.isArray(savingsApi.data) ? savingsApi.data : [];
+            setSavingsAccounts(data.filter((a: any) => a.accountType !== 'TERM_DEPOSIT'));
         }
         if (savingsApi.error) {
             showToast('error', 'Erreur', savingsApi.error.message || 'Erreur lors du chargement des comptes');

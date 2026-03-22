@@ -7,8 +7,11 @@ import { Calendar } from 'primereact/calendar';
 import { InputNumber } from 'primereact/inputnumber';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
-import { WithdrawalRequest, WithdrawalStatus } from './WithdrawalRequest';
+import { Divider } from 'primereact/divider';
+import { WithdrawalRequest, WithdrawalStatus, CashDenomination } from './WithdrawalRequest';
 import { getClientDisplayName } from '@/utils/clientUtils';
+
+const FBU_DENOMINATIONS = [10000, 5000, 2000, 1000, 500, 100, 50, 10, 5, 1];
 
 interface WithdrawalRequestFormProps {
     request: WithdrawalRequest;
@@ -23,6 +26,7 @@ interface WithdrawalRequestFormProps {
     authorizationLevels: any[];
     onSavingsAccountChange?: (accountId: number) => void;
     onAmountChange?: (amount: number) => void;
+    onDenominationsChange?: (denominations: CashDenomination[], total: number) => void;
     accountBalance?: number;
     isViewMode?: boolean;
     branchLocked?: boolean;
@@ -42,11 +46,47 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
     authorizationLevels,
     onSavingsAccountChange,
     onAmountChange,
+    onDenominationsChange,
     accountBalance = 0,
     isViewMode = false,
     branchLocked = false,
     onViewClientDetails
 }) => {
+    const [denominations, setDenominations] = React.useState<{ [key: number]: number }>({});
+
+    React.useEffect(() => {
+        if (request.cashDenominations && request.cashDenominations.length > 0) {
+            const denoms: { [key: number]: number } = {};
+            request.cashDenominations.forEach(d => {
+                denoms[d.denomination] = d.quantity;
+            });
+            setDenominations(denoms);
+        }
+    }, [request.cashDenominations]);
+
+    const handleDenominationChange = (denomination: number, quantity: number) => {
+        const newDenominations = { ...denominations, [denomination]: quantity };
+        setDenominations(newDenominations);
+
+        let total = 0;
+        const denomsArray: CashDenomination[] = [];
+        FBU_DENOMINATIONS.forEach(denom => {
+            const qty = newDenominations[denom] || 0;
+            if (qty > 0) {
+                const amount = denom * qty;
+                total += amount;
+                denomsArray.push({ denomination: denom, quantity: qty, totalAmount: amount });
+            }
+        });
+
+        if (onDenominationsChange) onDenominationsChange(denomsArray, total);
+    };
+
+    const calculateSubtotal = (denomination: number) => {
+        return (denominations[denomination] || 0) * denomination;
+    };
+
+    const billetageTotal = FBU_DENOMINATIONS.reduce((sum, d) => sum + (denominations[d] || 0) * d, 0);
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
     };
@@ -400,6 +440,60 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Décompte des Billets */}
+            {!isViewMode && (
+                <div className="surface-100 p-3 border-round mb-4">
+                    <h5 className="m-0 mb-3 text-primary">
+                        <i className="pi pi-money-bill mr-2"></i>
+                        Décompte des Billets
+                    </h5>
+                    <p className="text-500 mb-3">
+                        <i className="pi pi-info-circle mr-2"></i>
+                        Comptez les billets à remettre au client
+                    </p>
+                    <div className="grid">
+                        {FBU_DENOMINATIONS.map(denomination => (
+                            <div key={denomination} className="col-12 md:col-6 lg:col-4">
+                                <div className="flex align-items-center gap-2 mb-2">
+                                    <span className="font-medium" style={{ width: '100px' }}>
+                                        {formatCurrency(denomination)}
+                                    </span>
+                                    <span className="text-500">×</span>
+                                    <InputNumber
+                                        value={denominations[denomination] || 0}
+                                        onValueChange={(e) => handleDenominationChange(denomination, e.value || 0)}
+                                        min={0}
+                                        className="w-9rem"
+                                        showButtons
+                                        buttonLayout="horizontal"
+                                        incrementButtonIcon="pi pi-plus"
+                                        decrementButtonIcon="pi pi-minus"
+                                        inputStyle={{ textAlign: 'center', fontSize: '1.1rem', fontWeight: 600 }}
+                                    />
+                                    <span className="text-500">=</span>
+                                    <span className="font-bold text-primary" style={{ width: '120px' }}>
+                                        {formatCurrency(calculateSubtotal(denomination))}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <Divider />
+                    <div className="flex justify-content-between align-items-center">
+                        <span className="text-xl font-medium">TOTAL:</span>
+                        <span className={`text-2xl font-bold ${request.requestedAmount > 0 && Math.abs(billetageTotal - request.requestedAmount) > 0.01 ? 'text-orange-600' : 'text-green-600'}`}>
+                            {formatCurrency(billetageTotal)}
+                        </span>
+                    </div>
+                    {request.requestedAmount > 0 && billetageTotal > 0 && Math.abs(billetageTotal - request.requestedAmount) > 0.01 && (
+                        <div className="mt-2 p-2 border-round bg-orange-50 text-orange-700 text-sm" style={{ border: '1px solid var(--orange-200)' }}>
+                            <i className="pi pi-exclamation-triangle mr-1"></i>
+                            Le total du billetage ({formatCurrency(billetageTotal)}) ne correspond pas au montant demandé ({formatCurrency(request.requestedAmount)})
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Afficher les contrôles de sécurité requis */}
             {(request.dualVerificationRequired || request.requiresManagerApproval) && (

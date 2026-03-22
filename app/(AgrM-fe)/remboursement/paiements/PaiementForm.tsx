@@ -42,8 +42,38 @@ export default function PaiementForm({
     const [receiptValid, setReceiptValid] = useState(false);
     const [receiptDetails, setReceiptDetails] = useState<string>('');
     const [checkingReceipt, setCheckingReceipt] = useState(false);
+    const [savingsAccountInfo, setSavingsAccountInfo] = useState<any>(null);
 
     const BASE_URL = buildApiUrl('/api/remboursement/payments');
+    const SAVINGS_URL = buildApiUrl('/api/savings-accounts');
+
+    // Load savings account info when sourceSavingsAccountId changes
+    useEffect(() => {
+        const loadSavingsAccount = async () => {
+            if (!paiement.sourceSavingsAccountId) {
+                setSavingsAccountInfo(null);
+                return;
+            }
+            try {
+                const token = Cookies.get('token');
+                const response = await fetch(`${SAVINGS_URL}/findbyid/${paiement.sourceSavingsAccountId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setSavingsAccountInfo(data);
+                }
+            } catch (error) {
+                console.error('Error loading savings account:', error);
+            }
+        };
+        loadSavingsAccount();
+    }, [paiement.sourceSavingsAccountId]);
 
     // Check if payment mode is "Paiement en agence" (AGENCY)
     const isAgencyMode = !paiement.isAutoDebit && !paiement.isHomeCollection && !paiement.isMobileMoney && !paiement.isBankTransfer;
@@ -286,14 +316,34 @@ export default function PaiementForm({
                                 <label htmlFor="sourceSavingsAccountId" className="font-semibold">
                                     Compte Épargne Source
                                 </label>
-                                <InputNumber
+                                <InputText
                                     id="sourceSavingsAccountId"
-                                    value={paiement.sourceSavingsAccountId || null}
-                                    onValueChange={(e) => handleNumberChange('sourceSavingsAccountId', e.value ?? null)}
+                                    value={savingsAccountInfo
+                                        ? `${savingsAccountInfo.accountNumber} - ${savingsAccountInfo.client?.firstName || ''} ${savingsAccountInfo.client?.lastName || ''}`
+                                        : (paiement.sourceSavingsAccountId ? `Compte ID: ${paiement.sourceSavingsAccountId}` : '')}
                                     className="w-full"
-                                    disabled={isViewMode}
+                                    disabled={true}
+                                    placeholder="Sélectionnez un crédit pour récupérer le compte client"
                                 />
                             </div>
+                            <div className="field col-12 md:col-6">
+                                <label className="font-semibold">Solde Disponible</label>
+                                <InputText
+                                    value={savingsAccountInfo?.availableBalance != null
+                                        ? `${savingsAccountInfo.availableBalance.toLocaleString('fr-FR')} FBU`
+                                        : '-'}
+                                    className="w-full"
+                                    disabled={true}
+                                />
+                            </div>
+                            {!paiement.sourceSavingsAccountId && selectedLoan && (
+                                <div className="col-12">
+                                    <small className="text-orange-500">
+                                        <i className="pi pi-exclamation-triangle mr-1"></i>
+                                        Aucun compte épargne associé à cette demande de crédit
+                                    </small>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -144,11 +144,21 @@ export interface VirementBatchDetail {
     createdAt?: string;
 }
 
+export type BatchSourceType = 'SAVINGS' | 'INTERNAL';
+
+export const BATCH_SOURCE_TYPE_OPTIONS = [
+    { label: 'Compte Client (Épargne)', value: 'SAVINGS' },
+    { label: 'Compte Interne', value: 'INTERNAL' }
+];
+
 export interface VirementBatch {
     id?: number;
     batchNumber?: string;
+    sourceType?: BatchSourceType;
     sourceSavingsAccount?: any;
     sourceSavingsAccountId?: number;
+    sourceInternalAccount?: any;
+    sourceInternalAccountId?: number;
     sourceClient?: any;
     totalAmount: number;
     commissionRate: number;
@@ -180,7 +190,9 @@ export interface VirementBatch {
 }
 
 export class VirementBatchClass implements VirementBatch {
+    sourceType?: BatchSourceType = 'SAVINGS';
     sourceSavingsAccountId?: number;
+    sourceInternalAccountId?: number;
     totalAmount: number = 0;
     commissionRate: number = DEFAULT_COMMISSION_RATE;
     commissionAmount: number = 0;
