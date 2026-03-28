@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Toast } from 'primereact/toast';
 import { Button } from 'primereact/button';
-import { InputMask } from 'primereact/inputmask';
+import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice } from '../types';
@@ -20,7 +20,8 @@ const FluxTresorerieReport: React.FC = () => {
     const [currentExercice, setCurrentExercice] = useState<CptExercice | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const [date, setDate] = useState('');
+    const [dateDebut, setDateDebut] = useState<Date | null>(null);
+    const [dateFin, setDateFin] = useState<Date | null>(null);
     const [type, setType] = useState('D');
 
     useEffect(() => {
@@ -38,10 +39,12 @@ const FluxTresorerieReport: React.FC = () => {
         return new Intl.DateTimeFormat('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
     };
 
-    const convertDate = (ddmmyyyy: string) => {
-        if (!ddmmyyyy) return '';
-        const [dd, mm, yyyy] = ddmmyyyy.split('/');
-        return yyyy && mm && dd ? `${yyyy}-${mm}-${dd}` : '';
+    const toIso = (d: Date | null) => {
+        if (!d) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
     };
 
     const handleGenerate = async () => {
@@ -49,8 +52,8 @@ const FluxTresorerieReport: React.FC = () => {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Aucun exercice sélectionné', life: 3000 });
             return;
         }
-        if (!date) {
-            toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez saisir la date', life: 3000 });
+        if (!dateDebut || !dateFin) {
+            toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner la période (date début et date fin)', life: 3000 });
             return;
         }
 
@@ -59,7 +62,8 @@ const FluxTresorerieReport: React.FC = () => {
             const token = Cookies.get('token');
             const params = new URLSearchParams();
             params.append('exerciceId', currentExercice.exerciceId);
-            params.append('date', convertDate(date));
+            params.append('dateDebut', toIso(dateDebut));
+            params.append('dateFin', toIso(dateFin));
             params.append('type', type);
 
             const response = await fetch(buildApiUrl(`/api/comptability/reports/flux_tresorerie?${params.toString()}`), {
@@ -122,9 +126,14 @@ const FluxTresorerieReport: React.FC = () => {
                 <h5><i className="pi pi-money-bill mr-2"></i>Flux de Trésorerie</h5>
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-4">
-                        <label htmlFor="date">Date</label>
-                        <InputMask id="date" mask="99/99/9999" value={date} placeholder="jj/mm/aaaa"
-                            onChange={(e) => setDate(e.target.value || '')} />
+                        <label htmlFor="dateDebut">Date Début</label>
+                        <Calendar id="dateDebut" value={dateDebut} onChange={(e) => setDateDebut(e.value as Date | null)}
+                            dateFormat="dd/mm/yy" showIcon placeholder="Sélectionner une date" className="w-full" />
+                    </div>
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="dateFin">Date Fin</label>
+                        <Calendar id="dateFin" value={dateFin} onChange={(e) => setDateFin(e.value as Date | null)}
+                            dateFormat="dd/mm/yy" showIcon placeholder="Sélectionner une date" className="w-full" />
                     </div>
                     <div className="field col-12 md:col-4">
                         <label htmlFor="type">Type</label>

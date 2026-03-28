@@ -12,13 +12,14 @@ import { Tag } from 'primereact/tag';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
+import { Divider } from 'primereact/divider';
 import { InputNumber } from 'primereact/inputnumber';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
-import { InternalAccount, InternalAccountClass, InternalAccountOperation, CptCashCount } from '../types';
+import { InternalAccount, InternalAccountClass, InternalAccountOperation, CptCashCount, CptJournal } from '../types';
 import InternalAccountForm from './InternalAccountForm';
 import { useAuthorities } from '../../../../hooks/useAuthorities';
 
@@ -64,10 +65,12 @@ export default function ComptesInternesPage() {
     const { data: operationsData, loading: operationsLoading, error: operationsError, fetchData: fetchOperations, callType: operationsCallType } = useConsumApi('');
     const { data: validateData, loading: validateLoading, error: validateError, fetchData: fetchValidate, callType: validateCallType } = useConsumApi('');
     const { data: billetageData, loading: billetageLoading, error: billetageError, fetchData: fetchBilletage, callType: billetageCallType } = useConsumApi('');
+    const { data: journauxData, fetchData: fetchJournaux, callType: journauxCallType } = useConsumApi('');
 
     // Data lists
     const [accounts, setAccounts] = useState<any[]>([]);
     const [comptes, setComptes] = useState<any[]>([]);
+    const [journaux, setJournaux] = useState<CptJournal[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [mouvements, setMouvements] = useState<any[]>([]);
     const [operations, setOperations] = useState<any[]>([]);
@@ -93,6 +96,7 @@ export default function ComptesInternesPage() {
     // Manual operations state
     const [manualMontant, setManualMontant] = useState<number>(0);
     const [manualLibelle, setManualLibelle] = useState('');
+    const [contrepartieAccount, setContrepartieAccount] = useState<any>(null);
     const [transfertDestAccount, setTransfertDestAccount] = useState<any>(null);
 
     // Mouvement filters
@@ -118,6 +122,7 @@ export default function ComptesInternesPage() {
     useEffect(() => {
         loadAccounts();
         loadComptes();
+        loadJournaux();
         loadBranches();
         loadOperations();
     }, []);
@@ -138,6 +143,13 @@ export default function ComptesInternesPage() {
             setComptes(Array.isArray(comptesData) ? comptesData : []);
         }
     }, [comptesData, comptesCallType]);
+
+    // Handle journaux response
+    useEffect(() => {
+        if (journauxData && journauxCallType === 'loadJournaux') {
+            setJournaux(Array.isArray(journauxData) ? journauxData : []);
+        }
+    }, [journauxData, journauxCallType]);
 
     // Handle branches response
     useEffect(() => {
@@ -289,6 +301,10 @@ export default function ComptesInternesPage() {
         fetchComptes(null, 'GET', buildApiUrl('/api/comptability/comptes/findall'), 'loadComptes');
     };
 
+    const loadJournaux = () => {
+        fetchJournaux(null, 'GET', buildApiUrl('/api/comptability/journaux/findall'), 'loadJournaux');
+    };
+
     const loadBranches = () => {
         fetchBranches(null, 'GET', buildApiUrl('/api/reference-data/branches/findactive'), 'loadBranches');
     };
@@ -370,6 +386,7 @@ export default function ComptesInternesPage() {
         setSelectedAccount(rowData);
         setManualMontant(0);
         setManualLibelle('');
+        setContrepartieAccount(null);
         setDepotDialog(true);
     };
 
@@ -377,6 +394,7 @@ export default function ComptesInternesPage() {
         setSelectedAccount(rowData);
         setManualMontant(0);
         setManualLibelle('');
+        setContrepartieAccount(null);
         setRetraitDialog(true);
     };
 
@@ -390,15 +408,24 @@ export default function ComptesInternesPage() {
 
     const executeDepot = () => {
         if (!selectedAccount?.accountId || manualMontant <= 0) return;
+        if (!contrepartieAccount) {
+            toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner le compte de contrepartie', life: 3000 });
+            return;
+        }
         fetchManualOp({
             montant: manualMontant,
             libelle: manualLibelle,
+            contrepartieAccountId: contrepartieAccount.accountId,
             userAction: getUserAction()
         }, 'POST', `${BASE_URL}/depot/${selectedAccount.accountId}`, 'depotAccount');
     };
 
     const executeRetrait = () => {
         if (!selectedAccount?.accountId || manualMontant <= 0) return;
+        if (!contrepartieAccount) {
+            toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner le compte de contrepartie', life: 3000 });
+            return;
+        }
         if (manualMontant > (selectedAccount?.soldeActuel ?? 0)) {
             toast.current?.show({ severity: 'warn', summary: 'Solde insuffisant', detail: `Le solde actuel (${formatNumber(selectedAccount?.soldeActuel)} FBU) est insuffisant pour un retrait de ${formatNumber(manualMontant)} FBU.`, life: 5000 });
             return;
@@ -406,6 +433,7 @@ export default function ComptesInternesPage() {
         fetchManualOp({
             montant: manualMontant,
             libelle: manualLibelle,
+            contrepartieAccountId: contrepartieAccount.accountId,
             userAction: getUserAction()
         }, 'POST', `${BASE_URL}/retrait/${selectedAccount.accountId}`, 'retraitAccount');
     };
@@ -562,8 +590,8 @@ export default function ComptesInternesPage() {
             <div className="flex gap-1">
                 <Button icon="pi pi-eye" rounded text severity="info" onClick={() => openViewDialog(rowData)} tooltip="Voir" />
                 <Button icon="pi pi-pencil" rounded text severity="warning" onClick={() => openEditDialog(rowData)} tooltip="Modifier" />
-                {canDepot && rowData.actif && <Button icon="pi pi-arrow-down" rounded text severity="success" onClick={() => openDepotDialog(rowData)} tooltip="Dépôt" />}
-                {canRetrait && rowData.actif && <Button icon="pi pi-arrow-up" rounded text severity="danger" onClick={() => openRetraitDialog(rowData)} tooltip="Retrait" />}
+                {canDepot && rowData.actif && rowData.depotEnabled && <Button icon="pi pi-arrow-down" rounded text severity="success" onClick={() => openDepotDialog(rowData)} tooltip="Dépôt" />}
+                {canRetrait && rowData.actif && rowData.retraitEnabled && <Button icon="pi pi-arrow-up" rounded text severity="danger" onClick={() => openRetraitDialog(rowData)} tooltip="Retrait" />}
                 {canTransfert && rowData.actif && <Button icon="pi pi-arrow-right-arrow-left" rounded text severity="help" onClick={() => openTransfertDialog(rowData)} tooltip="Transfert" />}
                 {canToggleStatus && <Button icon={rowData.actif ? 'pi pi-ban' : 'pi pi-check-circle'} rounded text severity={rowData.actif ? 'warning' : 'success'}
                     onClick={() => toggleAccountStatus(rowData)} tooltip={rowData.actif ? 'Désactiver' : 'Activer'} />}
@@ -755,6 +783,13 @@ export default function ComptesInternesPage() {
                                 <Column field="accountNumber" header="N° Compte" sortable style={{ width: '120px' }} />
                                 <Column field="codeCompte" header="Code Comptable" sortable style={{ width: '130px' }} />
                                 <Column field="libelle" header="Libellé" sortable />
+                                <Column header="Journal" sortable sortField="journalId" style={{ width: '100px' }}
+                                    body={(r: InternalAccount) => {
+                                        if (!r.journalId) return <span className="text-300">-</span>;
+                                        const j = journaux.find((j: CptJournal) => String(j.journalId) === String(r.journalId));
+                                        return j ? <span>{j.codeJournal}</span> : <span>{r.journalId}</span>;
+                                    }}
+                                />
                                 <Column header="Solde Actuel" body={soldeBodyTemplate} sortable sortField="soldeActuel" style={{ width: '160px' }} />
                                 <Column header="Statut" body={actifBodyTemplate} style={{ width: '80px' }} />
                                 <Column header="Actions" body={actionBodyTemplate} style={{ width: '300px' }} />
@@ -906,6 +941,7 @@ export default function ComptesInternesPage() {
                             handleDropdownChange={handleDropdownChange}
                             handleNumberChange={handleNumberChange}
                             comptes={comptes}
+                            journaux={journaux}
                         />
                     </Dialog>
 
@@ -929,6 +965,7 @@ export default function ComptesInternesPage() {
                             handleDropdownChange={handleDropdownChange}
                             handleNumberChange={handleNumberChange}
                             comptes={comptes}
+                            journaux={journaux}
                             isEditMode
                         />
                     </Dialog>
@@ -947,6 +984,7 @@ export default function ComptesInternesPage() {
                             handleDropdownChange={handleDropdownChange}
                             handleNumberChange={handleNumberChange}
                             comptes={comptes}
+                            journaux={journaux}
                             isViewMode
                         />
                     </Dialog>
@@ -968,6 +1006,25 @@ export default function ComptesInternesPage() {
                     >
                         <div className="p-fluid">
                             <div className="field">
+                                <label className="font-medium">Compte Contrepartie *</label>
+                                <Dropdown
+                                    value={contrepartieAccount}
+                                    options={accounts.filter((a: any) => a.accountId !== selectedAccount?.accountId && a.actif)}
+                                    onChange={(e) => setContrepartieAccount(e.value)}
+                                    optionLabel="accountNumber"
+                                    placeholder="Sélectionner le compte de contrepartie"
+                                    className="w-full"
+                                    filter
+                                    filterBy="accountNumber,codeCompte,libelle"
+                                    itemTemplate={(option: any) => (
+                                        <span>{option.accountNumber} - {option.codeCompte} - {option.libelle}</span>
+                                    )}
+                                    valueTemplate={(option: any) => {
+                                        return option ? <span>{option.accountNumber} - {option.codeCompte} - {option.libelle}</span> : <span className="text-400">Sélectionner le compte de contrepartie</span>;
+                                    }}
+                                />
+                            </div>
+                            <div className="field">
                                 <label className="font-medium">Montant *</label>
                                 <InputNumber value={manualMontant} onValueChange={(e) => setManualMontant(e.value ?? 0)}
                                     suffix=" FBU" min={0} className="w-full" />
@@ -979,7 +1036,7 @@ export default function ComptesInternesPage() {
                             </div>
                             <div className="surface-100 p-3 border-round mt-3">
                                 <div className="flex justify-content-between">
-                                    <small className="text-500">Solde actuel:</small>
+                                    <small className="text-500">Solde actuel ({selectedAccount?.codeCompte}):</small>
                                     <b>{formatNumber(selectedAccount?.soldeActuel)} FBU</b>
                                 </div>
                                 {manualMontant > 0 && (
@@ -987,6 +1044,19 @@ export default function ComptesInternesPage() {
                                         <small className="text-500">Solde après dépôt:</small>
                                         <b className="text-green-500">{formatNumber((selectedAccount?.soldeActuel ?? 0) + manualMontant)} FBU</b>
                                     </div>
+                                )}
+                                {contrepartieAccount && manualMontant > 0 && (
+                                    <>
+                                        <Divider className="my-2" />
+                                        <div className="flex justify-content-between">
+                                            <small className="text-500">Contrepartie ({contrepartieAccount.codeCompte}):</small>
+                                            <b>{formatNumber(contrepartieAccount.soldeActuel)} FBU</b>
+                                        </div>
+                                        <div className="flex justify-content-between mt-2">
+                                            <small className="text-500">Solde après:</small>
+                                            <b className="text-red-500">{formatNumber((contrepartieAccount.soldeActuel ?? 0) - manualMontant)} FBU</b>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -1003,11 +1073,30 @@ export default function ComptesInternesPage() {
                             <div>
                                 <Button label="Annuler" icon="pi pi-times" severity="secondary" onClick={() => setRetraitDialog(false)} />
                                 <Button label="Effectuer le retrait" icon="pi pi-arrow-up" severity="danger" onClick={executeRetrait}
-                                    disabled={manualMontant <= 0} loading={manualOpLoading && manualOpCallType === 'retraitAccount'} />
+                                    disabled={manualMontant <= 0 || !contrepartieAccount} loading={manualOpLoading && manualOpCallType === 'retraitAccount'} />
                             </div>
                         }
                     >
                         <div className="p-fluid">
+                            <div className="field">
+                                <label className="font-medium">Compte Contrepartie *</label>
+                                <Dropdown
+                                    value={contrepartieAccount}
+                                    options={accounts.filter((a: any) => a.accountId !== selectedAccount?.accountId && a.actif)}
+                                    onChange={(e) => setContrepartieAccount(e.value)}
+                                    optionLabel="accountNumber"
+                                    placeholder="Sélectionner le compte de contrepartie"
+                                    className="w-full"
+                                    filter
+                                    filterBy="accountNumber,codeCompte,libelle"
+                                    itemTemplate={(option: any) => (
+                                        <span>{option.accountNumber} - {option.codeCompte} - {option.libelle}</span>
+                                    )}
+                                    valueTemplate={(option: any) => {
+                                        return option ? <span>{option.accountNumber} - {option.codeCompte} - {option.libelle}</span> : <span className="text-400">Sélectionner le compte de contrepartie</span>;
+                                    }}
+                                />
+                            </div>
                             <div className="field">
                                 <label className="font-medium">Montant *</label>
                                 <InputNumber value={manualMontant} onValueChange={(e) => setManualMontant(e.value ?? 0)}
@@ -1020,7 +1109,7 @@ export default function ComptesInternesPage() {
                             </div>
                             <div className="surface-100 p-3 border-round mt-3">
                                 <div className="flex justify-content-between">
-                                    <small className="text-500">Solde actuel:</small>
+                                    <small className="text-500">Solde actuel ({selectedAccount?.codeCompte}):</small>
                                     <b>{formatNumber(selectedAccount?.soldeActuel)} FBU</b>
                                 </div>
                                 {manualMontant > 0 && (
@@ -1028,6 +1117,19 @@ export default function ComptesInternesPage() {
                                         <small className="text-500">Solde après retrait:</small>
                                         <b className="text-red-500">{formatNumber((selectedAccount?.soldeActuel ?? 0) - manualMontant)} FBU</b>
                                     </div>
+                                )}
+                                {contrepartieAccount && manualMontant > 0 && (
+                                    <>
+                                        <Divider className="my-2" />
+                                        <div className="flex justify-content-between">
+                                            <small className="text-500">Contrepartie ({contrepartieAccount.codeCompte}):</small>
+                                            <b>{formatNumber(contrepartieAccount.soldeActuel)} FBU</b>
+                                        </div>
+                                        <div className="flex justify-content-between mt-2">
+                                            <small className="text-500">Solde après:</small>
+                                            <b className="text-green-500">{formatNumber((contrepartieAccount.soldeActuel ?? 0) + manualMontant)} FBU</b>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>

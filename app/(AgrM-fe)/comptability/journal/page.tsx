@@ -15,7 +15,7 @@ import { Tag } from 'primereact/tag';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
-import { CptJournal } from '../types';
+import { CptJournal, CptTypeJournal } from '../types';
 import { ProtectedPage } from '@/components/ProtectedPage';
 
 function JournalPage() {
@@ -24,27 +24,28 @@ function JournalPage() {
     const [dialogVisible, setDialogVisible] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
+    const [typesJournal, setTypesJournal] = useState<CptTypeJournal[]>([]);
     const toast = useRef<Toast>(null);
 
     const { data, loading, error, fetchData, callType } = useConsumApi('');
+    const { data: typesData, fetchData: fetchTypes, callType: typesCallType } = useConsumApi('');
     const BASE_URL = buildApiUrl('/api/comptability/journaux');
 
-    const typeJournalOptions = [
-        { label: 'AN - A Nouveau', value: 'AN' },
-        { label: 'AC - Achat', value: 'AC' },
-        { label: 'VT - Vente', value: 'VT' },
-        { label: 'BQ - Banque', value: 'BQ' },
-        { label: 'CA - Caisse', value: 'CA' },
-        { label: 'OD - Operations Diverses', value: 'OD' },
-        { label: 'CR - Credit', value: 'CR' },
-        { label: 'EP - Epargne', value: 'EP' },
-        { label: 'SA - Salaires', value: 'SA' },
-        { label: 'AM - Amortissements', value: 'AM' }
-    ];
+    // Build dropdown options from DB types
+    const typeJournalOptions = typesJournal
+        .filter(t => t.actif)
+        .map(t => ({ label: `${t.code} - ${t.libelle}`, value: t.code }));
 
     useEffect(() => {
         loadJournaux();
+        fetchTypes(null, 'GET', buildApiUrl('/api/comptability/types-journaux/findall'), 'loadTypes');
     }, []);
+
+    useEffect(() => {
+        if (typesData && typesCallType === 'loadTypes') {
+            setTypesJournal(Array.isArray(typesData) ? typesData : []);
+        }
+    }, [typesData, typesCallType]);
 
     useEffect(() => {
         if (data) {

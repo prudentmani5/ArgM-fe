@@ -18,6 +18,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { Message } from 'primereact/message';
 import { Divider } from 'primereact/divider';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
+import { Calendar } from 'primereact/calendar';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '@/utils/apiConfig';
 
@@ -170,6 +171,12 @@ export default function FraisTenueComptePage() {
     const [details, setDetails] = useState<FraisTenueCompteDetail[]>([]);
     const [detailDialog, setDetailDialog] = useState(false);
 
+    // Comptes Affectés tab state
+    const [periodFrom, setPeriodFrom] = useState<Date | null>(null);
+    const [periodTo, setPeriodTo] = useState<Date | null>(null);
+    const [affectedDetails, setAffectedDetails] = useState<FraisTenueCompteDetail[]>([]);
+    const [affectedLoading, setAffectedLoading] = useState(false);
+
     // Loading
     const [initialLoading, setInitialLoading] = useState(true);
 
@@ -244,6 +251,10 @@ export default function FraisTenueComptePage() {
                 case 'loadDetails':
                     setDetails(Array.isArray(data) ? data : []);
                     setDetailDialog(true);
+                    break;
+                case 'loadAffectedDetails':
+                    setAffectedDetails(Array.isArray(data) ? data : []);
+                    setAffectedLoading(false);
                     break;
                 case 'toggleScheduler':
                     showToast('success', 'Succès', (data as FraisTenueCompte).schedulerEnabled ? 'Planificateur activé' : 'Planificateur désactivé');
@@ -407,6 +418,18 @@ export default function FraisTenueComptePage() {
         setSelectedExecution(execution);
         setDetails([]);
         fetchData(null, 'GET', `${BASE_URL}/executions/${execution.id}/details`, 'loadDetails');
+    };
+
+    const searchAffectedAccounts = () => {
+        if (!periodFrom || !periodTo) {
+            showToast('warn', 'Validation', 'Veuillez sélectionner les deux dates de la période');
+            return;
+        }
+        const from = periodFrom.toISOString().split('T')[0];
+        const to = periodTo.toISOString().split('T')[0];
+        setAffectedLoading(true);
+        setAffectedDetails([]);
+        fetchData(null, 'GET', `${BASE_URL}/details/by-period?dateFrom=${from}&dateTo=${to}`, 'loadAffectedDetails');
     };
 
     // ========== Renderers ==========
@@ -901,6 +924,80 @@ export default function FraisTenueComptePage() {
                             )}
                             style={{ width: '80px' }}
                         />
+                    </DataTable>
+                </TabPanel>
+
+                {/* ===== TAB 4: Comptes Affectés ===== */}
+                <TabPanel header="Comptes Affectés" leftIcon="pi pi-users mr-2">
+                    <div className="flex flex-wrap gap-3 align-items-end mb-4">
+                        <div className="field mb-0">
+                            <label htmlFor="periodFrom" className="font-semibold block mb-2">Date Début</label>
+                            <Calendar
+                                id="periodFrom"
+                                value={periodFrom}
+                                onChange={(e) => setPeriodFrom(e.value as Date)}
+                                dateFormat="dd/mm/yy"
+                                placeholder="Sélectionner"
+                                showIcon
+                                className="w-full"
+                                style={{ minWidth: '200px' }}
+                            />
+                        </div>
+                        <div className="field mb-0">
+                            <label htmlFor="periodTo" className="font-semibold block mb-2">Date Fin</label>
+                            <Calendar
+                                id="periodTo"
+                                value={periodTo}
+                                onChange={(e) => setPeriodTo(e.value as Date)}
+                                dateFormat="dd/mm/yy"
+                                placeholder="Sélectionner"
+                                showIcon
+                                className="w-full"
+                                style={{ minWidth: '200px' }}
+                            />
+                        </div>
+                        <Button
+                            label="Rechercher"
+                            icon="pi pi-search"
+                            onClick={searchAffectedAccounts}
+                            loading={affectedLoading}
+                            className="mb-0"
+                        />
+                    </div>
+
+                    {affectedDetails.length > 0 && (
+                        <div className="mb-3 flex gap-3">
+                            <Tag severity="info" value={`${affectedDetails.length} comptes affectés`} />
+                            <Tag severity="success" value={`Total prélevé: ${formatCurrency(affectedDetails.filter(d => d.status === 'SUCCESS').reduce((sum, d) => sum + (d.amount || 0), 0))}`} />
+                        </div>
+                    )}
+
+                    <DataTable
+                        value={affectedDetails}
+                        paginator
+                        rows={15}
+                        rowsPerPageOptions={[10, 15, 25, 50]}
+                        emptyMessage={periodFrom && periodTo ? "Aucun compte affecté pour cette période" : "Sélectionnez une période pour afficher les comptes affectés"}
+                        stripedRows
+                        sortField="createdAt"
+                        sortOrder={-1}
+                        loading={affectedLoading}
+                        globalFilterFields={['accountNumber', 'clientName', 'status']}
+                    >
+                        <Column field="accountNumber" header="N° Compte" sortable filter style={{ width: '12%' }} />
+                        <Column field="clientName" header="Nom Client" sortable filter style={{ width: '20%' }} />
+                        <Column field="amount" header="Montant Prélevé" body={(row) => formatCurrency(row.amount)} sortable style={{ width: '12%' }} />
+                        <Column field="balanceBefore" header="Solde Avant" body={(row) => formatCurrency(row.balanceBefore)} sortable style={{ width: '12%' }} />
+                        <Column field="balanceAfter" header="Solde Après" body={(row) => {
+                            const val = row.balanceAfter;
+                            const color = val < 0 ? 'text-red-600' : '';
+                            return <span className={color}>{formatCurrency(val)}</span>;
+                        }} sortable style={{ width: '12%' }} />
+                        <Column field="status" header="Statut" body={(row) => (
+                            <Tag value={row.status} severity={row.status === 'SUCCESS' ? 'success' : row.status === 'SKIPPED' ? 'warning' : 'danger'} />
+                        )} sortable style={{ width: '8%' }} />
+                        <Column field="pieceId" header="Pièce" sortable style={{ width: '12%' }} />
+                        <Column field="createdAt" header="Date" body={(row) => formatDate(row.createdAt)} sortable style={{ width: '10%' }} />
                     </DataTable>
                 </TabPanel>
             </TabView>

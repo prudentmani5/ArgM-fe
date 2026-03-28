@@ -20,7 +20,7 @@ import Cookies from 'js-cookie';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { shouldFilterByBranch } from '../../../../utils/branchFilter';
-import { CptCaisse, CptCashCount, CptCompte, CptExercice, VirementInterne } from '../types';
+import { CptCaisse, CptCashCount, CptCompte, CptExercice, CptJournal, VirementInterne } from '../types';
 import { ProtectedPage } from '@/components/ProtectedPage';
 
 const formatNumber = (value: number | undefined | null): string => {
@@ -85,6 +85,7 @@ function CaissePage() {
     const [operationContrepartie, setOperationContrepartie] = useState<string>('');
     const [operationLibelle, setOperationLibelle] = useState<string>('');
     const [comptes, setComptes] = useState<CptCompte[]>([]);
+    const [journaux, setJournaux] = useState<CptJournal[]>([]);
     const [currentExercice, setCurrentExercice] = useState<CptExercice | null>(null);
 
     // Tab 3b: Virement Inter-Caisse
@@ -160,6 +161,7 @@ function CaissePage() {
     const { data: transferHistoryData, loading: transferHistoryLoading, fetchData: fetchTransferHistory, callType: transferHistoryCallType } = useConsumApi('');
     const { data: pendingData, fetchData: fetchPending, callType: pendingCallType } = useConsumApi('');
     const { data: ackData, loading: ackLoading, error: ackError, fetchData: fetchAck, callType: ackCallType } = useConsumApi('');
+    const { data: journauxData, fetchData: fetchJournaux, callType: journauxCallType } = useConsumApi('');
 
     const BASE_URL = buildApiUrl('/api/comptability/caisses');
     const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts');
@@ -171,6 +173,7 @@ function CaissePage() {
         loadCaisses();
         loadAllCaisses();
         loadComptes();
+        loadJournaux();
         loadInternalAccounts();
         loadUsers();
         loadBranches();
@@ -314,6 +317,13 @@ function CaissePage() {
             setComptes(Array.isArray(comptesData) ? comptesData : []);
         }
     }, [comptesData, comptesCallType]);
+
+    // Handle journaux list
+    useEffect(() => {
+        if (journauxData && journauxCallType === 'loadJournaux') {
+            setJournaux(Array.isArray(journauxData) ? journauxData : []);
+        }
+    }, [journauxData, journauxCallType]);
 
     // Handle internal accounts list
     useEffect(() => {
@@ -512,6 +522,10 @@ function CaissePage() {
 
     const loadComptes = () => {
         fetchComptes(null, 'GET', `${ECRITURES_URL}/findListCompte`, 'loadComptes');
+    };
+
+    const loadJournaux = () => {
+        fetchJournaux(null, 'GET', buildApiUrl('/api/comptability/journaux/findall'), 'loadJournaux');
     };
 
     const loadInternalAccounts = () => {
@@ -988,6 +1002,13 @@ function CaissePage() {
                             style={{ width: '12%', textAlign: 'right' }}
                         />
                         <Column field="compteComptable" header="Compte" sortable style={{ width: '8%' }} />
+                        <Column header="Journal" sortable sortField="journalId" style={{ width: '8%' }}
+                            body={(r: CptCaisse) => {
+                                if (!r.journalId) return <span className="text-300">-</span>;
+                                const j = journaux.find((j: CptJournal) => String(j.journalId) === String(r.journalId));
+                                return j ? <span>{j.codeJournal}</span> : <span>{r.journalId}</span>;
+                            }}
+                        />
                         <Column field="typeCaisse" header="Type" sortable style={{ width: '8%' }}
                             body={(r: CptCaisse) => {
                                 const labels: Record<string, string> = { SIEGE: 'Siege', AGENCE: 'Agence', CHEF_AGENCE: "Chef d'agence", GUICHET: 'Guichet' };
@@ -2433,7 +2454,7 @@ function CaissePage() {
                                             <>
                                                 <div className="text-xs text-400 mb-2">
                                                     <i className="pi pi-clock mr-1"></i>
-                                                    {formatDateTime(detail.countDate || detail.createdAt)}
+                                                    {formatDateTime(detail.countDate)}
                                                     {detail.countedBy && <span> — par {detail.countedBy}</span>}
                                                 </div>
                                                 <DataTable value={DENOMINATIONS.filter(d => ((detail as any)[d.field] || 0) > 0)} size="small" showGridlines
@@ -2631,6 +2652,34 @@ function CaissePage() {
                                         return found ? <span>{found.codeCompte} - {found.libelle}</span> : <span>{caisse.compteComptable}</span>;
                                     }
                                     return option ? <span>{option.codeCompte} - {option.libelle}</span> : <span className="text-400">Compte de caisse</span>;
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div className="col-12 md:col-4">
+                        <div className="field">
+                            <label htmlFor="journalId" className="font-semibold">Journal</label>
+                            <Dropdown
+                                id="journalId"
+                                value={caisse.journalId || null}
+                                options={journaux}
+                                onChange={(e) => setCaisse(prev => ({ ...prev, journalId: e.value }))}
+                                optionValue="journalId"
+                                optionLabel="codeJournal"
+                                placeholder="Sélectionner un journal"
+                                className="w-full"
+                                filter
+                                showClear
+                                filterBy="codeJournal,nomJournal"
+                                itemTemplate={(option: CptJournal) => (
+                                    <span>{option.codeJournal} - {option.nomJournal}</span>
+                                )}
+                                valueTemplate={(option: CptJournal | null) => {
+                                    if (!option && caisse.journalId) {
+                                        const found = journaux.find((j: CptJournal) => String(j.journalId) === String(caisse.journalId));
+                                        return found ? <span>{found.codeJournal} - {found.nomJournal}</span> : <span>{caisse.journalId}</span>;
+                                    }
+                                    return option ? <span>{option.codeJournal} - {option.nomJournal}</span> : <span className="text-400">Sélectionner un journal</span>;
                                 }}
                             />
                         </div>

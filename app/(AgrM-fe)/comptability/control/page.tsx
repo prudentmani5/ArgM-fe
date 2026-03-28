@@ -7,6 +7,7 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
+import { Calendar } from 'primereact/calendar';
 import Cookies from 'js-cookie';
 
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
@@ -37,6 +38,9 @@ function ControlPage() {
     const [currentExercice, setCurrentExercice] = useState<CptExercice | null>(null);
     const [globalFilter, setGlobalFilter] = useState('');
     const [hasChecked, setHasChecked] = useState(false);
+
+    const [dateDebut, setDateDebut] = useState<Date | null>(null);
+    const [dateFin, setDateFin] = useState<Date | null>(null);
 
     // Statistics
     const [stats, setStats] = useState({
@@ -106,6 +110,14 @@ function ControlPage() {
         }
     }, [data, error, callType]);
 
+    const toIso = (d: Date | null) => {
+        if (!d) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
     const handleCheck = () => {
         if (!currentExercice?.exerciceId) {
             toast.current?.show({
@@ -117,10 +129,20 @@ function ControlPage() {
             return;
         }
 
+        if (!dateDebut || !dateFin) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Attention',
+                detail: 'Veuillez sélectionner la période (date début et date fin)',
+                life: 3000
+            });
+            return;
+        }
+
         fetchData(
             null,
             'GET',
-            `${BASE_URL}/unbalanced?exercice=${currentExercice.exerciceId}`,
+            `${BASE_URL}/unbalanced?exercice=${currentExercice.exerciceId}&dateDebut=${toIso(dateDebut)}&dateFin=${toIso(dateFin)}`,
             'check'
         );
     };
@@ -211,6 +233,22 @@ function ControlPage() {
                     </div>
                 </div>
             )}
+
+            {/* Period Selection */}
+            <div className="mb-4 p-fluid">
+                <div className="formgrid grid">
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="dateDebut">Date Début</label>
+                        <Calendar id="dateDebut" value={dateDebut} onChange={(e) => setDateDebut(e.value as Date | null)}
+                            dateFormat="dd/mm/yy" showIcon placeholder="Sélectionner une date" className="w-full" />
+                    </div>
+                    <div className="field col-12 md:col-4">
+                        <label htmlFor="dateFin">Date Fin</label>
+                        <Calendar id="dateFin" value={dateFin} onChange={(e) => setDateFin(e.value as Date | null)}
+                            dateFormat="dd/mm/yy" showIcon placeholder="Sélectionner une date" className="w-full" />
+                    </div>
+                </div>
+            </div>
 
             {/* Action Button */}
             <div className="mb-4">

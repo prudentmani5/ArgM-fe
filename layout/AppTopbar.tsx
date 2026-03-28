@@ -466,7 +466,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
                             fill="var(--topbar-item-text-color)"
                         />
                     </svg> */}
-                    <img src="/layout/images/logo/gps_icon_.png" alt="" style={{ width: "40px", height: "40px" }} />
+                    <img src="/layout/images/logo/logoAgrinova.PNG" alt="AgrM" style={{ width: "55px", height: "55px" }} />
                 </Link>
                 {/* <a ref={menubuttonRef} className="p-ripple layout-menu-button" onClick={onMenuButtonClick}>
                     <i className="pi pi-chevron-right"></i>
@@ -481,7 +481,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
 
             <div className="layout-topbar-end">
                 <div className="layout-topbar-actions-start" id="gps_title" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <span className="font-bold text-xl" style={{ color: 'var(--topbar-item-text-color)', whiteSpace: 'nowrap' }}>AgrM - MM</span>
+                    <span className="font-bold text-xl" style={{ color: 'var(--topbar-item-text-color)', whiteSpace: 'nowrap', textAlign: 'center', width: '100%' }}>PROFESSIONAL FINANCIAL MANAGEMENT INFORMATION SYSTEM - PrFin MIS</span>
                 </div>
                 <div className="layout-topbar-actions-end">
                     <ul className="layout-topbar-items">

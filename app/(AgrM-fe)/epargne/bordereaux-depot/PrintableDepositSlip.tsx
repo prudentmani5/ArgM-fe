@@ -204,16 +204,7 @@ const PrintableDepositSlip = forwardRef<HTMLDivElement, PrintableDepositSlipProp
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <table style={{ fontSize: '12px' }}>
-                                <tbody>
-                                    <tr>
-                                        <td style={{ padding: '3px 15px 3px 0', color: '#666' }}>Solde avant dépôt:</td>
-                                        <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{formatCurrency(depositSlip.balanceBefore)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style={{ padding: '3px 15px 3px 0', color: '#666' }}>Solde après dépôt:</td>
-                                        <td style={{ padding: '3px 0', fontWeight: 'bold', color: '#16a34a' }}>{formatCurrency(depositSlip.balanceAfter)}</td>
-                                    </tr>
-                                </tbody>
+                                
                             </table>
                         </div>
                         <div style={{ textAlign: 'right' }}>

@@ -15,7 +15,7 @@ function UserManualComponent() {
                 <i className="pi pi-book text-4xl text-primary"></i>
                 <div>
                     <h2 className="m-0 text-primary">Manuel d'Utilisation</h2>
-                    <p className="m-0 text-500">Système AgrM - Gestion Clients, Groupes Solidaires et Produits Financiers</p>
+                    <p className="m-0 text-500">PrFin MIS - Professional Financial Management Information System</p>
                 </div>
             </div>
 
@@ -28,19 +28,23 @@ function UserManualComponent() {
                     Vue d'Ensemble du Système
                 </h4>
                 <p>
-                    Le système AgrM est une plateforme complète de gestion pour les institutions de microfinance.
+                    PrFin MIS est une plateforme complète de gestion pour les institutions de microfinance.
                     Il permet de gérer efficacement :
                 </p>
                 <ul className="line-height-3">
-                    <li><strong>Les Clients Individuels :</strong> Personnes physiques avec leurs informations personnelles, documents d'identité et coordonnées.</li>
-                    <li><strong>Les Clients Entreprises :</strong> Personnes morales avec leurs informations d'entreprise et documents légaux.</li>
+                    <li><strong>Les Clients Individuels :</strong> Personnes physiques avec leurs informations personnelles, documents d&apos;identité et coordonnées.</li>
+                    <li><strong>Les Clients Entreprises :</strong> Personnes morales avec leurs informations d&apos;entreprise et documents légaux.</li>
                     <li><strong>Les Groupes Solidaires :</strong> Associations de clients pour le crédit solidaire avec gestion des membres et réunions.</li>
                     <li><strong>Les Produits Financiers :</strong> Configuration des produits de crédit, gestion des demandes, évaluation des risques et suivi des prêts actifs.</li>
-                    <li><strong>Le Module Épargne :</strong> Gestion des livrets d'épargne, dépôts à terme, tontine et épargne obligatoire.</li>
+                    <li><strong>Le Module Épargne :</strong> Gestion des comptes d&apos;épargne, versements, retraits, virements, carnets de chèques et clôture journalière.</li>
                     <li><strong>Le Module Crédit :</strong> Cycle complet de gestion des demandes de crédit avec analyse financière, visites terrain, comité et décaissement.</li>
-                    <li><strong>Les Données de Référence :</strong> Configuration des listes de valeurs utilisées dans le système.</li>
+                    <li><strong>Le Module Remboursement :</strong> Gestion des échéanciers, paiements, remboursements anticipés, recouvrement et restructuration.</li>
+                    <li><strong>La Comptabilité :</strong> Plan comptable, écritures, brouillards, journaux, exercices, clôtures et rapports financiers (bilan, compte de résultat, grand livre, balance).</li>
                     <li><strong>Le Rapprochement Bancaire :</strong> Comparaison des relevés bancaires avec les écritures comptables, détection des écarts et validation.</li>
-                    <li><strong>Les Tableaux de Bord :</strong> Tableaux de bord par rôle (Direction Générale, Chef d'Agence, Opérations Crédit, Comptabilité) avec KPIs en temps réel, graphiques et alertes.</li>
+                    <li><strong>Les Dépenses :</strong> Gestion des demandes de dépenses, approbations multi-niveaux, paiements, budgets et petite caisse.</li>
+                    <li><strong>Les Tableaux de Bord :</strong> Tableaux de bord par rôle (Direction Générale, Chef d&apos;Agence, Opérations Crédit, Comptabilité) avec KPIs en temps réel.</li>
+                    <li><strong>L&apos;Administration :</strong> Gestion des utilisateurs, rôles, permissions et journal d&apos;audit.</li>
+                    <li><strong>Les Données de Référence :</strong> Configuration des listes de valeurs utilisées dans le système.</li>
                 </ul>
             </Card>
 
@@ -4633,6 +4637,196 @@ function UserManualComponent() {
                         </div>
                     </div>
                 </AccordionTab>
+                {/* Module Dépenses */}
+                <AccordionTab
+                    header={
+                        <span className="flex align-items-center gap-2">
+                            <i className="pi pi-wallet"></i>
+                            <span className="font-bold">14. Module Dépenses</span>
+                        </span>
+                    }
+                >
+                    <div className="p-3">
+                        <p>
+                            Le module Dépenses permet de gérer le cycle complet des demandes de dépenses,
+                            depuis la création jusqu&apos;au paiement, avec un système d&apos;approbation multi-niveaux.
+                        </p>
+
+                        <h5 className="text-primary">14.1 Données de Référence</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Avant de commencer, configurez les données de référence via le menu <Tag value="Dépenses &gt; Données de Référence" /> :</p>
+                            <ul className="line-height-3">
+                                <li><strong>Catégories de Dépenses :</strong> Classification des types de dépenses (fournitures, déplacements, maintenance, etc.)</li>
+                                <li><strong>Niveaux de Priorité :</strong> Définition des niveaux d&apos;urgence (faible, moyen, élevé, urgent)</li>
+                                <li><strong>Modes de Paiement :</strong> Moyens de paiement disponibles (espèces, virement, chèque)</li>
+                                <li><strong>Seuils d&apos;Approbation :</strong> Montants limites pour chaque niveau d&apos;approbation</li>
+                                <li><strong>Fournisseurs :</strong> Liste des fournisseurs avec leurs coordonnées et informations bancaires</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">14.2 Créer une Demande de Dépense</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Étapes :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Dépenses &gt; Demandes de Dépenses" /></li>
+                                <li>Cliquer sur <Tag value="Nouvelle Demande" severity="info" /></li>
+                                <li>Remplir les champs obligatoires :
+                                    <ul>
+                                        <li>Description de la dépense</li>
+                                        <li>Catégorie de dépense</li>
+                                        <li>Montant demandé</li>
+                                        <li>Niveau de priorité</li>
+                                        <li>Fournisseur (si applicable)</li>
+                                        <li>Justification</li>
+                                    </ul>
+                                </li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /> pour soumettre</li>
+                            </ol>
+                        </div>
+
+                        <h5 className="text-primary">14.3 Processus d&apos;Approbation</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le système d&apos;approbation fonctionne sur plusieurs niveaux :</p>
+                            <ul className="line-height-3">
+                                <li><Tag value="Niveau 1" severity="info" /> - Approbation par le responsable direct</li>
+                                <li><Tag value="Niveau 2" severity="warning" /> - Approbation par le directeur de département</li>
+                                <li><Tag value="Niveau 3" severity="danger" /> - Approbation par la direction générale (pour les montants élevés)</li>
+                            </ul>
+                            <p>Les seuils d&apos;approbation déterminent automatiquement le nombre de niveaux requis selon le montant.</p>
+                        </div>
+
+                        <h5 className="text-primary">14.4 Paiement des Dépenses</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Étapes :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Dépenses &gt; Paiements" /></li>
+                                <li>Sélectionner une demande approuvée</li>
+                                <li>Choisir le mode de paiement</li>
+                                <li>Saisir la référence de paiement</li>
+                                <li>Cliquer sur <Tag value="Confirmer le Paiement" severity="success" /></li>
+                            </ol>
+                        </div>
+
+                        <h5 className="text-primary">14.5 Gestion des Budgets</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le module permet de :</p>
+                            <ul className="line-height-3">
+                                <li>Définir des budgets par catégorie et par période</li>
+                                <li>Suivre la consommation budgétaire en temps réel</li>
+                                <li>Recevoir des alertes lorsque les seuils sont atteints</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">14.6 Petite Caisse</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>La gestion de la petite caisse permet de :</p>
+                            <ul className="line-height-3">
+                                <li>Gérer un fonds de petite caisse pour les dépenses mineures</li>
+                                <li>Enregistrer les sorties de petite caisse</li>
+                                <li>Effectuer le réapprovisionnement</li>
+                                <li>Suivre le solde disponible</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">14.7 Rapports Dépenses</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Accéder aux rapports via <Tag value="Dépenses &gt; Rapports &amp; Analyses" /> :</p>
+                            <ul className="line-height-3">
+                                <li>Rapport des dépenses par catégorie</li>
+                                <li>Rapport des dépenses par période</li>
+                                <li>Suivi budgétaire</li>
+                                <li>Analyse des tendances</li>
+                            </ul>
+                        </div>
+                    </div>
+                </AccordionTab>
+
+                {/* Module Administration */}
+                <AccordionTab
+                    header={
+                        <span className="flex align-items-center gap-2">
+                            <i className="pi pi-cog"></i>
+                            <span className="font-bold">15. Administration et Gestion des Utilisateurs</span>
+                        </span>
+                    }
+                >
+                    <div className="p-3">
+                        <p>
+                            Le module Administration permet de gérer les utilisateurs, leurs rôles et permissions,
+                            ainsi que de consulter le journal d&apos;audit pour tracer toutes les actions effectuées dans le système.
+                        </p>
+
+                        <h5 className="text-primary">15.1 Créer un Utilisateur</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Étapes :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder au menu <Tag value="Administration &gt; Créer un Utilisateur" /></li>
+                                <li>Remplir les informations obligatoires :
+                                    <ul>
+                                        <li>Nom complet</li>
+                                        <li>Adresse e-mail (servira de nom d&apos;utilisateur)</li>
+                                        <li>Mot de passe temporaire</li>
+                                        <li>Agence de rattachement</li>
+                                        <li>Rôle(s) attribué(s)</li>
+                                    </ul>
+                                </li>
+                                <li>Attribuer les permissions/autorités nécessaires selon le poste</li>
+                                <li>Cliquer sur <Tag value="Enregistrer" severity="success" /></li>
+                            </ol>
+                        </div>
+
+                        <h5 className="text-primary">15.2 Gestion des Utilisateurs</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Via le menu <Tag value="Administration &gt; Gestion des utilisateurs" />, vous pouvez :</p>
+                            <ul className="line-height-3">
+                                <li><strong>Consulter la liste :</strong> Voir tous les utilisateurs enregistrés avec leur statut</li>
+                                <li><strong>Modifier :</strong> Changer les informations, rôles ou permissions d&apos;un utilisateur</li>
+                                <li><strong>Activer/Désactiver :</strong> Suspendre temporairement l&apos;accès d&apos;un utilisateur</li>
+                                <li><strong>Réinitialiser le mot de passe :</strong> Générer un nouveau mot de passe temporaire</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">15.3 Rôles et Permissions</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le système utilise un modèle de permissions granulaires :</p>
+                            <ul className="line-height-3">
+                                <li><strong>SUPER_ADMIN :</strong> Accès complet à tous les modules</li>
+                                <li><strong>Permissions par module :</strong> Chaque module a ses propres permissions (VIEW, CREATE, UPDATE, DELETE, VALIDATE, REPORT, SETTINGS)</li>
+                                <li><strong>Exemples de permissions :</strong>
+                                    <ul>
+                                        <li><Tag value="EPARGNE_VIEW" /> - Consulter les comptes d&apos;épargne</li>
+                                        <li><Tag value="CREDIT_CREATE" /> - Créer des demandes de crédit</li>
+                                        <li><Tag value="ACCOUNTING_ENTRY_CREATE" /> - Saisir des écritures comptables</li>
+                                        <li><Tag value="DEPENSE_APPROVE_N1" /> - Approuver les dépenses niveau 1</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">15.4 Journal d&apos;Audit</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le journal d&apos;audit enregistre automatiquement toutes les actions effectuées dans le système :</p>
+                            <ul className="line-height-3">
+                                <li><strong>Qui :</strong> L&apos;utilisateur qui a effectué l&apos;action</li>
+                                <li><strong>Quoi :</strong> Le type d&apos;opération (création, modification, suppression, validation)</li>
+                                <li><strong>Quand :</strong> La date et l&apos;heure exactes</li>
+                                <li><strong>Détails :</strong> Les anciennes et nouvelles valeurs en cas de modification</li>
+                            </ul>
+                            <p>Accéder via <Tag value="Administration &gt; Journal d&apos;Audit" /> pour consulter l&apos;historique complet.</p>
+                        </div>
+
+                        <h5 className="text-primary">15.5 Bonnes Pratiques de Sécurité</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <ul className="line-height-3">
+                                <li>Attribuez le <strong>minimum de permissions</strong> nécessaires pour chaque utilisateur</li>
+                                <li>Désactivez immédiatement les comptes des employés ayant quitté l&apos;institution</li>
+                                <li>Consultez régulièrement le journal d&apos;audit pour détecter les anomalies</li>
+                                <li>Changez les mots de passe régulièrement</li>
+                                <li>Ne partagez jamais les identifiants de connexion entre utilisateurs</li>
+                            </ul>
+                        </div>
+                    </div>
+                </AccordionTab>
             </Accordion>
 
             {/* Footer */}
@@ -4640,9 +4834,9 @@ function UserManualComponent() {
             <div className="text-center text-500 text-sm">
                 <p>
                     <i className="pi pi-info-circle mr-2"></i>
-                    Pour toute assistance supplémentaire, veuillez contacter l'administrateur système.
+                    Pour toute assistance supplémentaire, veuillez contacter l&apos;administrateur système.
                 </p>
-                <p>Version 9.0 - Système AgrM - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Comptabilité, Traçabilité, Rapprochement Bancaire, Tableaux de Bord</p>
+                <p>Version 10.0 - PrFin MIS - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Comptabilité, Dépenses, Rapprochement Bancaire, Tableaux de Bord, Administration, Traçabilité</p>
             </div>
         </div>
     );

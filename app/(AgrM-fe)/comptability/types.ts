@@ -46,6 +46,22 @@ export class CptCompte {
   }
 }
 
+export class CptTypeJournal {
+  typeJournalId: string;
+  code: string;
+  libelle: string;
+  actif: boolean;
+  userAction: string;
+
+  constructor() {
+    this.typeJournalId = '';
+    this.code = '';
+    this.libelle = '';
+    this.actif = true;
+    this.userAction = '';
+  }
+}
+
 export class CptJournal {
   journalId: string;
   codeJournal: string;
@@ -419,6 +435,7 @@ export class CptCaisse {
   compteComptable: string;
   parentCaisseId: string;
   typeCaisse: string;
+  journalId: string;
   actif: boolean;
   closingStatus: string;
   userAction: string;
@@ -436,6 +453,7 @@ export class CptCaisse {
     this.compteComptable = '571';
     this.parentCaisseId = '';
     this.typeCaisse = 'GUICHET';
+    this.journalId = '';
     this.actif = true;
     this.closingStatus = '';
     this.userAction = '';
@@ -618,8 +636,11 @@ export interface InternalAccount {
   accountNumber?: string;
   libelle: string;
   compteComptableId: number | null;
+  journalId: number | null;
   soldeActuel: number;
   actif: boolean;
+  depotEnabled: boolean;
+  retraitEnabled: boolean;
   notes: string | null;
   userAction: string | null;
   createdAt?: string;
@@ -632,8 +653,11 @@ export class InternalAccountClass implements InternalAccount {
   accountNumber?: string;
   libelle: string = '';
   compteComptableId: number | null = null;
+  journalId: number | null = null;
   soldeActuel: number = 0;
   actif: boolean = true;
+  depotEnabled: boolean = false;
+  retraitEnabled: boolean = false;
   notes: string | null = null;
   userAction: string | null = null;
 }

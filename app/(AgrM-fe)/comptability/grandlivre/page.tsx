@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Toast } from 'primereact/toast';
 import { Button } from 'primereact/button';
-import { InputMask } from 'primereact/inputmask';
+import { Calendar } from 'primereact/calendar';
 import { InputText } from 'primereact/inputtext';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { CptExercice } from '../types';
@@ -15,8 +15,8 @@ const GrandLivreReport: React.FC = () => {
     const [currentExercice, setCurrentExercice] = useState<CptExercice | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const [dateDebut, setDateDebut] = useState('');
-    const [dateFin, setDateFin] = useState('');
+    const [dateDebut, setDateDebut] = useState<Date | null>(null);
+    const [dateFin, setDateFin] = useState<Date | null>(null);
     const [compteDebut, setCompteDebut] = useState('');
     const [compteFin, setCompteFin] = useState('');
 
@@ -31,14 +31,16 @@ const GrandLivreReport: React.FC = () => {
 
     const formatDate = (value: string) => {
         if (!value) return '';
-        const date = new Date(value);
-        return new Intl.DateTimeFormat('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+        const d = new Date(value);
+        return new Intl.DateTimeFormat('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
     };
 
-    const convertDate = (ddmmyyyy: string) => {
-        if (!ddmmyyyy) return '';
-        const [dd, mm, yyyy] = ddmmyyyy.split('/');
-        return yyyy && mm && dd ? `${yyyy}-${mm}-${dd}` : '';
+    const toIso = (d: Date | null) => {
+        if (!d) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
     };
 
     const handleGenerate = async () => {
@@ -47,7 +49,7 @@ const GrandLivreReport: React.FC = () => {
             return;
         }
         if (!dateDebut || !dateFin) {
-            toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez saisir les dates de début et de fin', life: 3000 });
+            toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez sélectionner les dates de début et de fin', life: 3000 });
             return;
         }
 
@@ -56,8 +58,8 @@ const GrandLivreReport: React.FC = () => {
             const token = Cookies.get('token');
             const params = new URLSearchParams();
             params.append('exerciceId', currentExercice.exerciceId);
-            params.append('dateDebut', convertDate(dateDebut));
-            params.append('dateFin', convertDate(dateFin));
+            params.append('dateDebut', toIso(dateDebut));
+            params.append('dateFin', toIso(dateFin));
             if (compteDebut) params.append('compteDebut', compteDebut);
             if (compteFin) params.append('compteFin', compteFin);
 
@@ -122,13 +124,13 @@ const GrandLivreReport: React.FC = () => {
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-3">
                         <label htmlFor="dateDebut">Date Début</label>
-                        <InputMask id="dateDebut" mask="99/99/9999" value={dateDebut} placeholder="jj/mm/aaaa"
-                            onChange={(e) => setDateDebut(e.target.value || '')} />
+                        <Calendar id="dateDebut" value={dateDebut} onChange={(e) => setDateDebut(e.value as Date | null)}
+                            dateFormat="dd/mm/yy" showIcon placeholder="Sélectionner une date" className="w-full" />
                     </div>
                     <div className="field col-12 md:col-3">
                         <label htmlFor="dateFin">Date Fin</label>
-                        <InputMask id="dateFin" mask="99/99/9999" value={dateFin} placeholder="jj/mm/aaaa"
-                            onChange={(e) => setDateFin(e.target.value || '')} />
+                        <Calendar id="dateFin" value={dateFin} onChange={(e) => setDateFin(e.value as Date | null)}
+                            dateFormat="dd/mm/yy" showIcon placeholder="Sélectionner une date" className="w-full" />
                     </div>
                     <div className="field col-12 md:col-3">
                         <label htmlFor="compteDebut">Compte Début</label>

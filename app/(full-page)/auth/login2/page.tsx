@@ -74,17 +74,20 @@ const Login: Page = () => {
         <>
             <Toast ref={messageRef} position="top-right" />
             <div className="h-screen flex w-full surface-ground">
+                <div className="hidden lg:flex flex-1 align-items-center justify-content-center" style={{ backgroundColor: '#f5f5f0' }}>
+                    <img src="/layout/images/logo/logoAgrinova.PNG" alt="Agrinova Microfinance" style={{ maxWidth: '500px', width: '80%', height: 'auto' }} />
+                </div>
                 <div style={{
                          backgroundImage: 'url(/layout/images/pages/404-bg.jpg)'
                      }} className="flex flex-1 flex-column surface-ground align-items-center justify-content-center">
                     <div className="w-11 sm:w-30rem">
                         <div className="flex flex-column">
-                            <div style={{ height: '56px', width: '56px' }} className="bg-primary-50 border-circle flex align-items-center justify-content-center">
-                                <i className="pi pi-sign-in text-primary text-4xl"></i>
+                            <div className="flex align-items-center justify-content-center">
+                                <img src="/layout/images/logo/Welcome.PNG" alt="PrFin MIS" style={{ maxWidth: '300px', width: '100%', height: 'auto' }} />
                             </div>
                             <div className="mt-4">
-                                <h1 className="m-0 text-primary font-semibold text-4xl">Bienvenue!</h1>
-                                <span className="block text-700 text-white mt-2">Veuillez entrer votre nom d'utlisateur et votre mot de passe</span>
+                                <h2 className="m-0 text-primary font-semibold text-2xl">Bienvenue!</h2>
+                                <span className="block text-white mt-2">Veuillez entrer votre nom d&apos;utilisateur et votre mot de passe</span>
                             </div>
                         </div>
                         <form onSubmit={handleLogin} className="flex flex-column gap-3 mt-6">
@@ -104,7 +107,7 @@ const Login: Page = () => {
                                 <Button type="submit" loading={loading} className="w-full" label="ENTRER" icon="pi pi-sign-in"></Button>
                             </div>
                             <div className="text-center mt-2">
-                                <span className="text-white mr-2">Vous n'avez pas de compte?</span>
+                                <span className="text-white mr-2">Vous n&apos;avez pas de compte?</span>
                                 <span style={{ color: '#60a5fa', fontWeight: '600' }}>
                                     <i className="pi pi-phone mr-1"></i>
                                     Contactez Administrateur
@@ -112,14 +115,6 @@ const Login: Page = () => {
                             </div>
                         </form>
                     </div>
-                </div>
-                <div
-                    // style={{
-                    //     backgroundImage: 'url(/layout/images/pages/404-bg.jpg)'
-                    // }}
-                    className="hidden lg:flex flex-1 align-items-center justify-content-center bg-cover"
-                >
-                    <img src="/layout/images/logo/gps_icon_.png" alt="" />
                 </div>
             </div>
 

@@ -6,11 +6,8 @@ const AppFooter = () => {
     const { layoutConfig } = useContext(LayoutContext);
 
     return (
-        <div className="layout-footer">
-            {/* <img src="/layout/images/logo/gps_icon_.png" alt="" style={{ width: "80px", height: "80px" }} /> */}
-            <div className="flex gap-2">
-                <span className="text-sm">© 2025 BU.CO.TEC. All rights reserved.</span>
-             </div>
+        <div className="layout-footer" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <span className="text-sm">© 2026 INFOSTEAM. All rights reserved.</span>
         </div>
     );
 };

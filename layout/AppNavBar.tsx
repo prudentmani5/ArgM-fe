@@ -134,8 +134,8 @@ const AppNavBar = () => {
                         ]) : false,
                         items: [
                             { label: 'Gestion de Caisse', icon: 'pi pi-wallet', to: '/epargne/gestion-caisse', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING', 'CAISSE_ACKNOWLEDGE_RECEIPT']) : false },
-                            { label: 'Bordereaux de Depot', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE']) : false },
-                            { label: 'Demandes de Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE']) : false }
+                            { label: 'Versement', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE']) : false },
+                            { label: 'Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE']) : false }
                         ]
                     },
                     {
@@ -156,10 +156,10 @@ const AppNavBar = () => {
                             'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE'
                         ]) : false,
                         items: [
-                            { label: 'Comptes d\'Épargne', icon: 'pi pi-wallet', to: '/epargne/compte-epargne' },
-                            { label: 'Livrets d\'Épargne', icon: 'pi pi-id-card', to: '/epargne/livret-epargne' },
-                            { label: 'Bordereaux de Dépôt', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot' },
-                            { label: 'Demandes de Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait' },
+                            { label: 'Ouverture Compte', icon: 'pi pi-wallet', to: '/epargne/compte-epargne' },
+                           /* { label: 'Livrets d\'Épargne', icon: 'pi pi-id-card', to: '/epargne/livret-epargne' },
+                            { label: 'Versement', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot' },
+                            { label: 'Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait' },*/
                             { label: 'Virements', icon: 'pi pi-arrow-right-arrow-left', to: '/epargne/virements' },
                             { label: 'Carnet de Chèques', icon: 'pi pi-book', to: '/epargne/carnet-cheque' },
                             { label: 'Demande de Situation', icon: 'pi pi-file', to: '/epargne/demande-situation' },
@@ -174,7 +174,7 @@ const AppNavBar = () => {
                         label: 'Rapports Épargne',
                         visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_REPORT']) : false,
                         items: [
-                            { label: 'Rapport des Livrets', icon: 'pi pi-book', to: '/epargne/rapports/livrets' },
+                           /* { label: 'Rapport des Livrets', icon: 'pi pi-book', to: '/epargne/rapports/livrets' },*/
                             { label: 'Rapport des Dépôts', icon: 'pi pi-arrow-down', to: '/epargne/rapports/depots' },
                             { label: 'Rapport des Retraits', icon: 'pi pi-arrow-up', to: '/epargne/rapports/retraits' },
                             { label: 'Consulter historique', icon: 'pi pi-lock', to: '/epargne/rapports/historique-operations' },
@@ -401,6 +401,7 @@ const AppNavBar = () => {
                         items: [
                             { label: 'Taux de change', icon: 'pi pi-dollar', to: '/comptability/settings/tauxChange', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_SETTINGS']) : false },
                             { label: 'Plan comptable SYSCOHADA', icon: 'pi pi-list', to: '/comptability/compte', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false },
+                            { label: 'Types de Journal', icon: 'pi pi-tags', to: '/comptability/type-journal', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_TYPE_JOURNAL_VIEW', 'ACCOUNTING_TYPE_JOURNAL_CREATE']) : false },
                             { label: 'Journaux', icon: 'pi pi-book', to: '/comptability/journal', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false },
                             { label: 'Exercice', icon: 'pi pi-calendar', to: '/comptability/exercice', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW', 'ACCOUNTING_ENTRY_CREATE']) : false },
                             { label: 'Périodes Comptables', icon: 'pi pi-calendar-times', to: '/comptability/periodes', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false },
@@ -536,7 +537,8 @@ const AppNavBar = () => {
                 icon: 'pi pi-book',
                 routePrefix: '/user-manual',
                 items: [
-                    { label: 'Manuel Utilisateur', icon: 'pi pi-file', to: '/user-manual' }
+                    { label: 'Manuel Utilisateur', icon: 'pi pi-file', to: '/user-manual' },
+                    { label: 'Version Imprimable', icon: 'pi pi-print', to: '/user-manual/print' }
                 ]
             }
     ];

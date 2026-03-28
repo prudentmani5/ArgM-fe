@@ -5,7 +5,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { InputSwitch } from 'primereact/inputswitch';
-import { InternalAccount } from '../types';
+import { InternalAccount, CptJournal } from '../types';
 
 interface InternalAccountFormProps {
     account: InternalAccount;
@@ -13,6 +13,7 @@ interface InternalAccountFormProps {
     handleDropdownChange: (name: string, value: any) => void;
     handleNumberChange: (name: string, value: number | null | undefined) => void;
     comptes: any[];
+    journaux?: CptJournal[];
     isViewMode?: boolean;
     isEditMode?: boolean;
 }
@@ -23,6 +24,7 @@ const InternalAccountForm: React.FC<InternalAccountFormProps> = ({
     handleDropdownChange,
     handleNumberChange,
     comptes,
+    journaux = [],
     isViewMode = false,
     isEditMode = false
 }) => {
@@ -114,6 +116,30 @@ const InternalAccountForm: React.FC<InternalAccountFormProps> = ({
                 </h5>
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-6">
+                        <label htmlFor="journalId" className="font-medium">Journal</label>
+                        <Dropdown
+                            id="journalId"
+                            value={account.journalId}
+                            options={journaux}
+                            onChange={(e) => handleDropdownChange('journalId', e.value)}
+                            optionValue="journalId"
+                            optionLabel="codeJournal"
+                            placeholder="Sélectionner un journal"
+                            disabled={isViewMode}
+                            filter
+                            showClear
+                            filterBy="codeJournal,nomJournal"
+                            className="w-full"
+                            itemTemplate={(item: any) => (
+                                <span>{item.codeJournal} - {item.nomJournal}</span>
+                            )}
+                            valueTemplate={(item: any, props: any) => {
+                                if (item) return <span>{item.codeJournal} - {item.nomJournal}</span>;
+                                return <span>{props?.placeholder}</span>;
+                            }}
+                        />
+                    </div>
+                    <div className="field col-12 md:col-6">
                         <label htmlFor="soldeActuel" className="font-medium">Solde Actuel</label>
                         <InputNumber
                             id="soldeActuel"
@@ -126,13 +152,35 @@ const InternalAccountForm: React.FC<InternalAccountFormProps> = ({
                         />
                         <small className="text-500">Le solde est mis à jour automatiquement par les opérations</small>
                     </div>
-                    <div className="field col-12 md:col-6 flex align-items-center">
+                    <div className="field col-12 md:col-2 flex align-items-center">
                         <div>
                             <label htmlFor="actif" className="font-medium block mb-2">Actif</label>
                             <InputSwitch
                                 id="actif"
                                 checked={account.actif}
                                 onChange={(e) => handleDropdownChange('actif', e.value)}
+                                disabled={isViewMode}
+                            />
+                        </div>
+                    </div>
+                    <div className="field col-12 md:col-2 flex align-items-center">
+                        <div>
+                            <label htmlFor="depotEnabled" className="font-medium block mb-2">Dépôt</label>
+                            <InputSwitch
+                                id="depotEnabled"
+                                checked={account.depotEnabled || false}
+                                onChange={(e) => handleDropdownChange('depotEnabled', e.value)}
+                                disabled={isViewMode}
+                            />
+                        </div>
+                    </div>
+                    <div className="field col-12 md:col-2 flex align-items-center">
+                        <div>
+                            <label htmlFor="retraitEnabled" className="font-medium block mb-2">Retrait</label>
+                            <InputSwitch
+                                id="retraitEnabled"
+                                checked={account.retraitEnabled || false}
+                                onChange={(e) => handleDropdownChange('retraitEnabled', e.value)}
                                 disabled={isViewMode}
                             />
                         </div>
