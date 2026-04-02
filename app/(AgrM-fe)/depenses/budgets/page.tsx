@@ -112,7 +112,7 @@ const BudgetsPage = () => {
         if (budget.id) {
             fetchAction(dataToSend, 'PUT', `${BASE_URL}/update/${budget.id}`, 'update');
         } else {
-            fetchAction(dataToSend, 'POST', `${BASE_URL}/create`, 'create');
+            fetchAction(dataToSend, 'POST', `${BASE_URL}/new`, 'create');
         }
     };
 
