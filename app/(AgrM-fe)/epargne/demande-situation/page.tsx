@@ -19,6 +19,7 @@ import Cookies from 'js-cookie';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { filterOwnRecordsForCaissier } from '@/utils/userUtils';
 
 const REQUEST_TYPE = 'SITUATION';
 
@@ -103,7 +104,9 @@ function SituationRequestPage() {
     useEffect(() => {
         if (requestsApi.data) {
             const data = Array.isArray(requestsApi.data) ? requestsApi.data : requestsApi.data?.content || [];
-            setRequests(data.filter((r: StatementRequest) => r.requestType === REQUEST_TYPE));
+            const typeFiltered = data.filter((r: StatementRequest) => r.requestType === REQUEST_TYPE);
+            // Caissiers see only their own records; supervisors/validators see all.
+            setRequests(filterOwnRecordsForCaissier(typeFiltered, ['EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']));
             setLoading(false);
         }
         if (requestsApi.error) {
@@ -442,7 +445,7 @@ function SituationRequestPage() {
 
 function ProtectedPageWrapper() {
     return (
-        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+        <ProtectedPage requiredAuthorities={['EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']}>
             <SituationRequestPage />
         </ProtectedPage>
     );

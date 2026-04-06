@@ -7,12 +7,14 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Tag } from 'primereact/tag';
+import CancellationRefBadge from '@/components/CancellationRefBadge';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { useMarkCancellationReplaced } from '@/hooks/useMarkCancellationReplaced';
 import { DepositSlip, DepositSlipClass, DepositSlipStatus, CashDenomination } from './DepositSlip';
 import { getClientDisplayName } from '@/utils/clientUtils';
 import DepositSlipForm from './DepositSlipForm';
@@ -72,6 +74,7 @@ function DepositSlipPage() {
     const slipsApi = useConsumApi('');
     const actionsApi = useConsumApi('');
     const caissesApi = useConsumApi('');
+    const { markIfNeeded } = useMarkCancellationReplaced();
 
     useEffect(() => {
         loadReferenceData();
@@ -145,6 +148,7 @@ function DepositSlipPage() {
             switch (actionsApi.callType) {
                 case 'create':
                     showToast('success', 'Succès', 'Bordereau créé avec succès');
+                    markIfNeeded(actionsApi.data?.notes, actionsApi.data?.slipNumber || '');
                     resetForm();
                     loadDepositSlips();
                     setActiveIndex(1);
@@ -459,7 +463,15 @@ function DepositSlipPage() {
                 break;
         }
 
-        return <Tag value={label} severity={severity} />;
+        return (
+            <span className="flex align-items-center flex-wrap">
+                <Tag value={label} severity={severity} />
+                {rowData.status === DepositSlipStatus.CANCELLED && (
+                    <CancellationRefBadge text={(rowData as any).cancellationReason} />
+                )}
+                <CancellationRefBadge text={(rowData as any).notes} />
+            </span>
+        );
     };
 
     // Open print dialog for validated deposits only
@@ -823,7 +835,7 @@ function DepositSlipPage() {
 
 function ProtectedPageWrapper() {
     return (
-        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+        <ProtectedPage requiredAuthorities={['EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE']}>
             <DepositSlipPage />
         </ProtectedPage>
     );

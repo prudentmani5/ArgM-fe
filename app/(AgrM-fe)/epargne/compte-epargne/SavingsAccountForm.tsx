@@ -68,6 +68,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             disabled={isViewMode}
                             placeholder="Généré automatiquement"
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-4">
@@ -254,6 +255,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             min={0}
                             disabled={isViewMode}
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-3">
@@ -267,6 +269,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             min={0}
                             disabled
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-3">
@@ -280,6 +283,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             min={0}
                             disabled={isViewMode}
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-3">
@@ -293,6 +297,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             min={0}
                             disabled={isViewMode}
                             className="w-full"
+                            readOnly
                         />
                     </div>
                 </div>
@@ -311,6 +316,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             maxFractionDigits={2}
                             disabled={isViewMode}
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-4">
@@ -324,6 +330,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             min={0}
                             disabled
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-4">
@@ -336,6 +343,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                             disabled={isViewMode}
                             showIcon
                             className="w-full"
+                           
                         />
                     </div>
                 </div>

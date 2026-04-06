@@ -121,6 +121,18 @@ function GestionCaissePage() {
     const [billetageDetails, setBilletageDetails] = useState<{ [caisseId: string]: CptCashCount | null }>({});
     const [billetageDetailsLoading, setBilletageDetailsLoading] = useState(false);
 
+    // Exchange billetage (denomination exchange within same caisse)
+    const [exchangeVisible, setExchangeVisible] = useState(false);
+    const [exchangeCaisse, setExchangeCaisse] = useState<CptCaisse | null>(null);
+    const [exchangeCount, setExchangeCount] = useState<CptCashCount>(new CptCashCount());
+
+    // Excedent on Retour de Fonds
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
+    const [excedentDialogVisible, setExcedentDialogVisible] = useState(false);
+    const [excedentAccountId, setExcedentAccountId] = useState<number | null>(null);
+    const [excedentLibelle, setExcedentLibelle] = useState<string>('');
+    const [pendingRetourData, setPendingRetourData] = useState<{ solde: number; billetageTotal: number; excedent: number; exerciceId: string } | null>(null);
+
     // Tab 5: Closing validation (for managers)
     const [closingComparison, setClosingComparison] = useState<any>(null);
     const [branchClosingStatus, setBranchClosingStatus] = useState<any>(null);
@@ -146,15 +158,19 @@ function GestionCaissePage() {
     const { data: pendingData, error: pendingError, fetchData: fetchPending, callType: pendingCallType } = useConsumApi('');
     const { data: ackData, loading: ackLoading, error: ackError, fetchData: fetchAck, callType: ackCallType } = useConsumApi('');
     const { data: billetageData, loading: billetageLoading, error: billetageError, fetchData: fetchBilletage, callType: billetageCallType } = useConsumApi('');
+    const { data: intAccData, error: intAccError, fetchData: fetchIntAcc, callType: intAccCallType } = useConsumApi('');
+    const { data: excedentDepotData, loading: excedentDepotLoading, error: excedentDepotError, fetchData: fetchExcedentDepot, callType: excedentDepotCallType } = useConsumApi('');
     // billetageDetail hook removed — loadAllBilletageDetails now uses direct fetch with Promise.all
 
     const BASE_URL = buildApiUrl('/api/comptability/caisses');
+    const INT_ACC_URL = buildApiUrl('/api/comptability/internal-accounts');
 
     // ==================== Initialization ====================
 
     useEffect(() => {
         loadAllCaisses();
         loadOfDailySummaries();
+        loadInternalAccounts();
     }, []);
 
     // Auto-detect user's caisse from allCaisses
@@ -549,6 +565,24 @@ function GestionCaissePage() {
 
     // billetageDetail useEffect removed — loadAllBilletageDetails handles results directly
 
+    // Handle internal accounts response
+    useEffect(() => {
+        if (intAccData && intAccCallType === 'loadIntAcc') {
+            const list = Array.isArray(intAccData) ? intAccData : [];
+            setInternalAccounts(list.filter((a: any) => a.actif));
+        }
+    }, [intAccData, intAccCallType]);
+
+    // Handle excedent depot response
+    useEffect(() => {
+        if (excedentDepotData && excedentDepotCallType === 'excedentDepot') {
+            toast.current?.show({ severity: 'info', summary: 'Excedent enregistre', detail: 'L\'excedent a ete enregistre sur le compte interne.', life: 4000 });
+        }
+        if (excedentDepotError && excedentDepotCallType === 'excedentDepot') {
+            toast.current?.show({ severity: 'warn', summary: 'Avertissement', detail: 'Le retour de fonds a ete effectue mais l\'enregistrement de l\'excedent sur le compte interne a echoue. Veuillez le faire manuellement.', life: 8000 });
+        }
+    }, [excedentDepotData, excedentDepotError, excedentDepotCallType]);
+
     // ==================== API Calls ====================
 
     const loadAllCaisses = () => {
@@ -570,6 +604,10 @@ function GestionCaissePage() {
         } else {
             fetchCaisses(null, 'GET', BASE_URL + '/findall', 'getall');
         }
+    };
+
+    const loadInternalAccounts = () => {
+        fetchIntAcc(null, 'GET', INT_ACC_URL + '/findall', 'loadIntAcc');
     };
 
     const loadChildren = (parentId: string) => {
@@ -717,6 +755,100 @@ function GestionCaissePage() {
         setBilletageVisible(false);
         setBilletageCaisse(null);
         setBilletageCount(new CptCashCount());
+    };
+
+    // ==================== Retour de Fonds with Excedent Handlers ====================
+    const executeRetourDeFonds = (montantRetour: number, exerciceId: string) => {
+        if (!myCaisse || !parentCaisse) return;
+        const params = new URLSearchParams({
+            caisseSourceId: myCaisse.caisseId,
+            caisseDestId: parentCaisse.caisseId,
+            montant: montantRetour.toString(),
+            libelle: transferLibelle || `Retour de fonds de ${myCaisse.codeCaisse} vers ${parentCaisse.codeCaisse}`
+        });
+        if (exerciceId) params.append('exerciceId', exerciceId);
+        const body = { ...transferBilletage, userAction: getUserAction() };
+        fetchTransfer(body, 'POST', BASE_URL + '/transfer?' + params.toString(), 'transfer');
+    };
+
+    const handleConfirmExcedent = () => {
+        if (!pendingRetourData || !myCaisse || !parentCaisse) return;
+        if (!excedentAccountId) {
+            toast.current?.show({ severity: 'error', summary: 'Compte requis', detail: 'Veuillez selectionner un compte interne pour l\'excedent.', life: 4000 });
+            return;
+        }
+        // 1. Execute the full retour de fonds (billetage total = solde + excedent, but montant = solde only because retour takes entire balance)
+        executeRetourDeFonds(pendingRetourData.solde, pendingRetourData.exerciceId);
+        // 2. Record excedent as depot on internal account
+        const depotBody = {
+            montant: pendingRetourData.excedent,
+            libelle: excedentLibelle || `Excedent retour de fonds - ${myCaisse.codeCaisse} (${formatNumber(pendingRetourData.excedent)} FBu)`,
+            userAction: getUserAction()
+        };
+        fetchExcedentDepot(depotBody, 'POST', INT_ACC_URL + '/depot/' + excedentAccountId, 'excedentDepot');
+        // Close dialog
+        setExcedentDialogVisible(false);
+        setExcedentAccountId(null);
+        setExcedentLibelle('');
+        setPendingRetourData(null);
+    };
+
+    const handleCancelExcedent = () => {
+        setExcedentDialogVisible(false);
+        setExcedentAccountId(null);
+        setExcedentLibelle('');
+        setPendingRetourData(null);
+    };
+
+    // ==================== Exchange Billetage Handlers ====================
+    const openExchangeDialog = (caisse: CptCaisse) => {
+        const detail = billetageDetails[String(caisse.caisseId)];
+        if (!detail || detail.totalPhysique == null) {
+            toast.current?.show({ severity: 'warn', summary: 'Aucun billetage', detail: 'Veuillez d\'abord effectuer un billetage pour cette caisse', life: 4000 });
+            return;
+        }
+        const count = new CptCashCount();
+        DENOMINATIONS.forEach(d => { (count as any)[d.field] = (detail as any)[d.field] || 0; });
+        count.notes = '';
+        setExchangeCount(count);
+        setExchangeCaisse(caisse);
+        setExchangeVisible(true);
+    };
+
+    const calculateExchangeTotal = (): number => {
+        return DENOMINATIONS.reduce((sum, d) => sum + ((exchangeCount as any)[d.field] || 0) * d.value, 0);
+    };
+
+    const getOriginalExchangeTotal = (): number => {
+        if (!exchangeCaisse) return 0;
+        const detail = billetageDetails[String(exchangeCaisse.caisseId)];
+        if (!detail) return 0;
+        return DENOMINATIONS.reduce((sum, d) => sum + ((detail as any)[d.field] || 0) * d.value, 0);
+    };
+
+    const handleExchangeDenominationChange = (field: string, value: number) => {
+        setExchangeCount(prev => ({ ...prev, [field]: value || 0 }));
+    };
+
+    const handleSaveExchange = () => {
+        if (!exchangeCaisse) return;
+        const newTotal = calculateExchangeTotal();
+        const originalTotal = getOriginalExchangeTotal();
+        if (Math.abs(newTotal - originalTotal) > 0.01) {
+            toast.current?.show({ severity: 'error', summary: 'Total different', detail: `Le total apres echange (${formatNumber(newTotal)} FBu) doit etre egal au total initial (${formatNumber(originalTotal)} FBu)`, life: 5000 });
+            return;
+        }
+        const dataToSend = { ...exchangeCount, notes: exchangeCount.notes || 'Echange de billets', userAction: getUserAction() };
+        fetchBilletage(dataToSend, 'POST', `${BASE_URL}/billetage/${exchangeCaisse.caisseId}`, 'saveBilletage');
+        setExchangeVisible(false);
+        setExchangeCaisse(null);
+        setExchangeCount(new CptCashCount());
+    };
+
+    const handleCancelExchange = () => {
+        setExchangeVisible(false);
+        setExchangeCaisse(null);
+        setExchangeCount(new CptCashCount());
     };
 
     // ==================== Ouverture / Fermeture Tab Handlers ====================
@@ -2294,15 +2426,23 @@ function GestionCaissePage() {
                                                 <div className="mt-2 p-3 border-round" style={{ border: '1px solid var(--blue-200)', background: 'var(--blue-50)' }}>
                                                     <div className="flex align-items-center justify-content-between mb-2">
                                                         <h6 className="m-0"><i className="pi pi-money-bill mr-1 text-blue-600"></i>Billets a retourner</h6>
-                                                        <span className={`font-bold text-sm ${Math.abs(calculateTransferBilletageTotal() - (myCaisse.soldeActuel ?? 0)) < 0.01 && calculateTransferBilletageTotal() > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                        <span className={`font-bold text-sm ${calculateTransferBilletageTotal() >= (myCaisse.soldeActuel ?? 0) - 0.01 && calculateTransferBilletageTotal() > 0 ? 'text-green-600' : 'text-red-600'}`}>
                                                             {formatNumber(calculateTransferBilletageTotal())} / {formatNumber(myCaisse.soldeActuel)} FBu
                                                         </span>
                                                     </div>
+                                                    {calculateTransferBilletageTotal() > (myCaisse.soldeActuel ?? 0) + 0.01 && (
+                                                        <div className="mb-2 p-2 border-round bg-orange-50 text-orange-700 text-sm" style={{ border: '1px solid var(--orange-200)' }}>
+                                                            <i className="pi pi-exclamation-triangle mr-1"></i>
+                                                            <strong>Excedent detecte: {formatNumber(calculateTransferBilletageTotal() - (myCaisse.soldeActuel ?? 0))} FBu</strong>
+                                                            <br />
+                                                            <small>Un compte interne sera demande pour enregistrer l'excedent. Le montant total sera retourne au coffre.</small>
+                                                        </div>
+                                                    )}
                                                     <DataTable value={DENOMINATIONS} size="small" showGridlines
                                                         footer={
                                                             <div className="flex justify-content-between align-items-center">
                                                                 <span className="font-bold">TOTAL</span>
-                                                                <span className={`font-bold ${Math.abs(calculateTransferBilletageTotal() - (myCaisse.soldeActuel ?? 0)) < 0.01 && calculateTransferBilletageTotal() > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                                                                <span className={`font-bold ${calculateTransferBilletageTotal() >= (myCaisse.soldeActuel ?? 0) - 0.01 && calculateTransferBilletageTotal() > 0 ? 'text-green-600' : 'text-orange-600'}`}>
                                                                     {formatNumber(calculateTransferBilletageTotal())} FBu
                                                                 </span>
                                                             </div>
@@ -2345,8 +2485,8 @@ function GestionCaissePage() {
                                                         toast.current?.show({ severity: 'error', summary: 'Billetage requis', detail: 'Veuillez saisir le billetage (billets a retourner).', life: 5000 });
                                                         return;
                                                     }
-                                                    if (Math.abs(billetageTotal - soldeSource) > 0.01) {
-                                                        toast.current?.show({ severity: 'error', summary: 'Billetage incorrect', detail: `Le total du billetage (${formatNumber(billetageTotal)} FBu) doit correspondre au solde total (${formatNumber(soldeSource)} FBu).`, life: 5000 });
+                                                    if (billetageTotal < soldeSource - 0.01) {
+                                                        toast.current?.show({ severity: 'error', summary: 'Billetage insuffisant', detail: `Le total du billetage (${formatNumber(billetageTotal)} FBu) ne peut pas etre inferieur au solde (${formatNumber(soldeSource)} FBu).`, life: 5000 });
                                                         return;
                                                     }
                                                     let exerciceId = '';
@@ -2354,27 +2494,28 @@ function GestionCaissePage() {
                                                     if (savedExercice) {
                                                         try { exerciceId = JSON.parse(savedExercice).exerciceId || ''; } catch (e) { /* ignore */ }
                                                     }
-                                                    confirmDialog({
-                                                        message: `Confirmer le retour de ${formatNumber(soldeSource)} FBu de ${myCaisse.codeCaisse} vers ${parentCaisse.codeCaisse} ?\n\nLe solde de votre caisse deviendra 0 FBu.`,
-                                                        header: 'Confirmation de Retour de Fonds',
-                                                        icon: 'pi pi-replay',
-                                                        acceptLabel: 'Confirmer',
-                                                        rejectLabel: 'Annuler',
-                                                        accept: () => {
-                                                            const params = new URLSearchParams({
-                                                                caisseSourceId: myCaisse.caisseId,
-                                                                caisseDestId: parentCaisse.caisseId,
-                                                                montant: soldeSource.toString(),
-                                                                libelle: transferLibelle || `Retour de fonds de ${myCaisse.codeCaisse} vers ${parentCaisse.codeCaisse}`
-                                                            });
-                                                            if (exerciceId) params.append('exerciceId', exerciceId);
-                                                            const body = { ...transferBilletage, userAction: getUserAction() };
-                                                            fetchTransfer(body, 'POST', BASE_URL + '/transfer?' + params.toString(), 'transfer');
-                                                        }
-                                                    });
+                                                    const excedent = billetageTotal - soldeSource;
+                                                    if (excedent > 0.01) {
+                                                        // Excedent detected — open dialog to select internal account
+                                                        setPendingRetourData({ solde: soldeSource, billetageTotal, excedent, exerciceId });
+                                                        setExcedentLibelle(`Excedent retour de fonds - ${myCaisse.codeCaisse}`);
+                                                        setExcedentDialogVisible(true);
+                                                    } else {
+                                                        // No excedent — proceed directly
+                                                        confirmDialog({
+                                                            message: `Confirmer le retour de ${formatNumber(soldeSource)} FBu de ${myCaisse.codeCaisse} vers ${parentCaisse.codeCaisse} ?\n\nLe solde de votre caisse deviendra 0 FBu.`,
+                                                            header: 'Confirmation de Retour de Fonds',
+                                                            icon: 'pi pi-replay',
+                                                            acceptLabel: 'Confirmer',
+                                                            rejectLabel: 'Annuler',
+                                                            accept: () => {
+                                                                executeRetourDeFonds(soldeSource, exerciceId);
+                                                            }
+                                                        });
+                                                    }
                                                 }}
                                                 loading={transferLoading}
-                                                disabled={(myCaisse.soldeActuel ?? 0) <= 0 || Math.abs(calculateTransferBilletageTotal() - (myCaisse.soldeActuel ?? 0)) > 0.01}
+                                                disabled={(myCaisse.soldeActuel ?? 0) <= 0 || calculateTransferBilletageTotal() < (myCaisse.soldeActuel ?? 0) - 0.01 || calculateTransferBilletageTotal() <= 0}
                                             />
                                         </Card>
                                     </div>
@@ -2683,6 +2824,18 @@ function GestionCaissePage() {
                                                                 <i className="pi pi-comment mr-1"></i>{detail.notes}
                                                             </div>
                                                         )}
+                                                        {c.status === 'OPEN' && (
+                                                            <div className="mt-3 flex justify-content-end">
+                                                                <Button
+                                                                    label="Echange de Billets"
+                                                                    icon="pi pi-sync"
+                                                                    severity="help"
+                                                                    size="small"
+                                                                    outlined
+                                                                    onClick={() => openExchangeDialog(c)}
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </>
                                                 ) : (
                                                     <div className="text-center p-3 text-400">
@@ -2984,6 +3137,233 @@ function GestionCaissePage() {
                                 className="w-full"
                                 placeholder="Observations sur le comptage..."
                             />
+                        </div>
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Exchange Billetage Dialog */}
+            <Dialog
+                visible={exchangeVisible}
+                onHide={handleCancelExchange}
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-sync text-xl" style={{ color: '#9C27B0' }}></i>
+                        <span>Echange de Billets</span>
+                    </div>
+                }
+                style={{ width: '580px' }}
+                modal
+                footer={
+                    <div className="flex justify-content-between align-items-center">
+                        <Button label="Annuler" icon="pi pi-times" severity="secondary" outlined onClick={handleCancelExchange} />
+                        <Button
+                            label="Enregistrer l'echange"
+                            icon="pi pi-check"
+                            severity="help"
+                            onClick={handleSaveExchange}
+                            loading={billetageLoading}
+                            disabled={Math.abs(calculateExchangeTotal() - getOriginalExchangeTotal()) > 0.01}
+                        />
+                    </div>
+                }
+            >
+                {exchangeCaisse && (
+                    <div>
+                        <div className="p-3 border-round mb-3 surface-100">
+                            <div className="flex justify-content-between align-items-center">
+                                <div>
+                                    <span className="text-500">Caisse: </span>
+                                    <span className="font-bold">{exchangeCaisse.codeCaisse}</span>
+                                    <span className="text-500 ml-2">— {exchangeCaisse.libelle}</span>
+                                </div>
+                                <Tag value="Echange" severity="help" icon="pi pi-sync" />
+                            </div>
+                            <div className="mt-2 text-sm text-600">
+                                <i className="pi pi-info-circle mr-1"></i>
+                                Modifiez les quantites par denomination. Le total doit rester identique.
+                            </div>
+                        </div>
+
+                        <DataTable value={DENOMINATIONS} size="small" showGridlines
+                            footer={
+                                <div className="flex justify-content-between align-items-center">
+                                    <span className="text-lg font-bold">TOTAL</span>
+                                    <span className={`text-lg font-bold ${Math.abs(calculateExchangeTotal() - getOriginalExchangeTotal()) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                                        {formatNumber(calculateExchangeTotal())} FBu
+                                    </span>
+                                </div>
+                            }>
+                            <Column header="Denomination" body={(d: any) => (
+                                <span className="font-medium">{formatNumber(d.value)} FBu</span>
+                            )} style={{ width: '110px' }} />
+                            <Column header="Avant" body={(d: any) => {
+                                const detail = billetageDetails[String(exchangeCaisse.caisseId)];
+                                return <span className="text-500">{(detail as any)?.[d.field] || 0}</span>;
+                            }} style={{ textAlign: 'center', width: '60px' }} />
+                            <Column header="Apres" body={(d: any) => (
+                                <InputNumber
+                                    value={(exchangeCount as any)[d.field] || 0}
+                                    onValueChange={(e) => handleExchangeDenominationChange(d.field, e.value || 0)}
+                                    min={0}
+                                    showButtons
+                                    buttonLayout="horizontal"
+                                    incrementButtonIcon="pi pi-plus"
+                                    decrementButtonIcon="pi pi-minus"
+                                    inputStyle={{ textAlign: 'center', fontWeight: 600, width: '60px' }}
+                                />
+                            )} style={{ width: '180px' }} />
+                            <Column header="Sous-total" body={(d: any) => (
+                                <span className="font-bold text-primary">{formatNumber(((exchangeCount as any)[d.field] || 0) * d.value)} FBu</span>
+                            )} style={{ textAlign: 'right' }} />
+                        </DataTable>
+
+                        <div className="mt-3 p-3 border-round" style={{
+                            background: Math.abs(calculateExchangeTotal() - getOriginalExchangeTotal()) > 0.01 ? '#FFEBEE' : '#E8F5E9',
+                            borderLeft: `4px solid ${Math.abs(calculateExchangeTotal() - getOriginalExchangeTotal()) > 0.01 ? '#F44336' : '#4CAF50'}`
+                        }}>
+                            <div className="flex justify-content-between align-items-center mb-2">
+                                <span className="text-600">Total initial:</span>
+                                <span className="font-bold text-blue-600">{formatNumber(getOriginalExchangeTotal())} FBu</span>
+                            </div>
+                            <div className="flex justify-content-between align-items-center mb-2">
+                                <span className="text-600">Total apres echange:</span>
+                                <span className={`font-bold ${Math.abs(calculateExchangeTotal() - getOriginalExchangeTotal()) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                                    {formatNumber(calculateExchangeTotal())} FBu
+                                </span>
+                            </div>
+                            <div className="flex justify-content-between align-items-center">
+                                <span className="font-semibold">Difference:</span>
+                                <span className={`font-bold text-lg ${Math.abs(calculateExchangeTotal() - getOriginalExchangeTotal()) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                                    {calculateExchangeTotal() - getOriginalExchangeTotal() === 0 ? '0' : formatNumber(calculateExchangeTotal() - getOriginalExchangeTotal())} FBu
+                                    {Math.abs(calculateExchangeTotal() - getOriginalExchangeTotal()) < 0.01 && <i className="pi pi-check-circle ml-2 text-green-600"></i>}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="field mt-3">
+                            <label className="font-semibold">Notes</label>
+                            <InputTextarea
+                                value={exchangeCount.notes || ''}
+                                onChange={(e) => setExchangeCount(prev => ({ ...prev, notes: e.target.value }))}
+                                rows={2}
+                                className="w-full"
+                                placeholder="Ex: Echange 1x 500 FBu en 5x 100 FBu..."
+                            />
+                        </div>
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Excedent Dialog - Select internal account for surplus during Retour de Fonds */}
+            <Dialog
+                visible={excedentDialogVisible}
+                onHide={handleCancelExcedent}
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-exclamation-triangle text-xl text-orange-600"></i>
+                        <span>Excedent Detecte - Retour de Fonds</span>
+                    </div>
+                }
+                style={{ width: '520px' }}
+                modal
+                footer={
+                    <div className="flex justify-content-between">
+                        <Button label="Annuler" icon="pi pi-times" severity="secondary" outlined onClick={handleCancelExcedent} />
+                        <Button
+                            label="Confirmer le Retour"
+                            icon="pi pi-check"
+                            severity="warning"
+                            onClick={handleConfirmExcedent}
+                            loading={transferLoading || excedentDepotLoading}
+                            disabled={!excedentAccountId}
+                        />
+                    </div>
+                }
+            >
+                {pendingRetourData && myCaisse && parentCaisse && (
+                    <div>
+                        <div className="p-3 border-round mb-3" style={{ background: '#FFF3E0', borderLeft: '4px solid #FF9800' }}>
+                            <div className="flex align-items-center gap-2 mb-2">
+                                <i className="pi pi-info-circle text-orange-600"></i>
+                                <span className="font-semibold text-orange-800">Le comptage physique depasse le solde systeme</span>
+                            </div>
+                            <div className="text-sm text-700">
+                                Le montant total (y compris l'excedent) sera retourne au coffre <strong>{parentCaisse.codeCaisse}</strong>.
+                                L'excedent sera enregistre sur un compte interne pour tracabilite.
+                            </div>
+                        </div>
+
+                        <div className="grid mb-3">
+                            <div className="col-4">
+                                <div className="p-2 border-round surface-100 text-center">
+                                    <div className="text-500 text-xs mb-1">Solde Systeme</div>
+                                    <div className="font-bold text-blue-600">{formatNumber(pendingRetourData.solde)} FBu</div>
+                                </div>
+                            </div>
+                            <div className="col-4">
+                                <div className="p-2 border-round surface-100 text-center">
+                                    <div className="text-500 text-xs mb-1">Billetage Physique</div>
+                                    <div className="font-bold text-green-600">{formatNumber(pendingRetourData.billetageTotal)} FBu</div>
+                                </div>
+                            </div>
+                            <div className="col-4">
+                                <div className="p-2 border-round text-center" style={{ background: '#FFF3E0' }}>
+                                    <div className="text-500 text-xs mb-1">Excedent</div>
+                                    <div className="font-bold text-orange-600">{formatNumber(pendingRetourData.excedent)} FBu</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="field">
+                            <label className="font-semibold">
+                                <i className="pi pi-book mr-1"></i>Compte Interne pour l'excedent <span className="text-red-500">*</span>
+                            </label>
+                            <Dropdown
+                                value={excedentAccountId}
+                                options={internalAccounts.map((a: any) => ({
+                                    label: `${a.codeCompte || a.accountNumber || ''} - ${a.libelle}`,
+                                    value: a.accountId
+                                }))}
+                                onChange={(e) => setExcedentAccountId(e.value)}
+                                placeholder="Selectionner un compte interne..."
+                                className="w-full"
+                                filter
+                                filterPlaceholder="Rechercher un compte..."
+                                emptyMessage="Aucun compte interne disponible"
+                            />
+                            {internalAccounts.length === 0 && (
+                                <small className="text-orange-600">
+                                    <i className="pi pi-exclamation-circle mr-1"></i>
+                                    Aucun compte interne avec depot actif. Veuillez en creer un dans Comptabilite &gt; Comptes Internes.
+                                </small>
+                            )}
+                        </div>
+
+                        <div className="field">
+                            <label className="font-semibold">Libelle de l'excedent</label>
+                            <InputText
+                                value={excedentLibelle}
+                                onChange={(e) => setExcedentLibelle(e.target.value)}
+                                className="w-full"
+                                placeholder="Motif de l'excedent..."
+                            />
+                        </div>
+
+                        <div className="p-3 border-round surface-100 mt-3">
+                            <div className="text-sm text-600 mb-2"><i className="pi pi-arrow-right mr-1"></i>Resume de l'operation:</div>
+                            <div className="flex justify-content-between text-sm mb-1">
+                                <span>Retour vers {parentCaisse.codeCaisse}:</span>
+                                <span className="font-bold">{formatNumber(pendingRetourData.solde)} FBu</span>
+                            </div>
+                            <div className="flex justify-content-between text-sm mb-1">
+                                <span>Excedent enregistre sur compte interne:</span>
+                                <span className="font-bold text-orange-600">{formatNumber(pendingRetourData.excedent)} FBu</span>
+                            </div>
+                            <div className="flex justify-content-between text-sm font-bold mt-2 pt-2" style={{ borderTop: '1px solid var(--surface-border)' }}>
+                                <span>Total physique remis au coffre:</span>
+                                <span className="text-green-600">{formatNumber(pendingRetourData.billetageTotal)} FBu</span>
+                            </div>
                         </div>
                     </div>
                 )}

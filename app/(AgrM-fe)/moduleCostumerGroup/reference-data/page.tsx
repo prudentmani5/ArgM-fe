@@ -770,6 +770,21 @@ function ReferenceDataComponent() {
                                 <Column field="phone" header="Téléphone" style={{ minWidth: '120px' }} />
                             </>
                         )}
+                        <Column
+                            field="createdAt"
+                            header="Date de création"
+                            body={(rowData) => {
+                                const dateValue = rowData.createdAt || rowData.created_at;
+                                if (!dateValue) return '-';
+                                const d = new Date(dateValue);
+                                return new Intl.DateTimeFormat('fr-FR', {
+                                    year: 'numeric', month: '2-digit', day: '2-digit',
+                                    hour: '2-digit', minute: '2-digit'
+                                }).format(d);
+                            }}
+                            sortable
+                            style={{ minWidth: '140px' }}
+                        />
                         <Column header="Statut" body={statusBodyTemplate} style={{ minWidth: '80px' }} />
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '80px' }} />
                     </DataTable>

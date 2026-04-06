@@ -7,12 +7,14 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Tag } from 'primereact/tag';
+import CancellationRefBadge from '@/components/CancellationRefBadge';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { useMarkCancellationReplaced } from '@/hooks/useMarkCancellationReplaced';
 import { Virement, VirementClass, VirementStatus, TRANSFER_TYPE_OPTIONS, DEFAULT_COMMISSION_RATE, VirementBatch, VirementBatchClass, VirementBatchDetail } from './Virement';
 import VirementForm from './VirementForm';
 import VirementBatchForm from './VirementBatchForm';
@@ -21,6 +23,7 @@ import PrintableVirementBatchReceipt from './PrintableVirementBatchReceipt';
 import Cookies from 'js-cookie';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
+import { filterOwnRecordsForCaissier } from '@/utils/userUtils';
 import { getClientDisplayName } from '@/utils/clientUtils';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/virements`;
@@ -78,6 +81,7 @@ function VirementPage() {
     const savingsApi = useConsumApi('');
     const virementsApi = useConsumApi('');
     const actionsApi = useConsumApi('');
+    const { markIfNeeded } = useMarkCancellationReplaced();
     const comptesApi = useConsumApi('');
     const internalAccountsApi = useConsumApi('');
     const batchListApi = useConsumApi('');
@@ -123,7 +127,8 @@ function VirementPage() {
     useEffect(() => {
         if (virementsApi.data) {
             const data: Virement[] = Array.isArray(virementsApi.data) ? virementsApi.data : virementsApi.data.content || [];
-            setVirements(data);
+            // Caissiers see only their own records; supervisors/validators see all.
+            setVirements(filterOwnRecordsForCaissier(data, ['EPARGNE_VIREMENT_VALIDATE', 'EPARGNE_VIREMENT_REJECT', 'EPARGNE_VIREMENT_CANCEL']));
             setLoading(false);
         }
         if (virementsApi.error) {
@@ -138,6 +143,7 @@ function VirementPage() {
             switch (actionsApi.callType) {
                 case 'create':
                     showToast('success', 'Succès', 'Virement créé avec succès (en attente de validation)');
+                    markIfNeeded(actionsApi.data?.notes, actionsApi.data?.batchNumber || '');
                     resetForm();
                     loadVirements();
                     setActiveIndex(1);
@@ -166,7 +172,8 @@ function VirementPage() {
     useEffect(() => {
         if (batchListApi.data) {
             const data: VirementBatch[] = Array.isArray(batchListApi.data) ? batchListApi.data : batchListApi.data.content || [];
-            setBatches(data);
+            // Caissiers see only their own records; supervisors/validators see all.
+            setBatches(filterOwnRecordsForCaissier(data, ['EPARGNE_VIREMENT_BATCH_VALIDATE']));
             setBatchLoading(false);
         }
         if (batchListApi.error) {
@@ -738,7 +745,12 @@ function VirementPage() {
                 break;
         }
 
-        return <Tag value={label} severity={severity} />;
+        return (
+            <span className="flex align-items-center flex-wrap">
+                <Tag value={label} severity={severity} />
+                <CancellationRefBadge text={(rowData as any).notes} />
+            </span>
+        );
     };
 
     const transferTypeTemplate = (rowData: Virement) => {
@@ -1222,7 +1234,7 @@ function VirementPage() {
 
 function ProtectedPageWrapper() {
     return (
-        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+        <ProtectedPage requiredAuthorities={['EPARGNE_VIREMENT_CREATE', 'EPARGNE_VIREMENT_VALIDATE', 'EPARGNE_VIREMENT_BATCH_CREATE', 'EPARGNE_VIREMENT_BATCH_VALIDATE']}>
             <VirementPage />
         </ProtectedPage>
     );

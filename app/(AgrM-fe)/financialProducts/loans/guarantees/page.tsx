@@ -20,7 +20,7 @@ const LoanGuaranteePage = () => {
     const [isEdit, setIsEdit] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const toast = useRef<Toast>(null);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.62:8080';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
     useEffect(() => {
         fetchEntities();

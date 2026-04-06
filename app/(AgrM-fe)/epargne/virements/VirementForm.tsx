@@ -7,6 +7,7 @@ import { Calendar } from 'primereact/calendar';
 import { InputNumber } from 'primereact/inputnumber';
 import { Virement, TRANSFER_TYPE_OPTIONS } from './Virement';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import CancellationRefDropdown from '@/components/CancellationRefDropdown';
 
 interface VirementFormProps {
     virement: Virement;
@@ -336,6 +337,17 @@ const VirementForm: React.FC<VirementFormProps> = ({
                     <i className="pi pi-comment mr-2"></i>
                     Motif et Notes
                 </h5>
+                {!isViewMode && (
+                    <CancellationRefDropdown
+                        sourceType="VIREMENT"
+                        value={(virement.notes?.match(/\[REMPLACEMENT\s+(ANN-\d{8}-\d+)]/)?.[1]) || undefined}
+                        onChange={(ref) => {
+                            const cleaned = (virement.notes || '').replace(/\[REMPLACEMENT\s+ANN-\d{8}-\d+]\s*/g, '').trim();
+                            const newNotes = ref ? `[REMPLACEMENT ${ref}] ${cleaned}` : cleaned;
+                            handleChange({ target: { name: 'notes', value: newNotes } } as any);
+                        }}
+                    />
+                )}
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-6">
                         <label htmlFor="motif" className="font-medium">Motif du Virement *</label>

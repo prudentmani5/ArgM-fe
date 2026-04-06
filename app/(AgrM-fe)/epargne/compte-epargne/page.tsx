@@ -16,6 +16,7 @@ import { FileUpload } from 'primereact/fileupload';
 import Cookies from 'js-cookie';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL, buildApiUrl } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
 import { SavingsAccount, SavingsAccountClass } from './SavingsAccount';
 import SavingsAccountForm from './SavingsAccountForm';
 import PrintableTermDepositCertificate from './PrintableTermDepositCertificate';
@@ -40,6 +41,7 @@ const FALLBACK_STATUSES = [
 
 function SavingsAccountPage() {
     const [savingsAccount, setSavingsAccount] = useState<SavingsAccount>(new SavingsAccountClass());
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [savingsAccounts, setSavingsAccounts] = useState<SavingsAccount[]>([]);
     const [clients, setClients] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
@@ -114,7 +116,10 @@ function SavingsAccountPage() {
     // Handle clients data
     useEffect(() => {
         if (clientsApi.data) {
-            setClients(Array.isArray(clientsApi.data) ? clientsApi.data : clientsApi.data.content || []);
+            const allClients = Array.isArray(clientsApi.data) ? clientsApi.data : clientsApi.data.content || [];
+            // Only keep clients with status ACTIVE
+            const activeClients = allClients.filter((c: any) => c.status === 'ACTIVE');
+            setClients(activeClients);
         }
         if (clientsApi.error) {
             showToast('error', 'Erreur', 'Erreur lors du chargement des clients');
@@ -200,6 +205,7 @@ function SavingsAccountPage() {
                         loadSavingsAccounts();
                         setActiveIndex(wasTermDeposit ? 2 : 1);
                     }
+                    setIsSubmitting(false);
                     break;
                 case 'update':
                     showToast('success', 'Succès', 'Compte d\'épargne mis à jour avec succès');
@@ -209,6 +215,7 @@ function SavingsAccountPage() {
                         loadSavingsAccounts();
                         setActiveIndex(wasTermDeposit ? 2 : 1);
                     }
+                    setIsSubmitting(false);
                     break;
                 case 'delete':
                     showToast('success', 'Succès', 'Compte d\'épargne supprimé avec succès');
@@ -218,6 +225,7 @@ function SavingsAccountPage() {
         }
         if (actionsApi.error) {
             showToast('error', 'Erreur', actionsApi.error.message || 'Une erreur est survenue');
+            setIsSubmitting(false);
         }
     }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
 
@@ -366,7 +374,7 @@ function SavingsAccountPage() {
     const handleDateChange = (name: string, value: Date | null) => {
         setSavingsAccount(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : null
+            [name]: value ? formatLocalDate(value) : null
         }));
     };
 
@@ -391,7 +399,10 @@ function SavingsAccountPage() {
     };
 
     const handleSubmit = () => {
+        if (isSubmitting) return; // Prevent double-click
         if (!validateForm()) return;
+
+        setIsSubmitting(true);
 
         // Add user action info
         const currentUser = getCurrentUser();
@@ -971,6 +982,8 @@ function SavingsAccountPage() {
                             label={savingsAccount.id ? 'Mettre à jour' : 'Créer le Compte'}
                             icon="pi pi-save"
                             onClick={handleSubmit}
+                            loading={isSubmitting}
+                            disabled={isSubmitting}
                             className="p-button-success"
                         />
                         <Button
@@ -1944,7 +1957,7 @@ function SavingsAccountPage() {
 
 function ProtectedPageWrapper() {
     return (
-        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+        <ProtectedPage requiredAuthorities={['EPARGNE_CREATE', 'EPARGNE_UPDATE', 'EPARGNE_VIEW']}>
             <SavingsAccountPage />
         </ProtectedPage>
     );

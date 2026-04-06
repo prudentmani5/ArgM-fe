@@ -7,6 +7,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Tag } from 'primereact/tag';
+import CancellationRefBadge from '@/components/CancellationRefBadge';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -18,6 +19,7 @@ import { Avatar } from 'primereact/avatar';
 import { Divider } from 'primereact/divider';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL, buildApiUrl } from '@/utils/apiConfig';
+import { useMarkCancellationReplaced } from '@/hooks/useMarkCancellationReplaced';
 import { WithdrawalRequest, WithdrawalRequestClass, WithdrawalStatus } from './WithdrawalRequest';
 import { getClientDisplayName } from '@/utils/clientUtils';
 import { ClientType } from '@/app/(AgrM-fe)/moduleCostumerGroup/clients/Client';
@@ -109,6 +111,7 @@ function WithdrawalRequestPage() {
     const requestsApi = useConsumApi('');
     const actionsApi = useConsumApi('');
     const caissesApi = useConsumApi('');
+    const { markIfNeeded } = useMarkCancellationReplaced();
     const clientDetailApi = useConsumApi('');
 
     useEffect(() => {
@@ -205,6 +208,7 @@ function WithdrawalRequestPage() {
             switch (actionsApi.callType) {
                 case 'create':
                     showToast('success', 'Succès', 'Demande de retrait créée avec succès');
+                    markIfNeeded(actionsApi.data?.notes, actionsApi.data?.requestNumber || '');
                     resetForm();
                     loadRequests();
                     setActiveIndex(2);
@@ -653,10 +657,16 @@ function WithdrawalRequestPage() {
             CANCELLED: 'Annulé'
         };
         return (
-            <Tag
-                value={labels[rowData.status] || rowData.status}
-                severity={getStatusSeverity(rowData.status)}
-            />
+            <span className="flex align-items-center flex-wrap">
+                <Tag
+                    value={labels[rowData.status] || rowData.status}
+                    severity={getStatusSeverity(rowData.status)}
+                />
+                {rowData.status === 'CANCELLED' && (
+                    <CancellationRefBadge text={(rowData as any).rejectionReason} />
+                )}
+                <CancellationRefBadge text={(rowData as any).notes} />
+            </span>
         );
     };
 
@@ -1467,7 +1477,7 @@ function WithdrawalRequestPage() {
 
 function ProtectedPageWrapper() {
     return (
-        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+        <ProtectedPage requiredAuthorities={['EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE']}>
             <WithdrawalRequestPage />
         </ProtectedPage>
     );

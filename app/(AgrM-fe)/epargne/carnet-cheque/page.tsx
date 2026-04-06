@@ -19,6 +19,7 @@ import Cookies from 'js-cookie';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { filterOwnRecordsForCaissier } from '@/utils/userUtils';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/checkbook-orders`;
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
@@ -121,7 +122,8 @@ function CheckbookOrderPage() {
     useEffect(() => {
         if (ordersApi.data) {
             const data = Array.isArray(ordersApi.data) ? ordersApi.data : ordersApi.data?.content || [];
-            setOrders(data);
+            // Caissiers see only their own records; supervisors/validators see all.
+            setOrders(filterOwnRecordsForCaissier(data, ['EPARGNE_CHECKBOOK_VALIDATE', 'EPARGNE_CHECKBOOK_RECEIVE', 'EPARGNE_CHECKBOOK_DELIVER']));
             setLoading(false);
         }
         if (ordersApi.error) {
@@ -728,7 +730,7 @@ function CheckbookOrderPage() {
 
 function ProtectedPageWrapper() {
     return (
-        <ProtectedPage requiredAuthorities={['EPARGNE_VIEW']}>
+        <ProtectedPage requiredAuthorities={['EPARGNE_CHECKBOOK_CREATE', 'EPARGNE_CHECKBOOK_VALIDATE', 'EPARGNE_CHECKBOOK_RECEIVE', 'EPARGNE_CHECKBOOK_DELIVER']}>
             <CheckbookOrderPage />
         </ProtectedPage>
     );

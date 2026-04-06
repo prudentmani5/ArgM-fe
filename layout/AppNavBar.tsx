@@ -130,12 +130,14 @@ const AppNavBar = () => {
                         visible: appUser ? hasAnyAuthority(appUser, [
                             'ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING', 'CAISSE_ACKNOWLEDGE_RECEIPT',
                             'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE',
-                            'EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE'
+                            'EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE',
+                            'EPARGNE_CANCELLATION_CREATE', 'EPARGNE_CANCELLATION_VALIDATE'
                         ]) : false,
                         items: [
                             { label: 'Gestion de Caisse', icon: 'pi pi-wallet', to: '/epargne/gestion-caisse', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING', 'CAISSE_ACKNOWLEDGE_RECEIPT']) : false },
                             { label: 'Versement', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE']) : false },
-                            { label: 'Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE']) : false }
+                            { label: 'Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE']) : false },
+                            { label: 'Demandes d\'Annulation', icon: 'pi pi-ban', to: '/epargne/demandes-annulation', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_CANCELLATION_CREATE', 'EPARGNE_CANCELLATION_VALIDATE']) : false }
                         ]
                     },
                     {
@@ -152,20 +154,21 @@ const AppNavBar = () => {
                         label: 'Épargne Libre',
                         visible: appUser ? hasAnyAuthority(appUser, [
                             'EPARGNE_VIEW', 'EPARGNE_CREATE',
-                            'EPARGNE_WITHDRAWAL_CREATE', 'EPARGNE_WITHDRAWAL_VERIFY', 'EPARGNE_WITHDRAWAL_DISBURSE',
-                            'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE'
+                            'EPARGNE_VIREMENT_CREATE', 'EPARGNE_VIREMENT_VALIDATE', 'EPARGNE_VIREMENT_BATCH_CREATE', 'EPARGNE_VIREMENT_BATCH_VALIDATE',
+                            'EPARGNE_CHECKBOOK_CREATE', 'EPARGNE_CHECKBOOK_VALIDATE', 'EPARGNE_CHECKBOOK_RECEIVE', 'EPARGNE_CHECKBOOK_DELIVER',
+                            'EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER'
                         ]) : false,
                         items: [
-                            { label: 'Ouverture Compte', icon: 'pi pi-wallet', to: '/epargne/compte-epargne' },
+                            { label: 'Ouverture Compte', icon: 'pi pi-wallet', to: '/epargne/compte-epargne', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_CREATE', 'EPARGNE_UPDATE']) : false },
                            /* { label: 'Livrets d\'Épargne', icon: 'pi pi-id-card', to: '/epargne/livret-epargne' },
                             { label: 'Versement', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot' },
                             { label: 'Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait' },*/
-                            { label: 'Virements', icon: 'pi pi-arrow-right-arrow-left', to: '/epargne/virements' },
-                            { label: 'Carnet de Chèques', icon: 'pi pi-book', to: '/epargne/carnet-cheque' },
-                            { label: 'Demande de Situation', icon: 'pi pi-file', to: '/epargne/demande-situation' },
-                            { label: 'Demande d\'Historique', icon: 'pi pi-history', to: '/epargne/demande-historique' },
-                            { label: 'Attestation Non Redevabilité', icon: 'pi pi-verified', to: '/epargne/attestation-non-redevabilite' },
-                            { label: 'Attestation d\'Engagement', icon: 'pi pi-shield', to: '/epargne/attestation-engagement' }
+                            { label: 'Virements', icon: 'pi pi-arrow-right-arrow-left', to: '/epargne/virements', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIREMENT_CREATE', 'EPARGNE_VIREMENT_VALIDATE', 'EPARGNE_VIREMENT_BATCH_CREATE', 'EPARGNE_VIREMENT_BATCH_VALIDATE']) : false },
+                            { label: 'Carnet de Chèques', icon: 'pi pi-book', to: '/epargne/carnet-cheque', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_CHECKBOOK_CREATE', 'EPARGNE_CHECKBOOK_VALIDATE', 'EPARGNE_CHECKBOOK_RECEIVE', 'EPARGNE_CHECKBOOK_DELIVER']) : false },
+                            { label: 'Demande de Situation', icon: 'pi pi-file', to: '/epargne/demande-situation', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']) : false },
+                            { label: 'Demande d\'Historique', icon: 'pi pi-history', to: '/epargne/demande-historique', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']) : false },
+                            { label: 'Attestation Non Redevabilité', icon: 'pi pi-verified', to: '/epargne/attestation-non-redevabilite', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIEW']) : false },
+                            { label: 'Attestation d\'Engagement', icon: 'pi pi-shield', to: '/epargne/attestation-engagement', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIEW']) : false }
                         ]
                     },
                     { label: 'Clôture Journalière', icon: 'pi pi-lock', to: '/epargne/cloture-journaliere', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DAILY_CLOSING', 'ACCOUNTING_CASH_MANAGEMENT']) : false },

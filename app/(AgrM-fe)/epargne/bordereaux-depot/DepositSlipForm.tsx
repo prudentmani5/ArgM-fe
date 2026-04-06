@@ -11,6 +11,7 @@ import { Button } from 'primereact/button';
 import { Divider } from 'primereact/divider';
 import { DepositSlip, CashDenomination, FBU_DENOMINATIONS } from './DepositSlip';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import CancellationRefDropdown from '@/components/CancellationRefDropdown';
 
 interface DepositSlipFormProps {
     depositSlip: DepositSlip;
@@ -330,11 +331,22 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                 </div>
             </div>
 
-            <div className="surface-100 p-3 border-round">
+            <div className="surface-100 p-3 border-round mb-4">
                 <h5 className="m-0 mb-3 text-primary">
                     <i className="pi pi-comment mr-2"></i>
                     Notes
                 </h5>
+                {!isViewMode && (
+                    <CancellationRefDropdown
+                        sourceType="DEPOSIT"
+                        value={(depositSlip.notes?.match(/\[REMPLACEMENT\s+(ANN-\d{8}-\d+)]/)?.[1]) || undefined}
+                        onChange={(ref) => {
+                            const cleaned = (depositSlip.notes || '').replace(/\[REMPLACEMENT\s+ANN-\d{8}-\d+]\s*/g, '').trim();
+                            const newNotes = ref ? `[REMPLACEMENT ${ref}] ${cleaned}` : cleaned;
+                            handleChange({ target: { name: 'notes', value: newNotes } } as any);
+                        }}
+                    />
+                )}
                 <InputTextarea
                     id="notes"
                     name="notes"

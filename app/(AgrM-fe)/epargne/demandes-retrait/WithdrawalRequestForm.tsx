@@ -10,6 +10,7 @@ import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import { WithdrawalRequest, WithdrawalStatus, CashDenomination } from './WithdrawalRequest';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import CancellationRefDropdown from '@/components/CancellationRefDropdown';
 
 const FBU_DENOMINATIONS = [10000, 5000, 2000, 1000, 500, 100, 50, 10, 5, 1];
 
@@ -651,6 +652,17 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                     <i className="pi pi-comment mr-2"></i>
                     Notes
                 </h5>
+                {!isViewMode && (
+                    <CancellationRefDropdown
+                        sourceType="WITHDRAWAL"
+                        value={(request.notes?.match(/\[REMPLACEMENT\s+(ANN-\d{8}-\d+)]/)?.[1]) || undefined}
+                        onChange={(ref) => {
+                            const cleaned = (request.notes || '').replace(/\[REMPLACEMENT\s+ANN-\d{8}-\d+]\s*/g, '').trim();
+                            const newNotes = ref ? `[REMPLACEMENT ${ref}] ${cleaned}` : cleaned;
+                            handleChange({ target: { name: 'notes', value: newNotes } } as any);
+                        }}
+                    />
+                )}
                 <InputTextarea
                     id="notes"
                     name="notes"

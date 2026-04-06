@@ -54,16 +54,19 @@ const ClotureJournalierePage = () => {
     const [withdrawals, setWithdrawals] = useState<any[]>([]);
     const [statementRequests, setStatementRequests] = useState<any[]>([]);
     const [checkbookOrders, setCheckbookOrders] = useState<any[]>([]);
+    const [cancellations, setCancellations] = useState<any[]>([]);
 
     const [depositsCount, setDepositsCount] = useState(0);
     const [withdrawalsCount, setWithdrawalsCount] = useState(0);
     const [statementRequestsCount, setStatementRequestsCount] = useState(0);
     const [checkbookOrdersCount, setCheckbookOrdersCount] = useState(0);
+    const [cancellationsCount, setCancellationsCount] = useState(0);
 
     const [verifiedDepositsCount, setVerifiedDepositsCount] = useState(0);
     const [verifiedWithdrawalsCount, setVerifiedWithdrawalsCount] = useState(0);
     const [verifiedStatementRequestsCount, setVerifiedStatementRequestsCount] = useState(0);
     const [verifiedCheckbookOrdersCount, setVerifiedCheckbookOrdersCount] = useState(0);
+    const [verifiedCancellationsCount, setVerifiedCancellationsCount] = useState(0);
 
     const [allVerified, setAllVerified] = useState(false);
 
@@ -122,16 +125,19 @@ const ClotureJournalierePage = () => {
             setWithdrawals(Array.isArray(preview.withdrawals) ? preview.withdrawals : []);
             setStatementRequests(Array.isArray(preview.statementRequests) ? preview.statementRequests : []);
             setCheckbookOrders(Array.isArray(preview.checkbookOrders) ? preview.checkbookOrders : []);
+            setCancellations(Array.isArray(preview.cancellations) ? preview.cancellations : []);
 
             setDepositsCount(preview.depositsCount || 0);
             setWithdrawalsCount(preview.withdrawalsCount || 0);
             setStatementRequestsCount(preview.statementRequestsCount || 0);
             setCheckbookOrdersCount(preview.checkbookOrdersCount || 0);
+            setCancellationsCount(preview.cancellationsCount || 0);
 
             setVerifiedDepositsCount(preview.verifiedDepositsCount || 0);
             setVerifiedWithdrawalsCount(preview.verifiedWithdrawalsCount || 0);
             setVerifiedStatementRequestsCount(preview.verifiedStatementRequestsCount || 0);
             setVerifiedCheckbookOrdersCount(preview.verifiedCheckbookOrdersCount || 0);
+            setVerifiedCancellationsCount(preview.verifiedCancellationsCount || 0);
 
             setAllVerified(preview.allVerified || false);
             setLoading(false);
@@ -364,7 +370,7 @@ const ClotureJournalierePage = () => {
             .map((b: any) => ({ label: b.name, value: b.id }));
 
     // --- Totals ---
-    const totalItems = depositsCount + withdrawalsCount + statementRequestsCount + checkbookOrdersCount;
+    const totalItems = depositsCount + withdrawalsCount + statementRequestsCount + checkbookOrdersCount + cancellationsCount;
     const totalVerified = verifiedDepositsCount + verifiedWithdrawalsCount + verifiedStatementRequestsCount + verifiedCheckbookOrdersCount;
 
     // --- Toolbar content ---
@@ -458,6 +464,7 @@ const ClotureJournalierePage = () => {
                 {renderSummaryCard('Retraits', withdrawalsCount, verifiedWithdrawalsCount, 'pi pi-arrow-up', 'bg-purple-100', 'text-purple-500')}
                 {renderSummaryCard('Demandes Situation', statementRequestsCount, verifiedStatementRequestsCount, 'pi pi-file', 'bg-teal-100', 'text-teal-500')}
                 {renderSummaryCard('Carnets Cheques', checkbookOrdersCount, verifiedCheckbookOrdersCount, 'pi pi-book', 'bg-orange-100', 'text-orange-500')}
+                {renderSummaryCard('Annulations', cancellationsCount, verifiedCancellationsCount, 'pi pi-ban', 'bg-red-100', 'text-red-500')}
             </div>
 
             {/* Comptability closing completed banner */}
@@ -581,6 +588,35 @@ const ClotureJournalierePage = () => {
                         <Column header="Agence" body={branchBodyTemplate} sortable sortField="branch.name" />
                         <Column field="closingVerified" header="Verifie" body={verifiedBodyTemplate} sortable style={{ width: '120px' }} />
                         <Column header="Actions" body={makeActionsTemplate('checkbook')} style={{ width: '100px' }} />
+                    </DataTable>
+                </TabPanel>
+
+                {/* Tab Annulations */}
+                <TabPanel header={`Annulations (${cancellationsCount})`} leftIcon="pi pi-ban mr-2">
+                    <DataTable
+                        value={cancellations}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        emptyMessage="Aucune annulation approuvée pour cette date"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="validatedAt"
+                        sortOrder={-1}
+                    >
+                        <Column field="requestNumber" header="N° Demande" sortable />
+                        <Column field="sourceType" header="Type" sortable body={(row: any) => {
+                            const labels: any = { DEPOSIT: 'Dépôt', WITHDRAWAL: 'Retrait', VIREMENT: 'Virement' };
+                            return labels[row.sourceType] || row.sourceType;
+                        }} />
+                        <Column field="sourceReference" header="Opération source" sortable />
+                        <Column field="clientName" header="Client" sortable />
+                        <Column field="amount" header="Montant" body={(row: any) => row.amount != null ? formatNumber(row.amount) + ' BIF' : '-'} sortable />
+                        <Column field="validatedBy" header="Approuvé par" sortable />
+                        <Column field="closingVerified" header="Vérifié" body={verifiedBodyTemplate} sortable style={{ width: '120px' }} />
+                        <Column header="Actions" body={makeActionsTemplate('cancellation')} style={{ width: '100px' }} />
                     </DataTable>
                 </TabPanel>
             </TabView>
