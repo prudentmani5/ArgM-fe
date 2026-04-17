@@ -466,7 +466,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
                             fill="var(--topbar-item-text-color)"
                         />
                     </svg> */}
-                    <img src="/layout/images/logo/logoAgrinova.PNG" alt="AgrM" style={{ width: "55px", height: "55px" }} />
+                    <img src="/layout/images/logo/agrivona_entete.PNG" alt="AgrM" style={{ width: "auto", height: "52px", objectFit: "contain", display: "block", maxWidth: "120px" }} />
                 </Link>
                 {/* <a ref={menubuttonRef} className="p-ripple layout-menu-button" onClick={onMenuButtonClick}>
                     <i className="pi pi-chevron-right"></i>
@@ -481,7 +481,35 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
 
             <div className="layout-topbar-end">
                 <div className="layout-topbar-actions-start" id="gps_title" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <span className="font-bold text-xl" style={{ color: 'var(--topbar-item-text-color)', whiteSpace: 'nowrap', textAlign: 'center', width: '100%' }}>PROFESSIONAL FINANCIAL MANAGEMENT INFORMATION SYSTEM - PrFin MIS</span>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        lineHeight: 1.15,
+                        gap: '3px'
+                    }}>
+                        <span style={{
+                            fontFamily: "'Georgia', 'Times New Roman', serif",
+                            fontWeight: 800,
+                            fontSize: '2.2rem',
+                            letterSpacing: '0.04em',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            <span style={{ color: '#ffffff' }}>Micro</span>
+                            <span style={{ color: '#1a3a6b' }}>Core </span>
+                            <span style={{ color: '#ffffff' }}>Pro</span>
+                            <span style={{ color: '#1a3a6b' }}>Finance</span>
+                        </span>
+                        <span style={{
+                            fontSize: '0.65rem',
+                            letterSpacing: '0.2em',
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                            opacity: 0.85
+                        }}>Microfinance Management System</span>
+                    </div>
                 </div>
                 <div className="layout-topbar-actions-end">
                     <ul className="layout-topbar-items">

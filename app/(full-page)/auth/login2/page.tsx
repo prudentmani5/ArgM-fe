@@ -83,7 +83,7 @@ const Login: Page = () => {
                     <div className="w-11 sm:w-30rem">
                         <div className="flex flex-column">
                             <div className="flex align-items-center justify-content-center">
-                                <img src="/layout/images/logo/Welcome.PNG" alt="PrFin MIS" style={{ maxWidth: '300px', width: '100%', height: 'auto' }} />
+                                <img src="/layout/images/logo/Welcome.PNG" alt="PrFin MIS" style={{ maxWidth: '420px', width: '100%', height: 'auto' }} />
                             </div>
                             <div className="mt-4">
                                 <h2 className="m-0 text-primary font-semibold text-2xl">Bienvenue!</h2>

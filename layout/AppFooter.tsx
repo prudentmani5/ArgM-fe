@@ -7,7 +7,7 @@ const AppFooter = () => {
 
     return (
         <div className="layout-footer" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <span className="text-sm">© 2026 INFOSTEAM. All rights reserved.</span>
+            <span className="text-sm">© 2026 INFOSTEAM · MicroCore ProFinance. All rights reserved.</span>
         </div>
     );
 };

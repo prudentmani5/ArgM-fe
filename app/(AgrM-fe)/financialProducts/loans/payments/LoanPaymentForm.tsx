@@ -5,8 +5,8 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { LoanPayment } from './LoanPayment';
-import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
-import { buildApiUrl } from '../../../../utils/apiConfig';
+import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 
 const CAISSE_URL = buildApiUrl('/api/comptability/caisses');
 

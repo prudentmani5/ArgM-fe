@@ -1,4 +1,5 @@
 // Types pour le module de remboursement
+import { formatLocalDate, parseLocalDate } from '../../../../utils/dateUtils';
 
 // Mode de remboursement
 export interface ModeRemboursement {
@@ -341,6 +342,8 @@ export interface PaiementCredit {
     mobileReference?: string;
     isBankTransfer?: boolean;
     transferReference?: string;
+    isInternalTransfer?: boolean;
+    internalTransferReference?: string;
     allocatedToPrincipal?: number;
     allocatedToInterest?: number;
     allocatedToInsurance?: number;
@@ -348,6 +351,9 @@ export interface PaiementCredit {
     allocatedToPenalty?: number;
     notes?: string;
     userAction?: string;
+    status?: string;
+    validatedBy?: string;
+    validatedAt?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -359,8 +365,8 @@ export class PaiementCreditClass implements PaiementCredit {
     disbursementNumber?: string = '';
     clientName?: string = '';
     paymentNumber?: string = '';
-    paymentDate?: string = new Date().toISOString().split('T')[0];
-    valueDate?: string = new Date().toISOString().split('T')[0];
+    paymentDate?: string = formatLocalDate(new Date());
+    valueDate?: string = formatLocalDate(new Date());
     amountReceived?: number = 0;
     repaymentModeId?: number;
     receiptNumber?: string = '';
@@ -375,6 +381,8 @@ export class PaiementCreditClass implements PaiementCredit {
     mobileReference?: string = '';
     isBankTransfer?: boolean = false;
     transferReference?: string = '';
+    isInternalTransfer?: boolean = false;
+    internalTransferReference?: string = '';
     allocatedToPrincipal?: number = 0;
     allocatedToInterest?: number = 0;
     allocatedToInsurance?: number = 0;
@@ -382,6 +390,7 @@ export class PaiementCreditClass implements PaiementCredit {
     allocatedToPenalty?: number = 0;
     notes?: string = '';
     userAction?: string = '';
+    status?: string = 'PENDING';
 
     constructor(init?: Partial<PaiementCredit>) {
         Object.assign(this, init);
@@ -500,6 +509,7 @@ export interface RemboursementAnticipe {
     requestDate?: string;
     requestedBy?: number;
     accountNumber?: string; // Client's account number for this request
+    sourceSavingsAccountId?: number; // Savings account to debit
     status?: string;
     repaymentType?: string;
     requestedAmount?: number;
@@ -530,6 +540,7 @@ export class RemboursementAnticipeClass implements RemboursementAnticipe {
     requestDate?: string = new Date().toISOString().split('T')[0];
     requestedBy?: number;
     accountNumber?: string = '';
+    sourceSavingsAccountId?: number;
     status?: string = 'PENDING';
     repaymentType?: string = 'TOTAL';
     requestedAmount?: number = 0;
@@ -809,7 +820,8 @@ export const MODES_REMBOURSEMENT = [
     { label: 'Prélèvement automatique', value: 'AUTO_DEBIT' },
     { label: 'Collecte à domicile', value: 'HOME_COLLECTION' },
     { label: 'Mobile Money', value: 'MOBILE_MONEY' },
-    { label: 'Virement bancaire', value: 'BANK_TRANSFER' }
+    { label: 'Virement bancaire', value: 'BANK_TRANSFER' },
+    { label: 'Virement interne', value: 'INTERNAL_TRANSFER' }
 ];
 
 export const TYPES_RESTRUCTURATION = [

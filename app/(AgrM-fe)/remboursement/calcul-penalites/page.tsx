@@ -39,6 +39,7 @@ export default function CalculPenalitesPage() {
     const [executing, setExecuting] = useState(false);
     const [selectedHistory, setSelectedHistory] = useState<PenaltyExecutionHistory | null>(null);
     const [showLogDialog, setShowLogDialog] = useState(false);
+    const [alreadyExecutedToday, setAlreadyExecutedToday] = useState(false);
 
     // Overdue schedules state
     const [overdueSchedules, setOverdueSchedules] = useState<any[]>([]);
@@ -55,7 +56,10 @@ export default function CalculPenalitesPage() {
                 case 'loadConfig':
                     setConfig(data);
                     setInitialLoading(false);
-                    // After config loads, load status and history
+                    fetchData(null, 'GET', `${BASE_URL}/check-today`, 'checkToday');
+                    break;
+                case 'checkToday':
+                    setAlreadyExecutedToday(data.alreadyExecutedToday === true);
                     fetchData(null, 'GET', `${BASE_URL}/status`, 'loadStatus');
                     break;
                 case 'loadStatus':
@@ -82,6 +86,7 @@ export default function CalculPenalitesPage() {
                     break;
                 case 'execute':
                     setExecuting(false);
+                    setAlreadyExecutedToday(true);
                     showToast(
                         data.status === 'COMPLETED' ? 'success' : 'warn',
                         data.status === 'COMPLETED' ? 'Exécution terminée' : 'Exécution avec avertissements',
@@ -263,10 +268,23 @@ export default function CalculPenalitesPage() {
                         className="p-button-warning"
                         onClick={handleExecuteNow}
                         loading={executing}
-                        disabled={executing}
+                        disabled={executing || alreadyExecutedToday}
+                        tooltip={alreadyExecutedToday ? 'Calcul déjà effectué aujourd\'hui' : undefined}
+                        tooltipOptions={{ position: 'left' }}
                     />
                 </div>
             </div>
+
+            {/* Already executed today warning */}
+            {alreadyExecutedToday && (
+                <div className="col-12">
+                    <Message
+                        severity="warn"
+                        className="w-full mb-2"
+                        text="Le calcul des pénalités a déjà été effectué aujourd'hui. Un seul calcul par jour est autorisé. Le bouton sera disponible demain."
+                    />
+                </div>
+            )}
 
             {/* Status Card */}
             <div className="col-12">

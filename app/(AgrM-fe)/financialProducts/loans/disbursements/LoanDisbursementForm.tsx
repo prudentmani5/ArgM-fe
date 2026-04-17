@@ -6,8 +6,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { LoanDisbursement } from './LoanDisbursement';
-import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
-import { buildApiUrl } from '../../../../utils/apiConfig';
+import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 
 interface LoanDisbursementFormProps {
     entity: LoanDisbursement;

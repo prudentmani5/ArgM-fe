@@ -709,6 +709,17 @@ function CaissePage() {
 
     const handleSaveBilletage = () => {
         if (!billetageCaisse) return;
+        const total = calculateBilletageTotal();
+        const solde = billetageCaisse.soldeActuel ?? 0;
+        if (Math.abs(total - solde) > 0.01) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Billetage incorrect',
+                detail: `Le total du billetage (${formatNumber(total)} FBu) doit correspondre au solde de la caisse (${formatNumber(solde)} FBu). Ecart: ${formatNumber(total - solde)} FBu.`,
+                life: 5000
+            });
+            return;
+        }
         const dataToSend = { ...billetageCount, userAction: getUserAction() };
         fetchBilletage(dataToSend, 'POST', `${BASE_URL}/billetage/${billetageCaisse.caisseId}`, 'saveBilletage');
     };
@@ -2788,6 +2799,7 @@ function CaissePage() {
                                                 min={0}
                                                 className="w-full"
                                                 placeholder="0"
+                                                readOnly
                                             />
                                         </div>
                                     </div>
@@ -2906,7 +2918,14 @@ function CaissePage() {
                 footer={
                     <div className="flex justify-content-between">
                         <span className="text-orange-600 text-sm flex align-items-center"><i className="pi pi-exclamation-triangle mr-1"></i>Billetage obligatoire</span>
-                        <Button label="Enregistrer le Billetage" icon="pi pi-check" severity="success" onClick={handleSaveBilletage} loading={billetageLoading} />
+                        <Button
+                            label="Enregistrer le Billetage"
+                            icon="pi pi-check"
+                            severity="success"
+                            onClick={handleSaveBilletage}
+                            loading={billetageLoading}
+                            disabled={!billetageCaisse || Math.abs(calculateBilletageTotal() - (billetageCaisse?.soldeActuel ?? 0)) > 0.01}
+                        />
                     </div>
                 }
             >
@@ -2969,6 +2988,13 @@ function CaissePage() {
                                 </span>
                             </div>
                         </div>
+
+                        {Math.abs(calculateBilletageTotal() - (billetageCaisse.soldeActuel ?? 0)) > 0.01 && (
+                            <div className="mt-2 p-2 border-round text-sm" style={{ background: '#FFEBEE', border: '1px solid #EF9A9A' }}>
+                                <i className="pi pi-ban mr-1 text-red-600"></i>
+                                <span className="text-red-700 font-semibold">Le billetage doit correspondre exactement au solde de la caisse pour pouvoir enregistrer.</span>
+                            </div>
+                        )}
 
                         <div className="field mt-3">
                             <label className="font-semibold">Notes</label>

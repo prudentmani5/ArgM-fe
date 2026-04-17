@@ -9,6 +9,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { PaiementCredit, ModeRemboursement, MODES_REMBOURSEMENT } from '../types/RemboursementTypes';
 import { buildApiUrl } from '@/utils/apiConfig';
+import { parseLocalDate } from '@/utils/dateUtils';
 import Cookies from 'js-cookie';
 
 interface PaiementFormProps {
@@ -44,6 +45,12 @@ export default function PaiementForm({
     const [checkingReceipt, setCheckingReceipt] = useState(false);
     const [savingsAccountInfo, setSavingsAccountInfo] = useState<any>(null);
 
+    // Virement interne: search for a source savings account (different from the client's own account)
+    const [virSearchTerm, setVirSearchTerm] = useState('');
+    const [virSearchResults, setVirSearchResults] = useState<any[]>([]);
+    const [virSearching, setVirSearching] = useState(false);
+    const [virSelectedAccount, setVirSelectedAccount] = useState<any>(null);
+
     const BASE_URL = buildApiUrl('/api/remboursement/payments');
     const SAVINGS_URL = buildApiUrl('/api/savings-accounts');
 
@@ -75,8 +82,8 @@ export default function PaiementForm({
         loadSavingsAccount();
     }, [paiement.sourceSavingsAccountId]);
 
-    // Check if payment mode is "Paiement en agence" (AGENCY)
-    const isAgencyMode = !paiement.isAutoDebit && !paiement.isHomeCollection && !paiement.isMobileMoney && !paiement.isBankTransfer;
+    // Check if payment mode is "Paiement en agence" (AGENCY) — needs bordereau validation
+    const isAgencyMode = !paiement.isAutoDebit && !paiement.isHomeCollection && !paiement.isMobileMoney && !paiement.isBankTransfer && !paiement.isInternalTransfer;
 
     // Debounced check for receipt number (only for Paiement en agence)
     useEffect(() => {
@@ -141,19 +148,89 @@ export default function PaiementForm({
         return () => clearTimeout(timeoutId);
     }, [paiement.receiptNumber, isAgencyMode]);
 
+    // Search savings accounts for virement interne
+    const searchVirementSavingsAccounts = async (term: string) => {
+        if (!term || term.trim().length < 2) {
+            setVirSearchResults([]);
+            return;
+        }
+        setVirSearching(true);
+        try {
+            const token = Cookies.get('token');
+            const response = await fetch(`${SAVINGS_URL}/search?searchTerm=${encodeURIComponent(term.trim())}&page=0&size=10`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setVirSearchResults(Array.isArray(data) ? data : data.content || []);
+            }
+        } catch (e) {
+            setVirSearchResults([]);
+        } finally {
+            setVirSearching(false);
+        }
+    };
+
+    const handleVirAccountSelect = (account: any) => {
+        setVirSelectedAccount(account);
+        setVirSearchTerm('');
+        setVirSearchResults([]);
+        // Override sourceSavingsAccountId with the selected account
+        handleNumberChange('sourceSavingsAccountId', account.id);
+    };
+
+    const clearVirAccount = () => {
+        setVirSelectedAccount(null);
+        setVirSearchTerm('');
+        setVirSearchResults([]);
+        handleNumberChange('sourceSavingsAccountId', null);
+    };
+
     const getModeRemboursementType = () => {
         if (paiement.isAutoDebit) return 'AUTO_DEBIT';
         if (paiement.isHomeCollection) return 'HOME_COLLECTION';
         if (paiement.isMobileMoney) return 'MOBILE_MONEY';
         if (paiement.isBankTransfer) return 'BANK_TRANSFER';
+        if (paiement.isInternalTransfer) return 'INTERNAL_TRANSFER';
         return 'AGENCY';
     };
 
     const handleModeChange = (mode: string) => {
+        // When switching away from INTERNAL_TRANSFER, clear the searched account selection
+        // and restore the client's original savings account from the selected loan
+        if (mode !== 'INTERNAL_TRANSFER' && paiement.isInternalTransfer) {
+            setVirSelectedAccount(null);
+            setVirSearchTerm('');
+            setVirSearchResults([]);
+            // Restore the original savings account linked to the loan (used by auto-debit)
+            const originalSavingsId = selectedLoan?.application?.savingsAccountId
+                || selectedLoan?.savingsAccountId
+                || null;
+            handleNumberChange('sourceSavingsAccountId', originalSavingsId);
+        }
+        // Auto-select the matching Mode de Remboursement from the reference list
+        const codeMap: Record<string, string> = {
+            AGENCY: 'AGENCY',
+            AUTO_DEBIT: 'AUTO_DEBIT',
+            HOME_COLLECTION: 'HOME_COLLECTION',
+            MOBILE_MONEY: 'MOBILE_MONEY',
+            BANK_TRANSFER: 'BANK_TRANSFER',
+            INTERNAL_TRANSFER: 'INTERNAL_TRANSFER'
+        };
+        const matchingMode = modesRemboursement.find(m => m.code === codeMap[mode]);
+        if (matchingMode) {
+            handleDropdownChange('repaymentModeId', matchingMode.id);
+        }
         handleCheckboxChange('isAutoDebit', mode === 'AUTO_DEBIT');
         handleCheckboxChange('isHomeCollection', mode === 'HOME_COLLECTION');
         handleCheckboxChange('isMobileMoney', mode === 'MOBILE_MONEY');
         handleCheckboxChange('isBankTransfer', mode === 'BANK_TRANSFER');
+        handleCheckboxChange('isInternalTransfer', mode === 'INTERNAL_TRANSFER');
     };
 
     return (
@@ -188,10 +265,10 @@ export default function PaiementForm({
                             </label>
                             <Calendar
                                 id="paymentDate"
-                                value={paiement.paymentDate ? new Date(paiement.paymentDate) : null}
+                                value={paiement.paymentDate ? parseLocalDate(paiement.paymentDate) : null}
                                 onChange={(e) => handleDateChange('paymentDate', e.value as Date)}
                                 className="w-full"
-                                disabled={isViewMode}
+                                disabled={true}
                                 dateFormat="dd/mm/yy"
                                 showIcon
                             />
@@ -203,10 +280,10 @@ export default function PaiementForm({
                             </label>
                             <Calendar
                                 id="valueDate"
-                                value={paiement.valueDate ? new Date(paiement.valueDate) : null}
+                                value={paiement.valueDate ? parseLocalDate(paiement.valueDate) : null}
                                 onChange={(e) => handleDateChange('valueDate', e.value as Date)}
                                 className="w-full"
-                                disabled={isViewMode}
+                                disabled={true}
                                 dateFormat="dd/mm/yy"
                                 showIcon
                             />
@@ -443,6 +520,158 @@ export default function PaiementForm({
                                     onChange={handleChange}
                                     className="w-full"
                                     disabled={isViewMode}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Détails Virement Interne */}
+                    {paiement.isInternalTransfer && (
+                        <div className="mt-3 p-3 border-1 border-round border-primary surface-50">
+                            <div className="flex align-items-center gap-2 mb-2">
+                                <i className="pi pi-arrow-right-arrow-left text-primary"></i>
+                                <h6 className="text-primary m-0">Virement Interne — Sélectionner le compte source</h6>
+                            </div>
+                            <p className="text-sm text-color-secondary mt-0 mb-3">
+                                Sélectionnez le compte épargne qui va effectuer le paiement pour le bénéficiaire du crédit.
+                                Ce compte est différent du compte épargne du client.
+                            </p>
+
+                            {/* Account search */}
+                            {!virSelectedAccount && !isViewMode && (
+                                <div className="mb-3">
+                                    <label className="font-semibold block mb-2">
+                                        <i className="pi pi-search mr-1"></i>
+                                        Rechercher un compte épargne *
+                                    </label>
+                                    <div className="p-inputgroup">
+                                        <InputText
+                                            value={virSearchTerm}
+                                            onChange={(e) => {
+                                                setVirSearchTerm(e.target.value);
+                                                searchVirementSavingsAccounts(e.target.value);
+                                            }}
+                                            placeholder="N° compte, nom ou prénom du titulaire..."
+                                            className="w-full"
+                                        />
+                                        {virSearching && (
+                                            <span className="p-inputgroup-addon">
+                                                <i className="pi pi-spin pi-spinner"></i>
+                                            </span>
+                                        )}
+                                    </div>
+                                    <small className="text-500">Tapez au moins 2 caractères pour rechercher</small>
+
+                                    {/* Search results */}
+                                    {virSearchResults.length > 0 && (
+                                        <div className="mt-2 border-1 border-round border-300 surface-card" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                                            {virSearchResults.map((account: any) => {
+                                                const balance = account.availableBalance ?? account.currentBalance ?? 0;
+                                                const sufficient = paiement.amountReceived != null && balance >= paiement.amountReceived;
+                                                return (
+                                                    <div
+                                                        key={account.id}
+                                                        className="flex align-items-center justify-content-between p-3 cursor-pointer hover:surface-100 border-bottom-1 border-200"
+                                                        onClick={() => handleVirAccountSelect(account)}
+                                                    >
+                                                        <div>
+                                                            <div className="font-semibold">{account.accountNumber}</div>
+                                                            <div className="text-sm text-600">
+                                                                {account.client?.firstName || ''} {account.client?.lastName || account.clientName || ''}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className={`font-bold ${sufficient ? 'text-green-600' : 'text-orange-600'}`}>
+                                                                {balance.toLocaleString('fr-FR')} FBU
+                                                            </div>
+                                                            <small className={sufficient ? 'text-green-600' : 'text-orange-500'}>
+                                                                {sufficient ? 'Solde suffisant' : 'Solde insuffisant'}
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {virSearchTerm.length >= 2 && !virSearching && virSearchResults.length === 0 && (
+                                        <small className="text-orange-500 block mt-1">
+                                            <i className="pi pi-exclamation-triangle mr-1"></i>
+                                            Aucun compte trouvé pour "{virSearchTerm}"
+                                        </small>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Selected account display */}
+                            {virSelectedAccount && (
+                                <div className={`p-3 border-round border-1 mb-3 ${
+                                    (virSelectedAccount.availableBalance ?? 0) >= (paiement.amountReceived || 0)
+                                        ? 'border-green-300 bg-green-50'
+                                        : 'border-red-300 bg-red-50'
+                                }`}>
+                                    <div className="flex align-items-center justify-content-between mb-2">
+                                        <div className="flex align-items-center gap-2">
+                                            <i className="pi pi-wallet text-primary"></i>
+                                            <strong>Compte sélectionné</strong>
+                                        </div>
+                                        {!isViewMode && (
+                                            <button
+                                                type="button"
+                                                className="p-button p-button-text p-button-sm p-button-danger"
+                                                onClick={clearVirAccount}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                                            >
+                                                <i className="pi pi-times mr-1"></i> Changer
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="formgrid grid">
+                                        <div className="col-12 md:col-4">
+                                            <small className="text-600">N° Compte</small>
+                                            <p className="mt-1 mb-0 font-semibold">{virSelectedAccount.accountNumber}</p>
+                                        </div>
+                                        <div className="col-12 md:col-4">
+                                            <small className="text-600">Titulaire</small>
+                                            <p className="mt-1 mb-0 font-semibold">
+                                                {virSelectedAccount.client?.firstName || ''} {virSelectedAccount.client?.lastName || virSelectedAccount.clientName || ''}
+                                            </p>
+                                        </div>
+                                        <div className="col-12 md:col-4">
+                                            <small className="text-600">Solde Disponible</small>
+                                            <p className={`mt-1 mb-0 font-bold ${
+                                                (virSelectedAccount.availableBalance ?? 0) >= (paiement.amountReceived || 0)
+                                                    ? 'text-green-600' : 'text-red-600'
+                                            }`}>
+                                                {(virSelectedAccount.availableBalance ?? virSelectedAccount.currentBalance ?? 0).toLocaleString('fr-FR')} FBU
+                                            </p>
+                                            {(virSelectedAccount.availableBalance ?? 0) < (paiement.amountReceived || 0) && (
+                                                <small className="text-red-600">
+                                                    <i className="pi pi-exclamation-triangle mr-1"></i>Solde insuffisant
+                                                </small>
+                                            )}
+                                            {(virSelectedAccount.availableBalance ?? 0) >= (paiement.amountReceived || 0) && paiement.amountReceived && (
+                                                <small className="text-green-600">
+                                                    <i className="pi pi-check-circle mr-1"></i>Solde suffisant
+                                                </small>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Référence interne */}
+                            <div className="field mb-0">
+                                <label htmlFor="internalTransferReference" className="font-semibold">
+                                    Référence Interne
+                                </label>
+                                <InputText
+                                    id="internalTransferReference"
+                                    name="internalTransferReference"
+                                    value={paiement.internalTransferReference || ''}
+                                    onChange={handleChange}
+                                    className="w-full"
+                                    disabled={isViewMode}
+                                    placeholder="Ex: VIR-INT-2026..."
                                 />
                             </div>
                         </div>

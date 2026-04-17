@@ -12,8 +12,8 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { LoanDisbursement } from './LoanDisbursement';
 import LoanDisbursementForm from './LoanDisbursementForm';
 import { ProtectedPage } from '@/components/ProtectedPage';
-import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
-import { buildApiUrl } from '../../../../utils/apiConfig';
+import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
+import { buildApiUrl } from '@/utils/apiConfig';
 
 const BASE_URL = buildApiUrl('/api/financial-products/disbursements');
 

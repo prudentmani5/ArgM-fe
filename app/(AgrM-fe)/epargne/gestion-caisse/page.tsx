@@ -159,7 +159,7 @@ function GestionCaissePage() {
     const { data: ackData, loading: ackLoading, error: ackError, fetchData: fetchAck, callType: ackCallType } = useConsumApi('');
     const { data: billetageData, loading: billetageLoading, error: billetageError, fetchData: fetchBilletage, callType: billetageCallType } = useConsumApi('');
     const { data: intAccData, error: intAccError, fetchData: fetchIntAcc, callType: intAccCallType } = useConsumApi('');
-    const { data: excedentDepotData, loading: excedentDepotLoading, error: excedentDepotError, fetchData: fetchExcedentDepot, callType: excedentDepotCallType } = useConsumApi('');
+    // excedentDepot hook removed — excedent is now handled by the backend in one transaction
     // billetageDetail hook removed — loadAllBilletageDetails now uses direct fetch with Promise.all
 
     const BASE_URL = buildApiUrl('/api/comptability/caisses');
@@ -569,19 +569,11 @@ function GestionCaissePage() {
     useEffect(() => {
         if (intAccData && intAccCallType === 'loadIntAcc') {
             const list = Array.isArray(intAccData) ? intAccData : [];
-            setInternalAccounts(list.filter((a: any) => a.actif));
+            setInternalAccounts(list);
         }
     }, [intAccData, intAccCallType]);
 
-    // Handle excedent depot response
-    useEffect(() => {
-        if (excedentDepotData && excedentDepotCallType === 'excedentDepot') {
-            toast.current?.show({ severity: 'info', summary: 'Excedent enregistre', detail: 'L\'excedent a ete enregistre sur le compte interne.', life: 4000 });
-        }
-        if (excedentDepotError && excedentDepotCallType === 'excedentDepot') {
-            toast.current?.show({ severity: 'warn', summary: 'Avertissement', detail: 'Le retour de fonds a ete effectue mais l\'enregistrement de l\'excedent sur le compte interne a echoue. Veuillez le faire manuellement.', life: 8000 });
-        }
-    }, [excedentDepotData, excedentDepotError, excedentDepotCallType]);
+    // excedentDepot useEffect removed — excedent is now handled server-side in one transaction
 
     // ==================== API Calls ====================
 
@@ -607,7 +599,7 @@ function GestionCaissePage() {
     };
 
     const loadInternalAccounts = () => {
-        fetchIntAcc(null, 'GET', INT_ACC_URL + '/findall', 'loadIntAcc');
+        fetchIntAcc(null, 'GET', INT_ACC_URL + '/findactive', 'loadIntAcc');
     };
 
     const loadChildren = (parentId: string) => {
@@ -772,20 +764,23 @@ function GestionCaissePage() {
     };
 
     const handleConfirmExcedent = () => {
-        if (!pendingRetourData || !myCaisse || !parentCaisse) return;
-        if (!excedentAccountId) {
+        if (!pendingRetourData || !myCaisse || !parentCaisse || !excedentAccountId) {
             toast.current?.show({ severity: 'error', summary: 'Compte requis', detail: 'Veuillez selectionner un compte interne pour l\'excedent.', life: 4000 });
             return;
         }
-        // 1. Execute the full retour de fonds (billetage total = solde + excedent, but montant = solde only because retour takes entire balance)
-        executeRetourDeFonds(pendingRetourData.solde, pendingRetourData.exerciceId);
-        // 2. Record excedent as depot on internal account
-        const depotBody = {
-            montant: pendingRetourData.excedent,
-            libelle: excedentLibelle || `Excedent retour de fonds - ${myCaisse.codeCaisse} (${formatNumber(pendingRetourData.excedent)} FBu)`,
-            userAction: getUserAction()
-        };
-        fetchExcedentDepot(depotBody, 'POST', INT_ACC_URL + '/depot/' + excedentAccountId, 'excedentDepot');
+        // Single backend call: transfer full amount (solde + excedent), reset source billetage to 0, record excedent on internal account
+        const fullAmount = pendingRetourData.billetageTotal;
+        const params = new URLSearchParams({
+            caisseSourceId: myCaisse.caisseId,
+            caisseDestId: parentCaisse.caisseId,
+            montant: fullAmount.toString(),
+            libelle: transferLibelle || `Retour de fonds de ${myCaisse.codeCaisse} vers ${parentCaisse.codeCaisse} (excedent: ${formatNumber(pendingRetourData.excedent)} FBu)`,
+            excedentAccountId: excedentAccountId.toString(),
+            excedentAmount: pendingRetourData.excedent.toString()
+        });
+        if (pendingRetourData.exerciceId) params.append('exerciceId', pendingRetourData.exerciceId);
+        const body = { ...transferBilletage, userAction: getUserAction() };
+        fetchTransfer(body, 'POST', BASE_URL + '/transfer-with-excedent?' + params.toString(), 'transfer');
         // Close dialog
         setExcedentDialogVisible(false);
         setExcedentAccountId(null);
@@ -3275,7 +3270,7 @@ function GestionCaissePage() {
                             icon="pi pi-check"
                             severity="warning"
                             onClick={handleConfirmExcedent}
-                            loading={transferLoading || excedentDepotLoading}
+                            loading={transferLoading}
                             disabled={!excedentAccountId}
                         />
                     </div>

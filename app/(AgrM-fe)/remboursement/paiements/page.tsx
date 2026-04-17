@@ -14,6 +14,7 @@ import { Dialog } from 'primereact/dialog';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { shouldFilterByBranch } from '../../../../utils/branchFilter';
+import { formatLocalDate } from '../../../../utils/dateUtils';
 
 import PaiementForm from './PaiementForm';
 import PrintablePaymentReceipt from './PrintablePaymentReceipt';
@@ -133,10 +134,15 @@ const PaiementsPage = () => {
                     fetchAction(null, 'GET', disbUrl, 'loadDisbursements');
                     break;
                 case 'process':
-                    showToast('success', 'Succès', 'Paiement traité avec succès. Allocation automatique effectuée.');
+                    showToast('info', 'Enregistré', 'Paiement enregistré avec succès. En attente de validation.');
+                    resetForm();
+                    loadPaiements();
+                    setActiveIndex(1);
+                    break;
+                case 'validate':
+                    showToast('success', 'Validé', 'Paiement validé avec succès.');
                     setSelectedPaiement(actionData);
                     setShowReceiptDialog(true);
-                    resetForm();
                     loadPaiements();
                     break;
                 case 'create':
@@ -194,7 +200,7 @@ const PaiementsPage = () => {
     };
 
     const handleDateChange = (name: string, value: Date | null) => {
-        setPaiement(prev => ({ ...prev, [name]: value?.toISOString().split('T')[0] }));
+        setPaiement(prev => ({ ...prev, [name]: value ? formatLocalDate(value) : undefined }));
     };
 
     const handleCheckboxChange = (name: string, value: boolean) => {
@@ -208,7 +214,7 @@ const PaiementsPage = () => {
         }
 
         // Check if it's "Paiement en agence" mode (no other mode selected)
-        const isAgencyMode = !paiement.isAutoDebit && !paiement.isHomeCollection && !paiement.isMobileMoney && !paiement.isBankTransfer;
+        const isAgencyMode = !paiement.isAutoDebit && !paiement.isHomeCollection && !paiement.isMobileMoney && !paiement.isBankTransfer && !paiement.isInternalTransfer;
 
         // For agency mode, receipt number is required and must be valid
         if (isAgencyMode) {
@@ -220,6 +226,12 @@ const PaiementsPage = () => {
                 showToast('error', 'Erreur', 'Le numéro de reçu est invalide. Vérifiez qu\'il existe dans les bordereaux de dépôt et n\'est pas déjà utilisé.');
                 return;
             }
+        }
+
+        // For virement interne, source savings account must be selected
+        if (paiement.isInternalTransfer && !paiement.sourceSavingsAccountId) {
+            showToast('error', 'Erreur', 'Veuillez sélectionner le compte épargne source pour le virement interne');
+            return;
         }
 
         // Add user action
@@ -256,7 +268,7 @@ const PaiementsPage = () => {
             applicationNumber: disbursement.applicationNumber || '',
             disbursementNumber: disbursement.disbursementNumber || '',
             clientName: disbursement.clientName || '',
-            paymentDate: new Date().toISOString().split('T')[0],
+            paymentDate: formatLocalDate(new Date()),
             sourceSavingsAccountId: savingsAccId
         }));
 
@@ -351,6 +363,35 @@ const PaiementsPage = () => {
         }
     };
 
+    const handleValidate = (rowData: PaiementCredit) => {
+        confirmDialog({
+            message: `Confirmer la validation du paiement ${rowData.paymentNumber} — ${rowData.clientName} — ${rowData.amountReceived?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })} ?`,
+            header: 'Validation du Paiement',
+            icon: 'pi pi-check-circle',
+            acceptClassName: 'p-button-success',
+            acceptLabel: 'Oui, valider',
+            rejectLabel: 'Annuler',
+            accept: () => {
+                fetchAction(
+                    { validatedBy: getUserAction(), userAction: getUserAction() },
+                    'PUT',
+                    `${BASE_URL}/validate/${rowData.id}`,
+                    'validate'
+                );
+            }
+        });
+    };
+
+    const statusBodyTemplate = (rowData: PaiementCredit) => {
+        const isValidated = rowData.status === 'VALIDATED';
+        return (
+            <Tag severity={isValidated ? 'success' : 'warning'}>
+                <i className={`pi ${isValidated ? 'pi-check-circle' : 'pi-clock'} mr-1`}></i>
+                {isValidated ? 'Validé' : 'En attente'}
+            </Tag>
+        );
+    };
+
     // Column body templates
     const paymentModeBodyTemplate = (rowData: PaiementCredit) => {
         let mode = 'Agence';
@@ -360,7 +401,8 @@ const PaiementsPage = () => {
         if (rowData.isAutoDebit) { mode = 'Prélèvement auto'; icon = 'pi-sync'; color = 'info'; }
         else if (rowData.isHomeCollection) { mode = 'Collecte domicile'; icon = 'pi-home'; color = 'warning'; }
         else if (rowData.isMobileMoney) { mode = 'Mobile Money'; icon = 'pi-mobile'; color = 'success'; }
-        else if (rowData.isBankTransfer) { mode = 'Virement'; icon = 'pi-building'; color = 'help'; }
+        else if (rowData.isBankTransfer) { mode = 'Virement bancaire'; icon = 'pi-building'; color = 'help'; }
+        else if (rowData.isInternalTransfer) { mode = 'Virement interne'; icon = 'pi-arrow-right-arrow-left'; color = 'danger'; }
 
         return (
             <Tag severity={color as any}>
@@ -375,11 +417,25 @@ const PaiementsPage = () => {
     };
 
     const dateBodyTemplate = (date: string | undefined) => {
-        return date ? new Date(date).toLocaleDateString('fr-FR') : '-';
+        if (!date) return '-';
+        // Parse as local date to avoid UTC offset shifting the day
+        const [year, month, day] = date.split('T')[0].split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('fr-FR');
     };
 
     const actionsBodyTemplate = (rowData: PaiementCredit) => (
         <div className="flex gap-2">
+            {rowData.status !== 'VALIDATED' && (
+                <Button
+                    icon="pi pi-check-circle"
+                    rounded
+                    text
+                    severity="success"
+                    tooltip="Valider"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleValidate(rowData)}
+                />
+            )}
             <Button
                 icon="pi pi-eye"
                 rounded
@@ -398,15 +454,17 @@ const PaiementsPage = () => {
                 tooltipOptions={{ position: 'top' }}
                 onClick={() => handlePrintReceipt(rowData)}
             />
-            <Button
-                icon="pi pi-trash"
-                rounded
-                text
-                severity="danger"
-                tooltip="Supprimer"
-                tooltipOptions={{ position: 'top' }}
-                onClick={() => handleDelete(rowData)}
-            />
+            {rowData.status !== 'VALIDATED' && (
+                <Button
+                    icon="pi pi-trash"
+                    rounded
+                    text
+                    severity="danger"
+                    tooltip="Supprimer"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => handleDelete(rowData)}
+                />
+            )}
         </div>
     );
 
@@ -592,9 +650,14 @@ const PaiementsPage = () => {
                             style={{ width: '8%' }}
                         />
                         <Column
+                            header="Statut"
+                            body={statusBodyTemplate}
+                            style={{ width: '8%' }}
+                        />
+                        <Column
                             header="Actions"
                             body={actionsBodyTemplate}
-                            style={{ width: '10%' }}
+                            style={{ width: '12%' }}
                         />
                     </DataTable>
                 </TabPanel>

@@ -16,6 +16,9 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 
+import { InputSwitch } from 'primereact/inputswitch';
+import { InputNumber } from 'primereact/inputnumber';
+import { Message } from 'primereact/message';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 
@@ -172,6 +175,15 @@ const PrelevementAutomatiquePage = () => {
         { label: 'Pas de Compte', value: 'NO_SAVINGS_ACCOUNT' }
     ];
 
+    // Scheduler state
+    const [schedulerConfig, setSchedulerConfig] = useState<any>(null);
+    const [schedulerStatus, setSchedulerStatus] = useState<any>(null);
+    const [schedulerHistory, setSchedulerHistory] = useState<BatchHistory[]>([]);
+    const [schedulerExecuting, setSchedulerExecuting] = useState(false);
+    const [schedulerSaving, setSchedulerSaving] = useState(false);
+    const [alreadyExecutedToday, setAlreadyExecutedToday] = useState(false);
+    const schedulerApi = useConsumApi('');
+
     const toast = useRef<Toast>(null);
     const { data, loading, error, fetchData, callType } = useConsumApi('');
     const BASE_URL = buildApiUrl('/api/remboursement/automatic-payments');
@@ -180,12 +192,86 @@ const PrelevementAutomatiquePage = () => {
         toast.current?.show({ severity, summary, detail, life: 5000 });
     };
 
-    // Load history when tab changes
+    // Load history / scheduler when tab changes
     useEffect(() => {
         if (activeTab === 1) {
             loadHistory();
         }
+        if (activeTab === 2) {
+            loadScheduler();
+        }
     }, [activeTab]);
+
+    const loadScheduler = () => {
+        schedulerApi.fetchData(null, 'GET', `${BASE_URL}/scheduler/config`, 'schedulerConfig');
+    };
+
+    const handleToggleScheduler = (enabled: boolean) => {
+        if (!schedulerConfig?.id) return;
+        schedulerApi.fetchData(null, 'PUT',
+            `${BASE_URL}/scheduler/toggle/${schedulerConfig.id}?enabled=${enabled}`,
+            'schedulerToggle');
+    };
+
+    const handleSaveSchedulerConfig = () => {
+        setSchedulerSaving(true);
+        schedulerApi.fetchData(schedulerConfig, 'PUT', `${BASE_URL}/scheduler/config`, 'schedulerSave');
+    };
+
+    const handleExecuteScheduler = () => {
+        setSchedulerExecuting(true);
+        const userAction = getUserAction();
+        schedulerApi.fetchData(null, 'POST',
+            `${BASE_URL}/scheduler/execute?userAction=${encodeURIComponent(userAction)}`,
+            'schedulerExecute');
+    };
+
+    // Scheduler API responses
+    useEffect(() => {
+        if (schedulerApi.data) {
+            switch (schedulerApi.callType) {
+                case 'schedulerConfig':
+                    setSchedulerConfig(schedulerApi.data);
+                    schedulerApi.fetchData(null, 'GET', `${BASE_URL}/scheduler/check-today`, 'schedulerCheckToday');
+                    break;
+                case 'schedulerCheckToday':
+                    setAlreadyExecutedToday(schedulerApi.data.alreadyExecutedToday === true);
+                    schedulerApi.fetchData(null, 'GET', `${BASE_URL}/scheduler/status`, 'schedulerStatus');
+                    break;
+                case 'schedulerStatus':
+                    setSchedulerStatus(schedulerApi.data);
+                    schedulerApi.fetchData(null, 'GET', `${BASE_URL}/scheduler/history`, 'schedulerHistory');
+                    break;
+                case 'schedulerHistory':
+                    setSchedulerHistory(Array.isArray(schedulerApi.data) ? schedulerApi.data : []);
+                    break;
+                case 'schedulerSave':
+                    setSchedulerConfig(schedulerApi.data);
+                    setSchedulerSaving(false);
+                    showToast('success', 'Succès', 'Configuration enregistrée');
+                    schedulerApi.fetchData(null, 'GET', `${BASE_URL}/scheduler/status`, 'schedulerStatus');
+                    break;
+                case 'schedulerToggle':
+                    setSchedulerConfig(schedulerApi.data);
+                    showToast('success', 'Succès',
+                        schedulerApi.data.schedulerEnabled ? 'Planificateur activé' : 'Planificateur désactivé');
+                    schedulerApi.fetchData(null, 'GET', `${BASE_URL}/scheduler/status`, 'schedulerStatus');
+                    break;
+                case 'schedulerExecute':
+                    setSchedulerExecuting(false);
+                    setAlreadyExecutedToday(true);
+                    showToast('success', 'Exécution terminée',
+                        `Prélèvement mensuel exécuté: lot ${schedulerApi.data.batchNumber || ''}`);
+                    schedulerApi.fetchData(null, 'GET', `${BASE_URL}/scheduler/status`, 'schedulerStatus');
+                    break;
+            }
+        }
+        if (schedulerApi.error) {
+            setSchedulerExecuting(false);
+            setSchedulerSaving(false);
+            showToast('error', 'Erreur', schedulerApi.error.message || 'Une erreur est survenue');
+        }
+    }, [schedulerApi.data, schedulerApi.error, schedulerApi.callType]);
 
     const loadHistory = async () => {
         setHistoryLoading(true);
@@ -857,6 +943,152 @@ const PrelevementAutomatiquePage = () => {
                             />
                         </DataTable>
                     </Card>
+                </TabPanel>
+
+                {/* ===== Planificateur Tab ===== */}
+                <TabPanel header="Planificateur" leftIcon="pi pi-clock mr-2">
+                    <div className="grid">
+
+                        {/* Already executed today warning */}
+                        {alreadyExecutedToday && (
+                            <div className="col-12">
+                                <Message severity="warn" className="w-full"
+                                    text="Le prélèvement automatique a déjà été exécuté ce mois-ci. Un seul prélèvement par mois est autorisé. Le bouton sera disponible le mois prochain." />
+                            </div>
+                        )}
+
+                        {/* Status Card */}
+                        <div className="col-12">
+                            <Card className="mb-3">
+                                <div className="grid">
+                                    <div className="col-12 md:col-3">
+                                        <div className="text-500 font-medium mb-1">Statut du Planificateur</div>
+                                        <Tag
+                                            severity={schedulerStatus?.schedulerEnabled ? 'success' : 'danger'}
+                                            value={schedulerStatus?.schedulerEnabled ? 'Actif' : 'Inactif'}
+                                        />
+                                        {schedulerStatus?.executionTime && (
+                                            <span className="ml-2 text-600">à {schedulerStatus.executionTime}</span>
+                                        )}
+                                    </div>
+                                    <div className="col-12 md:col-3">
+                                        <div className="text-500 font-medium mb-1">Dernière Exécution</div>
+                                        <div className="text-900 font-medium">
+                                            {schedulerStatus?.lastExecutionDate ? dateTimeTemplate(schedulerStatus.lastExecutionDate) : 'Jamais'}
+                                        </div>
+                                        {schedulerStatus?.lastBatchStatus && (
+                                            <Tag severity={schedulerStatus.lastBatchStatus === 'COMPLETED' ? 'success' : schedulerStatus.lastBatchStatus === 'PARTIAL' ? 'warning' : 'danger'}
+                                                value={schedulerStatus.lastBatchStatus} className="mt-1" />
+                                        )}
+                                    </div>
+                                    <div className="col-12 md:col-3">
+                                        <div className="text-500 font-medium mb-1">Prochaine Exécution</div>
+                                        <div className="text-900 font-medium">
+                                            {schedulerStatus?.nextExecutionDate ? dateTimeTemplate(schedulerStatus.nextExecutionDate) : '-'}
+                                        </div>
+                                    </div>
+                                    <div className="col-12 md:col-3">
+                                        <div className="text-500 font-medium mb-1">Dernier Montant Traité</div>
+                                        <div className="text-900 font-medium text-green-500">
+                                            {currencyTemplate(schedulerStatus?.lastTotalProcessed)}
+                                        </div>
+                                        <span className="text-600 text-sm">{schedulerStatus?.lastSchedulesProcessed || 0} échéances</span>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Configuration + Execute */}
+                        <div className="col-12 md:col-6">
+                            <Card title="Paramètres du Planificateur">
+                                <div className="flex align-items-center gap-3 mb-4">
+                                    <InputSwitch
+                                        checked={schedulerConfig?.schedulerEnabled === true}
+                                        onChange={(e) => {
+                                            const val = e.value ?? false;
+                                            setSchedulerConfig((prev: any) => ({ ...prev, schedulerEnabled: val }));
+                                            handleToggleScheduler(val);
+                                        }}
+                                    />
+                                    <span className="font-medium">
+                                        {schedulerConfig?.schedulerEnabled ? 'Activé' : 'Désactivé'}
+                                    </span>
+                                </div>
+                                <div className="grid">
+                                    <div className="col-6">
+                                        <label className="block text-500 font-medium mb-2">Heure d'Exécution</label>
+                                        <InputNumber
+                                            value={schedulerConfig?.executionHour ?? 7}
+                                            onValueChange={(e) => setSchedulerConfig((prev: any) => ({ ...prev, executionHour: e.value }))}
+                                            min={0} max={23} suffix=" h"
+                                            className="w-full"
+                                        />
+                                    </div>
+                                    <div className="col-6">
+                                        <label className="block text-500 font-medium mb-2">Minute d'Exécution</label>
+                                        <InputNumber
+                                            value={schedulerConfig?.executionMinute ?? 0}
+                                            onValueChange={(e) => setSchedulerConfig((prev: any) => ({ ...prev, executionMinute: e.value }))}
+                                            min={0} max={59} suffix=" min"
+                                            className="w-full"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-600 text-sm mt-2 mb-3">
+                                    <i className="pi pi-info-circle mr-1"></i>
+                                    Le prélèvement s'exécute automatiquement tous les jours à l'heure configurée.
+                                </div>
+                                <Button
+                                    label="Enregistrer la Configuration"
+                                    icon="pi pi-save"
+                                    onClick={handleSaveSchedulerConfig}
+                                    loading={schedulerSaving}
+                                    className="w-full"
+                                />
+                            </Card>
+                        </div>
+
+                        <div className="col-12 md:col-6">
+                            <Card title="Exécution Manuelle">
+                                <p className="text-600 mb-4">
+                                    Déclenchez manuellement le prélèvement automatique pour aujourd'hui.
+                                    Le système débitera les comptes épargne des clients ayant des échéances impayées.
+                                </p>
+                                <Button
+                                    label="Exécuter maintenant"
+                                    icon="pi pi-play"
+                                    className="p-button-warning w-full"
+                                    onClick={handleExecuteScheduler}
+                                    loading={schedulerExecuting}
+                                    disabled={schedulerExecuting || alreadyExecutedToday}
+                                    tooltip={alreadyExecutedToday ? "Déjà exécuté ce mois-ci" : undefined}
+                                    tooltipOptions={{ position: 'top' }}
+                                />
+                            </Card>
+                        </div>
+
+                        {/* Scheduler history */}
+                        <div className="col-12">
+                            <Card title="Historique du Planificateur">
+                                <DataTable
+                                    value={schedulerHistory}
+                                    paginator rows={10}
+                                    rowsPerPageOptions={[5, 10, 25]}
+                                    emptyMessage="Aucune exécution planifiée trouvée"
+                                    responsiveLayout="scroll"
+                                >
+                                    <Column field="batchNumber" header="N° Lot" sortable />
+                                    <Column field="processingDate" header="Date Traitement" sortable body={(r) => dateTimeTemplate(r.processingDate)} />
+                                    <Column field="createdAt" header="Exécuté le" sortable body={(r) => dateTimeTemplate(r.createdAt)} />
+                                    <Column field="status" header="Statut" sortable body={(r) => batchStatusTemplate(r.status)} />
+                                    <Column field="totalSchedulesProcessed" header="Échéances" sortable />
+                                    <Column field="totalAmountProcessed" header="Montant Traité" sortable body={(r) => currencyTemplate(r.totalAmountProcessed)} />
+                                    <Column field="successCount" header="Succès" sortable />
+                                    <Column field="failedCount" header="Échecs" sortable />
+                                </DataTable>
+                            </Card>
+                        </div>
+                    </div>
                 </TabPanel>
             </TabView>
 

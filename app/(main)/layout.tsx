@@ -6,17 +6,14 @@ interface MainLayoutProps {
 }
 
 export const metadata: Metadata = {
-    title: 'GPS-ERP',
-    description: 'The ultimate collection of design-agnostic, flexible and accessible React UI Components.',
+    title: 'MicroCore ProFinance',
+    description: 'Professional Financial Management Information System - Agrinova Microfinance.',
     robots: { index: false, follow: false },
     viewport: { initialScale: 1, width: 'device-width' },
     openGraph: {
         type: 'website',
-        title: 'PrimeReact ULTIMA-REACT',
-        url: 'https://www.primefaces.org/ultima-react',
-        description: 'The ultimate collection of design-agnostic, flexible and accessible React UI Components.',
-        images: ['https://www.primefaces.org/static/social/ultima-react.png'],
-        ttl: 604800
+        title: 'MicroCore ProFinance - Agrinova Microfinance',
+        description: 'Professional Financial Management Information System - Agrinova Microfinance.',
     },
     icons: {
         icon: '/layout/images/logo/picture_navigateur.PNG'

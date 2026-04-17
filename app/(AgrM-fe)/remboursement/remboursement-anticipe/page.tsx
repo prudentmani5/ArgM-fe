@@ -13,12 +13,11 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { Tag } from 'primereact/tag';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { Card } from 'primereact/card';
+// import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
 import { Divider } from 'primereact/divider';
 import { Dialog } from 'primereact/dialog';
 
-import Cookies from 'js-cookie';
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 import { shouldFilterByBranch } from '../../../../utils/branchFilter';
@@ -26,8 +25,7 @@ import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
 
 import {
     RemboursementAnticipe,
-    RemboursementAnticipeClass,
-    STATUTS_DEMANDE
+    RemboursementAnticipeClass
 } from '../types/RemboursementTypes';
 
 const TYPES_REMBOURSEMENT = [
@@ -54,6 +52,7 @@ const RemboursementAnticipePage = () => {
 
     // Savings accounts for resolving account numbers
     const [savingsAccounts, setSavingsAccounts] = useState<any[]>([]);
+    const [selectedSavingsAccount, setSelectedSavingsAccount] = useState<any>(null);
 
     const toast = useRef<Toast>(null);
     const { data, loading, error, fetchData, callType } = useConsumApi('');
@@ -66,18 +65,10 @@ const RemboursementAnticipePage = () => {
     // Store loan IDs that are fully paid (all schedules are PAID)
     const [fullyPaidLoanIds, setFullyPaidLoanIds] = useState<number[]>([]);
 
-    // Approval dialog with bordereau validation
+    // Approval dialog — balance verification
     const [showApprovalDialog, setShowApprovalDialog] = useState(false);
     const [approvalTarget, setApprovalTarget] = useState<RemboursementAnticipe | null>(null);
-    const [bordereauNumber, setBordereauNumber] = useState('');
-    const [bordereauError, setBordereauError] = useState('');
-    const [bordereauValid, setBordereauValid] = useState(false);
-    const [bordereauDetails, setBordereauDetails] = useState('');
-    const [bordereauAmount, setBordereauAmount] = useState<number | null>(null);
-    const [checkingBordereau, setCheckingBordereau] = useState(false);
-    const [approving, setApproving] = useState(false);
-    const PAYMENTS_URL = buildApiUrl('/api/remboursement/payments');
-    const DEPOSIT_SLIPS_URL = buildApiUrl('/api/epargne/deposit-slips');
+    const [approvalSavingsAccount, setApprovalSavingsAccount] = useState<any>(null);
 
     useEffect(() => {
         loadDemandes();
@@ -211,6 +202,7 @@ const RemboursementAnticipePage = () => {
         setIsViewMode(false);
         setCalculatedAmount(null);
         setSelectedLoan(null);
+        setSelectedSavingsAccount(null);
     };
 
     const loadDisbursements = () => {
@@ -234,6 +226,7 @@ const RemboursementAnticipePage = () => {
 
         const enrichedDisbursement = { ...disbursement, accountNumber };
         setSelectedLoan(enrichedDisbursement);
+        setSelectedSavingsAccount(resolvedAccount || null);
 
         // Update request with selected loan info
         setDemande(prev => ({
@@ -241,6 +234,7 @@ const RemboursementAnticipePage = () => {
             loanId: disbursement.loanId || disbursement.loan?.id || disbursement.id,
             requestedBy: disbursement.clientId || disbursement.client?.id,
             accountNumber: accountNumber,
+            sourceSavingsAccountId: savingsAccountId || undefined,
             proposedSettlementDate: new Date().toISOString().split('T')[0]
         }));
 
@@ -317,104 +311,78 @@ const RemboursementAnticipePage = () => {
 
     const handleApprove = (rowData: RemboursementAnticipe) => {
         setApprovalTarget(rowData);
-        setBordereauNumber('');
-        setBordereauError('');
-        setBordereauValid(false);
-        setBordereauDetails('');
-        setBordereauAmount(null);
+        // Resolve savings account from the record
+        const savingsAccountId = rowData.sourceSavingsAccountId;
+        const account = savingsAccountId
+            ? savingsAccounts.find((a: any) => a.id === savingsAccountId)
+            : savingsAccounts.find((a: any) => a.accountNumber === rowData.accountNumber);
+        setApprovalSavingsAccount(account || selectedSavingsAccount || null);
         setShowApprovalDialog(true);
     };
 
-    const checkBordereau = async () => {
-        const num = bordereauNumber.trim();
-        if (!num) {
-            setBordereauError('Veuillez saisir le numéro du bordereau de dépôt');
-            setBordereauValid(false);
-            return;
-        }
-
-        setCheckingBordereau(true);
-        setBordereauError('');
-        setBordereauValid(false);
-        setBordereauDetails('');
-        setBordereauAmount(null);
-
-        try {
-            const token = Cookies.get('token');
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            // Step 1: Check if bordereau exists and is COMPLETED via deposit-slips API
-            const depositResponse = await fetch(`${DEPOSIT_SLIPS_URL}/findall`, {
-                method: 'GET',
-                headers,
-                credentials: 'include'
-            });
-
-            if (!depositResponse.ok) {
-                setBordereauError('Erreur lors de la vérification du bordereau');
-                setCheckingBordereau(false);
-                return;
-            }
-
-            const allSlips = await depositResponse.json();
-            const slipsList = Array.isArray(allSlips) ? allSlips : allSlips.content || [];
-            const matchingSlip = slipsList.find((s: any) => s.slipNumber === num);
-
-            if (!matchingSlip) {
-                setBordereauError(`Bordereau "${num}" introuvable. Vérifiez le numéro.`);
-                setCheckingBordereau(false);
-                return;
-            }
-
-            if (matchingSlip.status !== 'COMPLETED') {
-                setBordereauError(`Bordereau "${num}" n'est pas validé (statut: ${matchingSlip.status}). Seuls les bordereaux validés sont acceptés.`);
-                setCheckingBordereau(false);
-                return;
-            }
-
-            // Step 2: Check if bordereau is not already used in credit payments
-            const receiptResponse = await fetch(`${PAYMENTS_URL}/check-receipt/${encodeURIComponent(num)}`, {
-                method: 'GET',
-                headers,
-                credentials: 'include'
-            });
-
-            if (receiptResponse.ok) {
-                const receiptData = await receiptResponse.json();
-                if (!receiptData.valid) {
-                    setBordereauError(receiptData.error || `Bordereau "${num}" est déjà utilisé dans un paiement crédit.`);
-                    setCheckingBordereau(false);
-                    return;
-                }
-            }
-
-            // All checks passed
-            setBordereauValid(true);
-            setBordereauAmount(matchingSlip.amount || matchingSlip.totalAmount || 0);
-            setBordereauDetails(`Client: ${matchingSlip.client?.firstName || ''} ${matchingSlip.client?.lastName || ''} - Montant: ${(matchingSlip.amount || matchingSlip.totalAmount || 0).toLocaleString()} FBU - Date: ${matchingSlip.depositDate || ''}`);
-        } catch (err) {
-            setBordereauError('Erreur de connexion lors de la vérification');
-        } finally {
-            setCheckingBordereau(false);
-        }
-    };
-
     const confirmApproval = () => {
-        if (!approvalTarget || !bordereauValid) return;
-        setApproving(true);
+        if (!approvalTarget) return;
         const userAction = getUserAction();
         fetchData({ userAction }, 'POST', `${BASE_URL}/approve/${approvalTarget.id}?approvedBy=1&userAction=${encodeURIComponent(userAction)}`, 'approve');
         setShowApprovalDialog(false);
         setApprovalTarget(null);
-        setBordereauNumber('');
-        setBordereauValid(false);
-        setApproving(false);
+        setApprovalSavingsAccount(null);
     };
 
     const handleProcess = (rowData: RemboursementAnticipe) => {
+        const savingsAccountId = rowData.sourceSavingsAccountId || demande.sourceSavingsAccountId;
+        const savingsAccount = savingsAccountId
+            ? savingsAccounts.find((a: any) => a.id === savingsAccountId)
+            : selectedSavingsAccount;
+
+        const settlementAmount = rowData.totalSettlementAmount || 0;
+        const balance = savingsAccount?.balance ?? savingsAccount?.availableBalance ?? null;
+        const insufficientFunds = balance !== null && balance < settlementAmount;
+
+        const fmt = (v: number) => v.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' });
+
+        const messageNode = (
+            <div>
+                <p className="mb-2">Confirmer le traitement du remboursement anticipé ?</p>
+                <div className="surface-100 p-3 border-round mb-2">
+                    <div className="flex justify-content-between mb-1">
+                        <span className="text-600">N° Demande:</span>
+                        <strong>{rowData.requestNumber}</strong>
+                    </div>
+                    <div className="flex justify-content-between">
+                        <span className="text-600">Montant à régler:</span>
+                        <strong className="text-primary">{fmt(settlementAmount)}</strong>
+                    </div>
+                </div>
+                {savingsAccount && (
+                    <div className={`p-3 border-round border-1 ${insufficientFunds ? 'border-orange-300 bg-orange-50' : 'border-green-300 bg-green-50'}`}>
+                        <div className="flex align-items-center gap-2 mb-2">
+                            <i className="pi pi-wallet"></i>
+                            <strong>Compte Épargne Client (Débit)</strong>
+                        </div>
+                        <div className="flex justify-content-between mb-1">
+                            <span className="text-600">N° Compte:</span>
+                            <span>{savingsAccount.accountNumber}</span>
+                        </div>
+                        <div className="flex justify-content-between mb-1">
+                            <span className="text-600">Solde disponible:</span>
+                            <strong className={insufficientFunds ? 'text-orange-600' : 'text-green-600'}>
+                                {fmt(balance || 0)}
+                            </strong>
+                        </div>
+                        {insufficientFunds && (
+                            <small className="text-orange-600">
+                                <i className="pi pi-exclamation-triangle mr-1"></i>
+                                Solde insuffisant — le compte sera débité à hauteur du solde disponible.
+                            </small>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+
         confirmDialog({
-            message: 'Confirmer le traitement du remboursement anticipé ?',
+            message: messageNode,
             header: 'Confirmation de traitement',
             icon: 'pi pi-check-circle',
             acceptClassName: 'p-button-success',
@@ -422,18 +390,20 @@ const RemboursementAnticipePage = () => {
             rejectLabel: 'Non, annuler',
             accept: () => {
                 const userAction = getUserAction();
-                fetchData({ userAction }, 'POST', `${BASE_URL}/process/${rowData.id}?processedBy=1&userAction=${encodeURIComponent(userAction)}`, 'process');
+                const params = new URLSearchParams({ processedBy: '1', userAction });
+                if (savingsAccountId) params.append('sourceSavingsAccountId', String(savingsAccountId));
+                fetchData({ userAction }, 'POST', `${BASE_URL}/process/${rowData.id}?${params.toString()}`, 'process');
             }
         });
     };
 
     // Column body templates
     const statusBodyTemplate = (rowData: RemboursementAnticipe) => {
-        const severityMap: { [key: string]: 'success' | 'info' | 'warning' | 'danger' | 'secondary' } = {
+        const severityMap: { [key: string]: 'success' | 'info' | 'warning' | 'danger' | undefined } = {
             'PENDING': 'warning',
             'APPROVED': 'success',
             'REJECTED': 'danger',
-            'CANCELLED': 'secondary',
+            'CANCELLED': undefined,
             'COMPLETED': 'info'
         };
         const labelMap: { [key: string]: string } = {
@@ -443,10 +413,11 @@ const RemboursementAnticipePage = () => {
             'CANCELLED': 'Annulée',
             'COMPLETED': 'Complétée'
         };
+        const status = rowData.status || 'PENDING';
         return (
             <Tag
-                value={labelMap[rowData.status || 'PENDING'] || rowData.status}
-                severity={severityMap[rowData.status || 'PENDING'] || 'info'}
+                value={labelMap[status] || status}
+                severity={severityMap[status]}
             />
         );
     };
@@ -593,6 +564,49 @@ const RemboursementAnticipePage = () => {
                             </p>
                         )}
                     </div>
+
+                    {/* Savings Account Panel */}
+                    {selectedSavingsAccount && (
+                        <div className={`mb-3 p-3 border-round border-1 ${
+                            (selectedSavingsAccount.balance ?? selectedSavingsAccount.availableBalance ?? 0) >= (demande.totalSettlementAmount || 0)
+                                ? 'border-green-300 bg-green-50'
+                                : 'border-orange-300 bg-orange-50'
+                        }`}>
+                            <div className="flex align-items-center gap-2 mb-2">
+                                <i className="pi pi-wallet text-lg"></i>
+                                <h6 className="m-0">Compte Épargne Client (Source de Débit)</h6>
+                            </div>
+                            <div className="grid">
+                                <div className="col-12 md:col-3">
+                                    <small className="text-600">N° Compte</small>
+                                    <p className="mt-1 mb-0 font-semibold">{selectedSavingsAccount.accountNumber}</p>
+                                </div>
+                                <div className="col-12 md:col-3">
+                                    <small className="text-600">Solde Disponible</small>
+                                    <p className={`mt-1 mb-0 font-bold ${
+                                        (selectedSavingsAccount.balance ?? selectedSavingsAccount.availableBalance ?? 0) >= (demande.totalSettlementAmount || 0)
+                                            ? 'text-green-600' : 'text-orange-600'
+                                    }`}>
+                                        {(selectedSavingsAccount.balance ?? selectedSavingsAccount.availableBalance ?? 0)
+                                            .toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                                    </p>
+                                </div>
+                                <div className="col-12 md:col-3">
+                                    <small className="text-600">Montant à Régler</small>
+                                    <p className="mt-1 mb-0 font-bold text-primary">
+                                        {(demande.totalSettlementAmount || 0).toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                                    </p>
+                                </div>
+                                <div className="col-12 md:col-3 flex align-items-center">
+                                    {(selectedSavingsAccount.balance ?? selectedSavingsAccount.availableBalance ?? 0) >= (demande.totalSettlementAmount || 0) ? (
+                                        <Tag value="Solde suffisant" severity="success" icon="pi pi-check" />
+                                    ) : (
+                                        <Tag value="Solde insuffisant" severity="warning" icon="pi pi-exclamation-triangle" />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid">
                         {/* Informations de Base */}
@@ -1144,20 +1158,16 @@ const RemboursementAnticipePage = () => {
                 </div>
             </Dialog>
 
-            {/* Dialog Approbation avec Vérification Bordereau */}
+            {/* Dialog Approbation — Vérification du Solde Client */}
             <Dialog
                 visible={showApprovalDialog}
                 onHide={() => {
                     setShowApprovalDialog(false);
                     setApprovalTarget(null);
-                    setBordereauNumber('');
-                    setBordereauError('');
-                    setBordereauValid(false);
-                    setBordereauDetails('');
-                    setBordereauAmount(null);
+                    setApprovalSavingsAccount(null);
                 }}
-                header="Approbation - Vérification du Bordereau de Dépôt"
-                style={{ width: '550px' }}
+                header="Approbation - Vérification du Solde Client"
+                style={{ width: '500px' }}
                 modal
                 footer={
                     <div className="flex justify-content-end gap-2">
@@ -1172,15 +1182,19 @@ const RemboursementAnticipePage = () => {
                             icon="pi pi-check"
                             severity="success"
                             onClick={confirmApproval}
-                            disabled={!bordereauValid}
-                            loading={approving}
+                            disabled={
+                                !approvalTarget ||
+                                (approvalSavingsAccount !== null &&
+                                    (approvalSavingsAccount.balance ?? approvalSavingsAccount.availableBalance ?? 0) <
+                                    (approvalTarget.totalSettlementAmount || 0))
+                            }
                         />
                     </div>
                 }
             >
                 {approvalTarget && (
                     <div>
-                        {/* Request summary */}
+                        {/* Résumé de la demande */}
                         <div className="surface-100 p-3 border-round mb-3">
                             <div className="grid">
                                 <div className="col-6">
@@ -1188,77 +1202,69 @@ const RemboursementAnticipePage = () => {
                                     <p className="mt-1 mb-0 font-semibold">{approvalTarget.requestNumber}</p>
                                 </div>
                                 <div className="col-6">
-                                    <small className="text-600">Montant Total</small>
-                                    <p className="mt-1 mb-0 font-semibold text-primary">
-                                        {approvalTarget.totalSettlementAmount?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                                    <small className="text-600">Montant Total à Régler</small>
+                                    <p className="mt-1 mb-0 font-bold text-primary">
+                                        {(approvalTarget.totalSettlementAmount || 0).toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                                    </p>
+                                </div>
+                                <div className="col-6">
+                                    <small className="text-600">Type</small>
+                                    <p className="mt-1 mb-0 font-semibold">{approvalTarget.repaymentType === 'TOTAL' ? 'Total' : 'Partiel'}</p>
+                                </div>
+                                <div className="col-6">
+                                    <small className="text-600">Date proposée</small>
+                                    <p className="mt-1 mb-0 font-semibold">
+                                        {approvalTarget.proposedSettlementDate
+                                            ? new Date(approvalTarget.proposedSettlementDate).toLocaleDateString('fr-FR')
+                                            : '-'}
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Bordereau input */}
-                        <div className="field mb-3">
-                            <label htmlFor="bordereauNumber" className="font-semibold mb-2 block">
-                                <i className="pi pi-file mr-2"></i>
-                                N° Bordereau de Dépôt *
-                            </label>
-                            <div className="p-inputgroup">
-                                <InputText
-                                    id="bordereauNumber"
-                                    value={bordereauNumber}
-                                    onChange={(e) => {
-                                        setBordereauNumber(e.target.value);
-                                        setBordereauValid(false);
-                                        setBordereauError('');
-                                        setBordereauDetails('');
-                                        setBordereauAmount(null);
-                                    }}
-                                    placeholder="Ex: DS20260207..."
-                                    className={bordereauError ? 'p-invalid' : bordereauValid ? 'p-valid' : ''}
-                                />
-                                <Button
-                                    icon={checkingBordereau ? 'pi pi-spin pi-spinner' : 'pi pi-search'}
-                                    severity="info"
-                                    onClick={checkBordereau}
-                                    disabled={checkingBordereau || !bordereauNumber.trim()}
-                                    tooltip="Vérifier le bordereau"
-                                />
-                            </div>
-                            <small className="text-500">
-                                Saisissez le numéro du bordereau de dépôt et cliquez sur Vérifier
-                            </small>
-                        </div>
-
-                        {/* Validation result */}
-                        {bordereauError && (
-                            <Message severity="error" text={bordereauError} className="w-full mb-3" />
-                        )}
-
-                        {bordereauValid && (
-                            <div className="mb-3">
-                                <Message severity="success" text="Bordereau vérifié avec succès" className="w-full mb-2" />
-                                <div className="surface-50 p-3 border-round border-1 border-green-200">
-                                    <div className="flex align-items-center gap-2 mb-2">
-                                        <i className="pi pi-check-circle text-green-500"></i>
-                                        <span className="font-semibold">Bordereau validé</span>
+                        {/* Compte épargne client */}
+                        {approvalSavingsAccount ? (() => {
+                            const balance = approvalSavingsAccount.balance ?? approvalSavingsAccount.availableBalance ?? 0;
+                            const settlement = approvalTarget.totalSettlementAmount || 0;
+                            const sufficient = balance >= settlement;
+                            return (
+                                <div className={`p-3 border-round border-1 mb-3 ${sufficient ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}>
+                                    <div className="flex align-items-center gap-2 mb-3">
+                                        <i className="pi pi-wallet text-lg"></i>
+                                        <strong>Compte Épargne Client</strong>
                                     </div>
-                                    {bordereauDetails && (
-                                        <p className="text-sm text-600 m-0 mb-1">{bordereauDetails}</p>
-                                    )}
-                                    {bordereauAmount != null && bordereauAmount > 0 && (
-                                        <p className="text-sm font-semibold text-primary m-0">
-                                            Montant du bordereau: {bordereauAmount.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
-                                        </p>
-                                    )}
+                                    <div className="grid">
+                                        <div className="col-12">
+                                            <small className="text-600">N° Compte</small>
+                                            <p className="mt-1 mb-0 font-semibold">{approvalSavingsAccount.accountNumber}</p>
+                                        </div>
+                                        <div className="col-6">
+                                            <small className="text-600">Solde Disponible</small>
+                                            <p className={`mt-1 mb-0 font-bold text-xl ${sufficient ? 'text-green-600' : 'text-red-600'}`}>
+                                                {balance.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                                            </p>
+                                        </div>
+                                        <div className="col-6">
+                                            <small className="text-600">Montant requis</small>
+                                            <p className="mt-1 mb-0 font-bold text-xl text-primary">
+                                                {settlement.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' })}
+                                            </p>
+                                        </div>
+                                        <div className="col-12 mt-2">
+                                            {sufficient ? (
+                                                <Message severity="success" text="Solde suffisant — approbation possible." className="w-full" />
+                                            ) : (
+                                                <Message severity="error" text="Solde insuffisant — impossible d'approuver cette demande." className="w-full" />
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {!bordereauValid && !bordereauError && (
+                            );
+                        })() : (
                             <Message
                                 severity="warn"
-                                text="Vous devez vérifier un bordereau de dépôt valide avant d'approuver cette demande."
-                                className="w-full"
+                                text="Compte épargne client non trouvé. Le solde sera vérifié lors du traitement."
+                                className="w-full mb-3"
                             />
                         )}
                     </div>
