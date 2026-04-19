@@ -680,6 +680,145 @@ export interface InternalAccountOperation {
   rejectedAt?: string;
 }
 
+// ============================================================================
+// Types pour le Module Immobilisations & Plan d'Amortissement
+// ============================================================================
+
+export const CATEGORIES_IMMO = [
+    { code: 'INFORMATIQUE',      label: 'Équipements informatiques',      compteImmo: '2183', compteAmort: '28183', methode: 'DEGRESSIF', duree: 3 },
+    { code: 'MOBILIER',          label: 'Mobilier de bureau',             compteImmo: '244',  compteAmort: '2844',  methode: 'LINEAIRE',  duree: 10 },
+    { code: 'MATERIEL_ROULANT',  label: 'Matériel roulant',               compteImmo: '241',  compteAmort: '2841',  methode: 'LINEAIRE',  duree: 5 },
+    { code: 'SECURITE',          label: 'Matériel de sécurité',           compteImmo: '2188', compteAmort: '28188', methode: 'LINEAIRE',  duree: 7 },
+    { code: 'COMMUNICATION',     label: 'Équipements de communication',   compteImmo: '2184', compteAmort: '28184', methode: 'DEGRESSIF', duree: 5 },
+    { code: 'ELECTRIQUE',        label: 'Équipements électriques',        compteImmo: '2185', compteAmort: '28185', methode: 'LINEAIRE',  duree: 7 },
+    { code: 'OUTILLAGE_CAISSE',  label: 'Outillage de caisse',            compteImmo: '2186', compteAmort: '28186', methode: 'DEGRESSIF', duree: 5 },
+    { code: 'MATERIEL_TERRAIN',  label: 'Matériel de terrain',            compteImmo: '2187', compteAmort: '28187', methode: 'DEGRESSIF', duree: 3 },
+    { code: 'LOGICIELS',         label: 'Logiciels & licences',           compteImmo: '212',  compteAmort: '2812',  methode: 'LINEAIRE',  duree: 3 },
+    { code: 'AUTRE',             label: 'Autre immobilisation',           compteImmo: '21',   compteAmort: '281',   methode: 'LINEAIRE',  duree: 5 },
+];
+
+export const METHODES_AMORT = [
+    { code: 'LINEAIRE',   label: 'Linéaire' },
+    { code: 'DEGRESSIF',  label: 'Dégressif' },
+];
+
+export const ETATS_IMMO = [
+    { code: 'EN_SERVICE', label: 'En service',        severity: 'success' },
+    { code: 'AMORTI',     label: 'Totalement amorti', severity: 'info' },
+    { code: 'CEDE',       label: 'Cédé / Vendu',      severity: 'warning' },
+    { code: 'REBUT',      label: 'Mis au rebut',       severity: 'danger' },
+];
+
+export const TYPES_FINANCEMENT = [
+    { code: 'FONDS_PROPRES', label: 'Fonds propres' },
+    { code: 'EMPRUNT',       label: 'Emprunt bancaire' },
+    { code: 'DON',           label: 'Don / Subvention' },
+    { code: 'CREDIT_BAIL',   label: 'Crédit-bail (leasing)' },
+];
+
+export class Immobilisation {
+    immoId: number | null;
+    codeImmo: string;
+    numeroInventaire: string;       // N° étiquette physique
+    designation: string;
+    categorie: string;
+    dateAcquisition: string;
+    dateMiseEnService: string;
+    garantieExpiration: string;     // Date expiration garantie constructeur
+    dateProchainEntretien: string;  // Prochain entretien préventif planifié
+    valeurAcquisition: number;
+    valeurResiduelle: number;
+    valeurAssurable: number;        // Valeur déclarée à l'assureur
+    dureeVieUtile: number;
+    tauxAmortissement: number | null;
+    methodeAmortissement: string;
+    amortissementsCumules: number;
+    vnc: number | null;
+    etat: string;
+    typeFinancement: string;        // FONDS_PROPRES, EMPRUNT, DON, CREDIT_BAIL
+    // Cession / Sortie
+    dateCession: string;
+    prixCession: number | null;
+    plusMoinsValue: number | null;
+    motifSortie: string;
+    dateDerniereRevision: string;
+    // Identification physique
+    localisation: string;
+    fournisseur: string;
+    numeroSerie: string;
+    referenceAchat: string;
+    // Comptes SYSCOHADA
+    compteImmoCode: string;
+    compteAmortCode: string;
+    exerciceId: number | null;
+    branchId: number | null;
+    notes: string;
+    userAction: string;
+
+    constructor() {
+        this.immoId = null;
+        this.codeImmo = '';
+        this.numeroInventaire = '';
+        this.designation = '';
+        this.categorie = '';
+        this.dateAcquisition = '';
+        this.dateMiseEnService = '';
+        this.garantieExpiration = '';
+        this.dateProchainEntretien = '';
+        this.valeurAcquisition = 0;
+        this.valeurResiduelle = 0;
+        this.valeurAssurable = 0;
+        this.dureeVieUtile = 5;
+        this.tauxAmortissement = null;
+        this.methodeAmortissement = 'LINEAIRE';
+        this.amortissementsCumules = 0;
+        this.vnc = null;
+        this.etat = 'EN_SERVICE';
+        this.typeFinancement = 'FONDS_PROPRES';
+        this.dateCession = '';
+        this.prixCession = null;
+        this.plusMoinsValue = null;
+        this.motifSortie = '';
+        this.dateDerniereRevision = '';
+        this.localisation = '';
+        this.fournisseur = '';
+        this.numeroSerie = '';
+        this.referenceAchat = '';
+        this.compteImmoCode = '';
+        this.compteAmortCode = '';
+        this.exerciceId = null;
+        this.branchId = null;
+        this.notes = '';
+        this.userAction = '';
+    }
+}
+
+export interface PlanAmortissementLigne {
+    ligneId?: number;
+    annee: number;
+    exerciceLabel: string;
+    valeurBrute: number;
+    dotation: number;
+    amortissementsCumules: number;
+    vnc: number;
+    taux: number;
+    comptabilise: boolean;
+    pieceId?: string;
+}
+
+export interface ImmoSynthese {
+    categorie: string;
+    nombreBiens: number;
+    enService: number;
+    amortis: number;
+    cedes: number;
+    rebut: number;
+    valeurBrute: number;
+    amortissementsCumules: number;
+    vnc: number;
+    valeurAssurable: number;
+}
+
 export interface InternalAccountMovement {
   mouvementId?: number;
   accountId: number;

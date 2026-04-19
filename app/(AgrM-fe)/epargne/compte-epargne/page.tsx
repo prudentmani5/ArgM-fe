@@ -200,20 +200,22 @@ function SavingsAccountPage() {
                 case 'create':
                     showToast('success', 'Succès', 'Compte d\'épargne créé avec succès');
                     {
-                        const wasTermDeposit = savingsAccount.accountType === 'TERM_DEPOSIT';
+                        const type = savingsAccount.accountType;
+                        const tabIndex = type === 'TERM_DEPOSIT' ? 2 : type === 'BLOCKED' ? 3 : 1;
                         resetForm();
                         loadSavingsAccounts();
-                        setActiveIndex(wasTermDeposit ? 2 : 1);
+                        setActiveIndex(tabIndex);
                     }
                     setIsSubmitting(false);
                     break;
                 case 'update':
                     showToast('success', 'Succès', 'Compte d\'épargne mis à jour avec succès');
                     {
-                        const wasTermDeposit = savingsAccount.accountType === 'TERM_DEPOSIT';
+                        const type = savingsAccount.accountType;
+                        const tabIndex = type === 'TERM_DEPOSIT' ? 2 : type === 'BLOCKED' ? 3 : 1;
                         resetForm();
                         loadSavingsAccounts();
-                        setActiveIndex(wasTermDeposit ? 2 : 1);
+                        setActiveIndex(tabIndex);
                     }
                     setIsSubmitting(false);
                     break;
@@ -589,9 +591,6 @@ function SavingsAccountPage() {
         return !!(
             (rowData.termDuration?.id || rowData.termDurationId) &&
             rowData.termStartDate &&
-            rowData.currentBalance > 0 &&
-            rowData.internalAccountId &&
-            rowData.interestInternalAccountId &&
             !rowData.termDepositValidated
         );
     };
@@ -627,7 +626,7 @@ function SavingsAccountPage() {
                 const printContent = printRef.current.innerHTML.replace(/src="\/layout\//g, `src="${window.location.origin}/layout/`);
                 const printWindow = window.open('', '_blank');
                 if (printWindow) {
-                    printWindow.document.write(`<!DOCTYPE html><html><head><title>Certificat DAT - ${historyAccount?.accountNumber}</title><style>* { margin: 0; padding: 0; box-sizing: border-box; } body { font-family: Arial, sans-serif; } @page { margin: 10mm; } @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }</style></head><body>${printContent}</body></html>`);
+                    printWindow.document.write(`<!DOCTYPE html><html><head><title>${historyAccount?.accountType === 'BLOCKED' ? 'Certificat BLOC' : 'Certificat DAT'} - ${historyAccount?.accountNumber}</title><style>* { margin: 0; padding: 0; box-sizing: border-box; } body { font-family: Arial, sans-serif; } @page { margin: 10mm; } @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }</style></head><body>${printContent}</body></html>`);
                     printWindow.document.close();
                     printWindow.focus();
                     setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
@@ -775,6 +774,7 @@ function SavingsAccountPage() {
     };
 
     const termDepositActionsTemplate = (rowData: SavingsAccount) => {
+        const isBlocked = rowData.accountType === 'BLOCKED';
         return (
             <div className="flex gap-1 flex-wrap">
                 <Button
@@ -797,7 +797,7 @@ function SavingsAccountPage() {
                         className="p-button-rounded p-button-sm"
                         severity="warning"
                         onClick={() => openValidateTermDialog(rowData)}
-                        tooltip="Valider le dépôt à terme"
+                        tooltip={isBlocked ? 'Valider le blocage' : 'Valider le dépôt à terme'}
                     />
                 )}
                 {rowData.termDepositValidated && !canProcessMaturity(rowData) && (
@@ -818,7 +818,7 @@ function SavingsAccountPage() {
                         className="p-button-rounded p-button-sm"
                         severity="info"
                         onClick={() => openMaturityDialog(rowData)}
-                        tooltip="Traiter l'échéance"
+                        tooltip={isBlocked ? 'Traiter le déblocage' : 'Traiter l\'échéance'}
                     />
                 )}
                 {(rowData.termDepositCount || 0) > 0 && !rowData.termDepositValidated && (
@@ -829,7 +829,7 @@ function SavingsAccountPage() {
                     className="p-button-rounded p-button-sm"
                     severity="secondary"
                     onClick={() => openHistoryDialog(rowData)}
-                    tooltip="Historique des dépôts à terme"
+                    tooltip={isBlocked ? 'Historique des blocages' : 'Historique des dépôts à terme'}
                 />
                 <Button
                     icon="pi pi-folder"
@@ -892,7 +892,8 @@ function SavingsAccountPage() {
         const types: Record<string, string> = {
             'REGULAR': 'Régulière',
             'TERM_DEPOSIT': 'Dépôt à Terme',
-            'COMPULSORY': 'Obligatoire'
+            'COMPULSORY': 'Obligatoire',
+            'BLOCKED': 'Épargne Bloqué'
         };
         return types[rowData.accountType] || rowData.accountType;
     };
@@ -997,7 +998,7 @@ function SavingsAccountPage() {
 
                 <TabPanel header="Liste des Comptes" leftIcon="pi pi-list mr-2">
                     <DataTable
-                        value={savingsAccounts.filter(a => a.accountType !== 'TERM_DEPOSIT')}
+                        value={savingsAccounts.filter(a => a.accountType !== 'TERM_DEPOSIT' && a.accountType !== 'BLOCKED')}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25, 50]}
@@ -1115,6 +1116,61 @@ function SavingsAccountPage() {
                         <Column header="Actions" body={termDepositActionsTemplate} style={{ width: '250px' }} />
                     </DataTable>
                 </TabPanel>
+
+                <TabPanel header="Épargne Bloqué" leftIcon="pi pi-lock mr-2">
+                    <DataTable
+                        value={savingsAccounts.filter(a => a.accountType === 'BLOCKED')}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        globalFilter={globalFilter}
+                        header={
+                            <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                <div>
+                                    <h5 className="m-0">Comptes Épargne Bloqué</h5>
+                                    <small className="text-500">Opération autorisée: Virement uniquement</small>
+                                </div>
+                                <span className="p-input-icon-left">
+                                    <i className="pi pi-search" />
+                                    <InputText
+                                        value={globalFilter}
+                                        onChange={(e) => setGlobalFilter(e.target.value)}
+                                        placeholder="Rechercher..."
+                                    />
+                                </span>
+                            </div>
+                        }
+                        emptyMessage="Aucun compte épargne bloqué trouvé"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="openingDate"
+                        sortOrder={-1}
+                    >
+                        <Column field="accountNumber" header="N° Compte" sortable />
+                        <Column
+                            field="client"
+                            header="Client"
+                            sortable
+                            body={(row) => row.client ? (row.client.businessName || `${row.client.firstName || ''} ${row.client.lastName || ''}`.trim() || '-') : '-'}
+                        />
+                        <Column field="branch.name" header="Agence" sortable />
+                        <Column
+                            header="Durée Blocage"
+                            sortable
+                            sortField="termDuration.nameFr"
+                            body={(row) => row.termDuration ? `${row.termDuration.nameFr} (${row.termDuration.months} mois)` : '-'}
+                        />
+                        <Column header="Solde / Bloqué" body={balanceBodyTemplate} sortable sortField="currentBalance" />
+                        <Column field="interestRate" header="Taux (%)" sortable body={(row) => `${(row.interestRate || 0).toFixed(2)} %`} />
+                        <Column field="termStartDate" header="Début Blocage" sortable body={(row) => row.termStartDate ? new Date(row.termStartDate).toLocaleDateString('fr-FR') : '-'} />
+                        <Column field="maturityDate" header="Date Déblocage" sortable body={(row) => row.maturityDate ? new Date(row.maturityDate).toLocaleDateString('fr-FR') : '-'} />
+                        <Column header="Statut" body={statusBodyTemplate} />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={termDepositActionsTemplate} style={{ width: '250px' }} />
+                    </DataTable>
+                </TabPanel>
             </TabView>
 
             {/* Dialog pour voir les détails */}
@@ -1130,7 +1186,7 @@ function SavingsAccountPage() {
                     const branchName = acc.branch?.name || '-';
                     const cCode = acc.currency?.code || 'BIF';
                     const statusName = acc.status?.nameFr || acc.status?.name || '-';
-                    const accountTypeLabel = acc.accountType === 'TERM_DEPOSIT' ? 'Dépôt à Terme' : acc.accountType === 'COMPULSORY' ? 'Épargne Obligatoire' : 'Épargne Régulière';
+                    const accountTypeLabel = acc.accountType === 'TERM_DEPOSIT' ? 'Dépôt à Terme' : acc.accountType === 'COMPULSORY' ? 'Épargne Obligatoire' : acc.accountType === 'BLOCKED' ? 'Épargne Bloqué' : 'Épargne Régulière';
                     const fmtAmt = (val: number | null | undefined) => (val ?? 0).toLocaleString('fr-FR') + ' ' + cCode;
                     const fmtDate = (val: string | null | undefined) => val ? new Date(val).toLocaleDateString('fr-FR') : '-';
                     const internalAcc = internalAccounts.find((a: any) => a.accountId === acc.internalAccountId);
@@ -1208,9 +1264,9 @@ function SavingsAccountPage() {
                 })()}
             </Dialog>
 
-            {/* Dialog pour paramètres Dépôt à Terme */}
+            {/* Dialog pour paramètres Dépôt à Terme / Épargne Bloqué */}
             <Dialog
-                header="Paramètres Financiers - Dépôt à Terme"
+                header={termDepositAccount?.accountType === 'BLOCKED' ? 'Paramètres Financiers - Épargne Bloqué' : 'Paramètres Financiers - Dépôt à Terme'}
                 visible={termDepositDialog}
                 style={{ width: '650px' }}
                 onHide={() => { setTermDepositDialog(false); setTermDepositAccount(null); }}
@@ -1227,6 +1283,18 @@ function SavingsAccountPage() {
                             icon="pi pi-save"
                             className="p-button-success"
                             onClick={handleTermDepositParamsUpdate}
+                            disabled={!!(
+                                termDepositAccount?.termDepositValidated &&
+                                termDepositAccount?.maturityDate &&
+                                termDepositAccount.maturityDate > new Date().toISOString().split('T')[0]
+                            )}
+                            tooltip={
+                                termDepositAccount?.termDepositValidated &&
+                                termDepositAccount?.maturityDate &&
+                                termDepositAccount.maturityDate > new Date().toISOString().split('T')[0]
+                                    ? 'Modification impossible: compte validé et période en cours'
+                                    : undefined
+                            }
                         />
                     </div>
                 }
@@ -1239,7 +1307,7 @@ function SavingsAccountPage() {
                         </div>
                         <div className="formgrid grid">
                             <div className="field col-12 md:col-6">
-                                <label className="font-medium mb-2 block">Durée du Terme *</label>
+                                <label className="font-medium mb-2 block">{termDepositAccount?.accountType === 'BLOCKED' ? 'Durée du Blocage *' : 'Durée du Terme *'}</label>
                                 <Dropdown
                                     value={termDepositParams.termDurationId}
                                     options={termDurations}
@@ -1278,7 +1346,7 @@ function SavingsAccountPage() {
                                 )}
                             </div>
                             <div className="field col-12 md:col-6">
-                                <label className="font-medium mb-2 block">Date de Début *</label>
+                                <label className="font-medium mb-2 block">{termDepositAccount?.accountType === 'BLOCKED' ? 'Date de Début du Blocage *' : 'Date de Début *'}</label>
                                 <Calendar
                                     value={termDepositParams.termStartDate ? new Date(termDepositParams.termStartDate) : null}
                                     onChange={(e) => handleTermStartDateChange(e.value as Date | null)}
@@ -1288,7 +1356,7 @@ function SavingsAccountPage() {
                                 />
                             </div>
                             <div className="field col-12 md:col-6">
-                                <label className="font-medium mb-2 block">Date d'Échéance</label>
+                                <label className="font-medium mb-2 block">{termDepositAccount?.accountType === 'BLOCKED' ? 'Date de Déblocage' : 'Date d\'Échéance'}</label>
                                 <Calendar
                                     value={termDepositParams.maturityDate ? new Date(termDepositParams.maturityDate) : null}
                                     dateFormat="dd/mm/yy"
@@ -1374,7 +1442,7 @@ function SavingsAccountPage() {
                                     <small className="text-500">Calculé: montant x taux x durée</small>
                                 </div>
                                 <div className="field col-12 md:col-4">
-                                    <label className="font-medium mb-2 block text-500">Total à l'Échéance</label>
+                                    <label className="font-medium mb-2 block text-500">{termDepositAccount?.accountType === 'BLOCKED' ? 'Total au Déblocage' : 'Total à l\'Échéance'}</label>
                                     <InputNumber
                                         value={termDepositParams.currentBalance + termDepositParams.accruedInterest}
                                         mode="decimal"
@@ -1445,7 +1513,7 @@ function SavingsAccountPage() {
 
             {/* Dialog pour valider le dépôt à terme */}
             <Dialog
-                header="Validation du Dépôt à Terme"
+                header={validateTermAccount?.accountType === 'BLOCKED' ? 'Validation du Blocage' : 'Validation du Dépôt à Terme'}
                 visible={validateTermDialog}
                 style={{ width: '600px' }}
                 onHide={() => { setValidateTermDialog(false); setValidateTermAccount(null); }}
@@ -1543,7 +1611,7 @@ function SavingsAccountPage() {
 
             {/* Dialog pour traiter l'échéance du dépôt à terme */}
             <Dialog
-                header="Traitement de l'Échéance - Dépôt à Terme"
+                header={maturityAccount?.accountType === 'BLOCKED' ? 'Traitement du Déblocage' : 'Traitement de l\'Échéance - Dépôt à Terme'}
                 visible={maturityDialog}
                 style={{ width: '600px' }}
                 onHide={() => { setMaturityDialog(false); setMaturityAccount(null); }}
@@ -1642,7 +1710,7 @@ function SavingsAccountPage() {
 
             {/* Dialog pour l'historique des dépôts à terme */}
             <Dialog
-                header={`Historique des Dépôts à Terme - ${historyAccount?.accountNumber || ''}`}
+                header={historyAccount?.accountType === 'BLOCKED' ? `Historique des Blocages - ${historyAccount?.accountNumber || ''}` : `Historique des Dépôts à Terme - ${historyAccount?.accountNumber || ''}`}
                 visible={historyDialog}
                 style={{ width: '950px' }}
                 onHide={() => { setHistoryDialog(false); setHistoryAccount(null); setTermDepositHistory([]); }}

@@ -35,6 +35,7 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
         const capital = account?.blockedAmount || account?.currentBalance || 0;
         const interest = account?.accruedInterest || 0;
         const total = capital + interest;
+        const isBlocked = account?.accountType === 'BLOCKED';
 
         return (
             <div ref={ref} style={{
@@ -83,7 +84,7 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                         letterSpacing: '2px',
                         display: 'inline-block'
                     }}>
-                        CERTIFICAT DE DEPOT A TERME
+                        {isBlocked ? "CERTIFICAT D'EPARGNE BLOQUE" : "CERTIFICAT DE DEPOT A TERME"}
                     </div>
                 </div>
 
@@ -91,7 +92,7 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                 <div style={{ lineHeight: '1.8', fontSize: '12px', marginBottom: '20px' }}>
                     <p style={{ textAlign: 'justify' }}>
                         Nous soussignes, <strong>{companyName}</strong>, certifions par la presente que le/la client(e)
-                        ci-dessous a effectue un depot a terme dans notre institution selon les conditions suivantes :
+                        ci-dessous a effectue un {isBlocked ? "depot d'epargne bloque" : "depot a terme"} dans notre institution selon les conditions suivantes :
                     </p>
                 </div>
 
@@ -115,17 +116,17 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                 {/* Term Deposit Details */}
                 <div style={{ border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden', marginBottom: '20px' }}>
                     <div style={{ background: '#f1f5f9', padding: '6px 12px', fontSize: '10px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase', borderBottom: '1px solid #ddd' }}>
-                        Details du Depot a Terme
+                        {isBlocked ? "Details de l'Epargne Bloque" : "Details du Depot a Terme"}
                     </div>
                     <div style={{ padding: '12px 15px' }}>
                         <table style={{ width: '100%', fontSize: '12px' }}>
                             <tbody>
                                 <tr>
-                                    <td style={{ padding: '5px 0', color: '#666', width: '35%' }}>Capital depose:</td>
+                                    <td style={{ padding: '5px 0', color: '#666', width: '35%' }}>{isBlocked ? "Capital bloque:" : "Capital depose:"}</td>
                                     <td style={{ fontWeight: 'bold', fontSize: '14px', color: '#1e3a8a' }}>{formatCurrency(capital)}</td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '5px 0', color: '#666' }}>Duree du terme:</td>
+                                    <td style={{ padding: '5px 0', color: '#666' }}>{isBlocked ? "Duree du blocage:" : "Duree du terme:"}</td>
                                     <td style={{ fontWeight: 'bold' }}>{td ? `${td.nameFr || td.name || ''} (${td.months} mois)` : '-'}</td>
                                 </tr>
                                 <tr>
@@ -141,7 +142,7 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                                     <td style={{ fontWeight: 'bold' }}>{formatDate(account?.termStartDate)}</td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '5px 0', color: '#666' }}>Date d'echeance:</td>
+                                    <td style={{ padding: '5px 0', color: '#666' }}>{isBlocked ? "Date de deblocage:" : "Date d'echeance:"}</td>
                                     <td style={{ fontWeight: 'bold' }}>{formatDate(account?.maturityDate)}</td>
                                 </tr>
                                 <tr>
@@ -177,7 +178,7 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                             </tr>
                             <tr style={{ borderTop: '2px solid #1e3a8a' }}>
                                 <td style={{ padding: '8px 0 4px 0', fontSize: '14px', fontWeight: 'bold', color: '#1e3a8a' }}>
-                                    Montant total a l'echeance:
+                                    {isBlocked ? "Montant total au deblocage:" : "Montant total a l'echeance:"}
                                 </td>
                                 <td style={{ textAlign: 'right', fontSize: '16px', fontWeight: 'bold', color: '#16a34a', padding: '8px 0 4px 0' }}>
                                     {formatCurrency(total)}
@@ -191,10 +192,17 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px', marginBottom: '20px', fontSize: '10px', background: '#fafafa' }}>
                     <p style={{ fontWeight: 'bold', marginBottom: '6px', color: '#475569' }}>CONDITIONS :</p>
                     <ul style={{ margin: 0, paddingLeft: '16px', lineHeight: '1.8', color: '#555' }}>
-                        <li>Le capital est bloque pendant toute la duree du terme et ne peut faire l'objet d'un retrait anticipe sauf conditions particulieres.</li>
-                        <li>Les interets seront calcules au taux convenu et restitues avec le capital a l'echeance.</li>
-                        <li>A l'echeance, le client pourra renouveler le depot pour un nouveau cycle aux conditions en vigueur.</li>
-                        <li>Ce certificat ne constitue pas un titre negociable.</li>
+                        {isBlocked ? (<>
+                            <li>Le capital est bloque pendant toute la duree convenue et ne peut faire l'objet d'un retrait anticipe sauf conditions particulieres.</li>
+                            <li>Les interets seront calcules au taux convenu et restitues avec le capital a la date de deblocage.</li>
+                            <li>A la date de deblocage, le client pourra renouveler le blocage pour un nouveau cycle aux conditions en vigueur.</li>
+                            <li>Ce certificat ne constitue pas un titre negociable.</li>
+                        </>) : (<>
+                            <li>Le capital est bloque pendant toute la duree du terme et ne peut faire l'objet d'un retrait anticipe sauf conditions particulieres.</li>
+                            <li>Les interets seront calcules au taux convenu et restitues avec le capital a l'echeance.</li>
+                            <li>A l'echeance, le client pourra renouveler le depot pour un nouveau cycle aux conditions en vigueur.</li>
+                            <li>Ce certificat ne constitue pas un titre negociable.</li>
+                        </>)}
                     </ul>
                 </div>
 
@@ -215,7 +223,7 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                 {/* Footer */}
                 <div style={{ marginTop: '20px', paddingTop: '8px', borderTop: '1px solid #eee', textAlign: 'center', fontSize: '8px', color: '#999' }}>
                     <p style={{ margin: 0 }}>
-                        Ce document est un certificat officiel de depot a terme delivre par {companyName}. Toute falsification est passible de poursuites.
+                        Ce document est un certificat officiel {isBlocked ? "d'epargne bloque" : "de depot a terme"} delivre par {companyName}. Toute falsification est passible de poursuites.
                     </p>
                     <p style={{ margin: '3px 0 0 0' }}>
                         Imprime le {new Date().toLocaleDateString('fr-FR')} a {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

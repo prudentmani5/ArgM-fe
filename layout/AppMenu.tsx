@@ -544,6 +544,11 @@ const AppMenu = () => {
                             label: 'Rapport Virements',
                             icon: 'pi pi-arrows-h',
                             to: '/epargne/rapports/virements'
+                        },
+                        {
+                            label: 'Situation des Comptes',
+                            icon: 'pi pi-list',
+                            to: '/epargne/rapports/situation-comptes'
                         }
                     ]
                 }
@@ -803,6 +808,11 @@ const AppMenu = () => {
                             label: 'Synthèse du Portefeuille',
                             icon: 'pi pi-chart-pie',
                             to: '/credit/rapports/synthese'
+                        },
+                        {
+                            label: 'Crédits Accordés',
+                            icon: 'pi pi-chart-bar',
+                            to: '/credit/rapports/credits-accordes'
                         }
                     ]
                 }
@@ -1074,6 +1084,12 @@ const AppMenu = () => {
                     icon: 'pi pi-building',
                     to: '/comptability/comptes-internes',
                     visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_INTERNAL_ACCOUNTS']) : false
+                },
+                {
+                    label: 'Immobilisations',
+                    icon: 'pi pi-server',
+                    to: '/comptability/amortissement',
+                    visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW', 'IMMO_VIEW']) : false
                 }
             ]
         },

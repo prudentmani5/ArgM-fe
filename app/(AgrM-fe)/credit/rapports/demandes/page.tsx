@@ -10,7 +10,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
-import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { printReport } from '@/utils/pdfExport';
 import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
@@ -100,36 +100,26 @@ export default function RapportDemandesPage() {
     };
 
     const exportPdf = () => {
-        exportToPDF({
+        const dateStr = filters.dateRange?.[0]
+            ? `Du ${filters.dateRange[0].toLocaleDateString('fr-FR')}${filters.dateRange[1] ? ' au ' + filters.dateRange[1].toLocaleDateString('fr-FR') : ''}`
+            : 'Toutes les dates';
+        printReport({
             title: 'Rapport des Demandes de Crédit',
+            dateRange: dateStr,
             columns: [
                 { header: 'N° Dossier', dataKey: 'applicationNumber' },
-                { header: 'Date Dépôt', dataKey: 'applicationDate', formatter: formatDatePDF },
-                {
-                    header: 'Client',
-                    dataKey: 'client',
-                    formatter: (client: any) => client ? `${client.firstName} ${client.lastName}` : '-'
-                },
-                { header: 'Montant Demandé', dataKey: 'amountRequested', formatter: formatCurrencyPDF },
-                { header: 'Durée (mois)', dataKey: 'durationMonths' },
-                {
-                    header: 'Statut',
-                    dataKey: 'status',
-                    formatter: (status: any) => status?.nameFr || status?.name || '-'
-                },
-                {
-                    header: 'Agence',
-                    dataKey: 'branch',
-                    formatter: (branch: any) => branch?.name || '-'
-                },
+                { header: 'Date Dépôt', dataKey: 'applicationDate', formatter: (v) => v ? new Date(v).toLocaleDateString('fr-FR') : '-' },
+                { header: 'Client', dataKey: 'client', formatter: (c) => c ? `${c.firstName} ${c.lastName}` : '-' },
+                { header: 'Montant Demandé', dataKey: 'amountRequested', formatter: (v) => v ? new Intl.NumberFormat('fr-FR').format(v) + ' FBU' : '-', align: 'right' },
+                { header: 'Durée (mois)', dataKey: 'durationMonths', align: 'center' },
+                { header: 'Statut', dataKey: 'status', formatter: (s) => s?.nameFr || s?.name || '-' },
+                { header: 'Agence', dataKey: 'branch', formatter: (b) => b?.name || '-' },
                 { header: 'Responsable', dataKey: 'userAction' }
             ],
             data: filteredDemandes,
-            filename: 'rapport_demandes_credit.pdf',
-            orientation: 'landscape',
             statistics: [
                 { label: 'Total Demandes', value: filteredDemandes.length },
-                { label: 'Montant Total', value: formatCurrency(totalAmount) },
+                { label: 'Montant Total', value: new Intl.NumberFormat('fr-FR').format(totalAmount) + ' FBU' },
                 { label: 'Approuvées', value: approvedCount },
                 { label: 'Rejetées', value: rejectedCount }
             ]

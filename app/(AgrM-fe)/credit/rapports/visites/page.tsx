@@ -10,7 +10,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
-import { exportToPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { printReport } from '@/utils/pdfExport';
 import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/field-visits');
@@ -113,13 +113,18 @@ export default function RapportVisitesPage() {
     };
 
     const exportPdf = () => {
-        exportToPDF({
+        const fmtDate = (v: string) => v ? new Date(v).toLocaleDateString('fr-FR') : '-';
+        const dateStr = filters.dateRange?.[0]
+            ? `Du ${filters.dateRange[0].toLocaleDateString('fr-FR')}${filters.dateRange[1] ? ' au ' + filters.dateRange[1].toLocaleDateString('fr-FR') : ''}`
+            : 'Toutes les dates';
+        printReport({
             title: 'Rapport des Visites Terrain',
+            dateRange: dateStr,
             columns: [
                 { header: 'N° Dossier', dataKey: 'applicationNumber' },
                 { header: 'Client', dataKey: 'clientName' },
-                { header: 'Date Planifiée', dataKey: 'plannedDate', formatter: formatDatePDF },
-                { header: 'Date Effective', dataKey: 'actualDate', formatter: formatDatePDF },
+                { header: 'Date Planifiée', dataKey: 'plannedDate', formatter: fmtDate },
+                { header: 'Date Effective', dataKey: 'actualDate', formatter: fmtDate },
                 { header: 'Statut', dataKey: 'statusName' },
                 { header: 'Recommandation', dataKey: 'recommendationName' },
                 { header: 'Agent', dataKey: 'visitedByName' },
@@ -127,8 +132,6 @@ export default function RapportVisitesPage() {
                 { header: 'Responsable', dataKey: 'userAction' }
             ],
             data: filteredVisites,
-            filename: 'rapport_visites_terrain.pdf',
-            orientation: 'landscape',
             statistics: [
                 { label: 'Total Visites', value: filteredVisites.length },
                 { label: 'Effectuées', value: effectuees },

@@ -10,7 +10,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
-import { exportToPDF, formatCurrency as formatCurrencyPDF } from '@/utils/pdfExport';
+import { printReport } from '@/utils/pdfExport';
 import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/capacity-analysis');
@@ -110,25 +110,29 @@ export default function RapportAnalysesPage() {
     };
 
     const exportPdf = () => {
-        exportToPDF({
+        const fmt = (v: number) => v ? new Intl.NumberFormat('fr-FR').format(v) + ' FBU' : '-';
+        const pct = (v: number) => `${(v || 0).toFixed(1)}%`;
+        const dateStr = filters.dateRange?.[0]
+            ? `Du ${filters.dateRange[0].toLocaleDateString('fr-FR')}${filters.dateRange[1] ? ' au ' + filters.dateRange[1].toLocaleDateString('fr-FR') : ''}`
+            : 'Toutes les dates';
+        printReport({
             title: 'Rapport des Analyses Financières',
+            dateRange: dateStr,
             columns: [
                 { header: 'N° Dossier', dataKey: 'applicationNumber' },
                 { header: 'Client', dataKey: 'clientName' },
-                { header: 'Revenus Mensuels', dataKey: 'totalMonthlyIncome', formatter: formatCurrencyPDF },
-                { header: 'Charges Mensuelles', dataKey: 'totalMonthlyExpenses', formatter: formatCurrencyPDF },
-                { header: 'Revenu Disponible', dataKey: 'disposableIncome', formatter: formatCurrencyPDF },
-                { header: 'Taux d\'endettement', dataKey: 'debtToIncomeRatio', formatter: formatPercent },
+                { header: 'Revenus Mensuels', dataKey: 'totalMonthlyIncome', formatter: fmt, align: 'right' },
+                { header: 'Charges Mensuelles', dataKey: 'totalMonthlyExpenses', formatter: fmt, align: 'right' },
+                { header: 'Revenu Disponible', dataKey: 'disposableIncome', formatter: fmt, align: 'right' },
+                { header: 'Taux Endettement', dataKey: 'debtToIncomeRatio', formatter: pct, align: 'center' },
                 { header: 'Évaluation Risque', dataKey: 'riskAssessment' },
                 { header: 'Analyste', dataKey: 'analystName' }
             ],
             data: filteredAnalyses,
-            filename: 'rapport_analyses_financieres.pdf',
-            orientation: 'landscape',
             statistics: [
                 { label: 'Total Analyses', value: filteredAnalyses.length },
-                { label: 'Taux Moyen', value: formatPercent(avgDti) },
-                { label: 'Revenu Moyen', value: formatCurrency(avgIncome) }
+                { label: 'Taux Moyen', value: pct(avgDti) },
+                { label: 'Revenu Moyen', value: fmt(avgIncome) }
             ]
         });
     };

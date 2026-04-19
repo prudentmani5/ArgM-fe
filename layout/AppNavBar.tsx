@@ -188,7 +188,8 @@ const AppNavBar = () => {
                             { label: 'Rapport Frais de Tenue', icon: 'pi pi-money-bill', to: '/epargne/rapports/frais-tenue-compte' },
                             { label: 'Rapport Virements', icon: 'pi pi-arrows-h', to: '/epargne/rapports/virements' },
                             { label: 'Rapport Comptes Réguliers', icon: 'pi pi-book', to: '/epargne/rapports/comptes-reguliers' },
-                            { label: 'Rapport Comptes DAT', icon: 'pi pi-lock', to: '/epargne/rapports/comptes-dat' }
+                            { label: 'Rapport Comptes DAT', icon: 'pi pi-lock', to: '/epargne/rapports/comptes-dat' },
+                            { label: 'Situation des Comptes', icon: 'pi pi-list', to: '/epargne/rapports/situation-comptes' }
                         ]
                     }
                 ]
@@ -244,6 +245,20 @@ const AppNavBar = () => {
                         ]
                     },
                     {
+                        label: 'Gestion des Demandes',
+                        visible: appUser ? hasAnyAuthority(appUser, [
+                            'CREDIT_VIEW', 'CREDIT_CREATE',
+                            'CREDIT_APPLICATION_CREATE', 'CREDIT_APPLICATION_UPDATE', 'CREDIT_APPLICATION_CHANGE_STATUS'
+                        ]) : false,
+                        items: [
+                            { label: 'Toutes les Demandes', icon: 'pi pi-list', to: '/credit/demandes' },
+                            { label: 'Nouvelle Demande', icon: 'pi pi-plus-circle', to: '/credit/demandes?mode=new' },
+                            { label: 'En Attente d\'Analyse', icon: 'pi pi-clock', to: '/credit/demandes?status=EN_ATTENTE_ANALYSE' },
+                            { label: 'En Cours de Visite', icon: 'pi pi-map', to: '/credit/demandes?status=EN_VISITE' },
+                            { label: 'En Comité', icon: 'pi pi-users', to: '/credit/demandes?status=EN_COMITE' }
+                        ]
+                    },
+                    {
                         label: 'Décaissements',
                         visible: appUser ? hasAnyAuthority(appUser, [
                             'CREDIT_DISBURSE', 'CREDIT_DISBURSE_CREATE', 'CREDIT_DISBURSE_EXECUTE', 'CREDIT_DISBURSE_CANCEL'
@@ -262,21 +277,8 @@ const AppNavBar = () => {
                             { label: 'Rapport des Visites', icon: 'pi pi-map', to: '/credit/rapports/visites' },
                             { label: 'Rapport des Décisions', icon: 'pi pi-users', to: '/credit/rapports/decisions' },
                             { label: 'Rapport des Décaissements', icon: 'pi pi-money-bill', to: '/credit/rapports/decaissements' },
-                            { label: 'Synthèse du Portefeuille', icon: 'pi pi-chart-pie', to: '/credit/rapports/synthese' }
-                        ]
-                    },
-                    {
-                        label: 'Gestion des Demandes',
-                        visible: appUser ? hasAnyAuthority(appUser, [
-                            'CREDIT_VIEW', 'CREDIT_CREATE',
-                            'CREDIT_APPLICATION_CREATE', 'CREDIT_APPLICATION_UPDATE', 'CREDIT_APPLICATION_CHANGE_STATUS'
-                        ]) : false,
-                        items: [
-                            { label: 'Toutes les Demandes', icon: 'pi pi-list', to: '/credit/demandes' },
-                            { label: 'Nouvelle Demande', icon: 'pi pi-plus-circle', to: '/credit/demandes?mode=new' },
-                            { label: 'En Attente d\'Analyse', icon: 'pi pi-clock', to: '/credit/demandes?status=EN_ATTENTE_ANALYSE' },
-                            { label: 'En Cours de Visite', icon: 'pi pi-map', to: '/credit/demandes?status=EN_VISITE' },
-                            { label: 'En Comité', icon: 'pi pi-users', to: '/credit/demandes?status=EN_COMITE' }
+                            { label: 'Synthèse du Portefeuille', icon: 'pi pi-chart-pie', to: '/credit/rapports/synthese' },
+                            { label: 'Crédits Accordés', icon: 'pi pi-chart-bar', to: '/credit/rapports/credits-accordes' }
                         ]
                     },
                     {
@@ -424,6 +426,7 @@ const AppNavBar = () => {
                     },
                     { label: 'Gestion de Caisse', icon: 'pi pi-wallet', to: '/comptability/caisse', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_CASH_MANAGEMENT']) : false },
                     { label: 'Comptes Internes', icon: 'pi pi-building', to: '/comptability/comptes-internes', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_INTERNAL_ACCOUNTS', 'ACCOUNTING_INTERNAL_DEPOT', 'ACCOUNTING_INTERNAL_RETRAIT', 'ACCOUNTING_INTERNAL_TRANSFERT', 'ACCOUNTING_INTERNAL_TOGGLE_STATUS', 'ACCOUNTING_INTERNAL_VALIDATE_DEPOT', 'ACCOUNTING_INTERNAL_VALIDATE_RETRAIT', 'ACCOUNTING_INTERNAL_VALIDATE_TRANSFERT']) : false },
+                    { label: 'Immobilisations', icon: 'pi pi-server', to: '/comptability/amortissement', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW', 'IMMO_VIEW']) : false },
                     { label: 'Frais de Tenue de Compte', icon: 'pi pi-money-bill', to: '/epargne/frais-tenue-compte', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_SETTINGS', 'EPARGNE_FEE_EXECUTE']) : false },
                     {
                         label: 'Rapports',

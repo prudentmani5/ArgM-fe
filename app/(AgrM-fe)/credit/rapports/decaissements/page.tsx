@@ -10,7 +10,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
-import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { printReport } from '@/utils/pdfExport';
 import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/disbursements');
@@ -94,25 +94,29 @@ export default function RapportDecaissementsPage() {
             const modeCode = getModeCode(mode);
             return mode?.nameFr || mode?.name || modeLabels[modeCode] || modeCode || '-';
         };
-
-        exportToPDF({
+        const fmt = (v: number) => v ? new Intl.NumberFormat('fr-FR').format(v) + ' FBU' : '-';
+        const fmtDate = (v: string) => v ? new Date(v).toLocaleDateString('fr-FR') : '-';
+        const dateStr = filters.dateRange?.[0]
+            ? `Du ${filters.dateRange[0].toLocaleDateString('fr-FR')}${filters.dateRange[1] ? ' au ' + filters.dateRange[1].toLocaleDateString('fr-FR') : ''}`
+            : 'Toutes les dates';
+        printReport({
             title: 'Rapport des Décaissements',
+            dateRange: dateStr,
             columns: [
                 { header: 'N° Dossier', dataKey: 'applicationNumber' },
                 { header: 'Client', dataKey: 'clientName' },
-                { header: 'Montant Décaissé', dataKey: 'amountDisbursed', formatter: formatCurrencyPDF },
-                { header: 'Date Décaissement', dataKey: 'disbursementDate', formatter: formatDatePDF },
+                { header: 'Montant Décaissé', dataKey: 'amount', formatter: fmt, align: 'right' },
+                { header: 'Date Décaissement', dataKey: 'disbursementDate', formatter: fmtDate },
                 { header: 'Mode', dataKey: 'disbursementMode', formatter: getModeLabel },
-                { header: 'N° Compte', dataKey: 'accountNumber' },
                 { header: 'Agence', dataKey: 'branchName' },
                 { header: 'Responsable', dataKey: 'userAction' }
             ],
             data: filteredDecaissements,
-            filename: 'rapport_decaissements.pdf',
-            orientation: 'landscape',
             statistics: [
                 { label: 'Total Décaissements', value: filteredDecaissements.length },
-                { label: 'Montant Total', value: formatCurrency(totalAmount) }
+                { label: 'Montant Total', value: fmt(totalAmount) },
+                { label: 'Espèces', value: cashCount },
+                { label: 'Virements', value: virementCount }
             ]
         });
     };

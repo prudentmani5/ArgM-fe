@@ -10,7 +10,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
-import { exportToPDF, formatCurrency as formatCurrencyPDF, formatDate as formatDatePDF } from '@/utils/pdfExport';
+import { printReport } from '@/utils/pdfExport';
 import { shouldFilterByBranch } from '@/utils/branchFilter';
 
 const BASE_URL = buildApiUrl('/api/credit/applications');
@@ -103,26 +103,30 @@ export default function RapportDecisionsPage() {
     };
 
     const exportPdf = () => {
-        exportToPDF({
+        const fmt = (v: number) => v ? new Intl.NumberFormat('fr-FR').format(v) + ' FBU' : '-';
+        const fmtDate = (v: string) => v ? new Date(v).toLocaleDateString('fr-FR') : '-';
+        const dateStr = filters.dateRange?.[0]
+            ? `Du ${filters.dateRange[0].toLocaleDateString('fr-FR')}${filters.dateRange[1] ? ' au ' + filters.dateRange[1].toLocaleDateString('fr-FR') : ''}`
+            : 'Toutes les dates';
+        printReport({
             title: 'Rapport des Décisions du Comité',
+            dateRange: dateStr,
             columns: [
                 { header: 'N° Session', dataKey: 'sessionNumber' },
                 { header: 'N° Dossier', dataKey: 'applicationNumber' },
                 { header: 'Client', dataKey: 'clientName' },
-                { header: 'Montant Demandé', dataKey: 'amountRequested', formatter: formatCurrencyPDF },
-                { header: 'Montant Approuvé', dataKey: 'amountApproved', formatter: formatCurrencyPDF },
+                { header: 'Montant Demandé', dataKey: 'amountRequested', formatter: fmt, align: 'right' },
+                { header: 'Montant Approuvé', dataKey: 'amountApproved', formatter: fmt, align: 'right' },
                 { header: 'Décision', dataKey: 'decisionName' },
-                { header: 'Date Décision', dataKey: 'decisionDate', formatter: formatDatePDF },
+                { header: 'Date Décision', dataKey: 'decisionDate', formatter: fmtDate },
                 { header: 'Responsable', dataKey: 'userAction' }
             ],
             data: filteredDecisions,
-            filename: 'rapport_decisions_comite.pdf',
-            orientation: 'landscape',
             statistics: [
                 { label: 'Total Décisions', value: filteredDecisions.length },
                 { label: 'Approuvées', value: approved },
                 { label: 'Rejetées', value: rejected },
-                { label: 'Montant Approuvé', value: formatCurrency(totalAmount) }
+                { label: 'Montant Approuvé', value: fmt(totalAmount) }
             ]
         });
     };
