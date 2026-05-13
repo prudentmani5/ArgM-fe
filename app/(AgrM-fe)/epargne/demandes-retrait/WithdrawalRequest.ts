@@ -92,6 +92,12 @@ export interface WithdrawalRequest {
     notes?: string;
     caisseId?: number;
     userAction?: string;
+    // Moyen de retrait
+    moyenRetrait?: string; // ESPECES | CHEQUIER | RECU
+    numeroChequier?: string;
+    numeroRecu?: string;
+    recuInternalAccountId?: number;
+    recuFeeAmount?: number;
     // Informations du Bénéficiaire du Retrait (personne qui retire)
     depositorName?: string;
     depositorRelationship?: string;
@@ -183,6 +189,11 @@ export class WithdrawalRequestClass implements WithdrawalRequest {
     notes?: string = '';
     caisseId?: number;
     userAction?: string = '';
+    moyenRetrait?: string = 'ESPECES';
+    numeroChequier?: string = '';
+    numeroRecu?: string = '';
+    recuInternalAccountId?: number;
+    recuFeeAmount?: number = 1000;
     depositorName?: string = '';
     depositorRelationship?: string = '';
     depositorPhone?: string = '';

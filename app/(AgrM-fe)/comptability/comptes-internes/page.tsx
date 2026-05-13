@@ -458,8 +458,6 @@ export default function ComptesInternesPage() {
     };
 
     // Billetage handlers
-    const CAISSE_BASE_URL = buildApiUrl('/api/comptability/caisses');
-
     const calculateBilletageTotal = (): number => {
         return DENOMINATIONS.reduce((sum, d) => sum + ((billetageCount as any)[d.field] || 0) * d.value, 0);
     };
@@ -470,10 +468,8 @@ export default function ComptesInternesPage() {
 
     const handleSaveBilletage = () => {
         if (!billetageAccount) return;
-        // Try to find linked caisse by compteComptable
-        const linkedCaisseId = billetageAccount.caisseId || billetageAccount.accountId;
         const dataToSend = { ...billetageCount, userAction: getUserAction() };
-        fetchBilletage(dataToSend, 'POST', `${CAISSE_BASE_URL}/billetage/${linkedCaisseId}`, 'saveBilletage');
+        fetchBilletage(dataToSend, 'POST', `${BASE_URL}/billetage/${billetageAccount.accountId}`, 'saveBilletage');
     };
 
     const handleSkipBilletage = () => {
@@ -1226,7 +1222,7 @@ export default function ComptesInternesPage() {
                                 <div className="surface-100 p-3 border-round mb-3">
                                     <div className="flex justify-content-between mb-2">
                                         <small className="text-500">Type:</small>
-                                        <Tag value={selectedOperation.operationType} severity={selectedOperation.operationType === 'DEPOT' ? 'success' : selectedOperation.operationType === 'RETRAIT' ? 'danger' : 'help'} />
+                                        <Tag value={selectedOperation.operationType} severity={selectedOperation.operationType === 'DEPOT' ? 'success' : selectedOperation.operationType === 'RETRAIT' ? 'danger' : 'info'} />
                                     </div>
                                     <div className="flex justify-content-between mb-2">
                                         <small className="text-500">Montant:</small>

@@ -11,11 +11,12 @@ interface PrintableDepositSlipProps {
 }
 
 const PrintableDepositSlip = forwardRef<HTMLDivElement, PrintableDepositSlipProps>(
-    ({ depositSlip, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ depositSlip, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
+        const slipCurrencyCode = (depositSlip as any).currency?.code || (depositSlip as any).savingsAccount?.currency?.code || 'FBU';
         const formatCurrency = (value: number | undefined) => {
-            if (value === undefined || value === null) return '0 FBU';
-            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+            if (value === undefined || value === null) return `0 ${slipCurrencyCode}`;
+            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + slipCurrencyCode;
         };
 
         const formatDate = (dateString: string | undefined) => {
@@ -33,12 +34,10 @@ const PrintableDepositSlip = forwardRef<HTMLDivElement, PrintableDepositSlipProp
             return timeString.substring(0, 5);
         };
 
+        const isGroup = !!(depositSlip as any).solidarityGroup;
         const getClientName = () => {
+            if (isGroup) return (depositSlip as any).solidarityGroup?.groupName || (depositSlip as any).solidarityGroup?.name || '-';
             return getClientDisplayName(depositSlip.client);
-        };
-
-        const getClientNumber = () => {
-            return depositSlip.client?.clientNumber || '-';
         };
 
         const getBranchName = () => {
@@ -105,16 +104,12 @@ const PrintableDepositSlip = forwardRef<HTMLDivElement, PrintableDepositSlipProp
                         <table style={{ width: '100%', fontSize: '11px' }}>
                             <tbody>
                                 <tr>
-                                    <td style={{ padding: '3px 0', color: '#666', width: '40%' }}>Nom du Client:</td>
+                                    <td style={{ padding: '3px 0', color: '#666', width: '40%' }}>{isGroup ? 'Groupe:' : 'Nom du Client:'}</td>
                                     <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{getClientName()}</td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '3px 0', color: '#666' }}>N° Client:</td>
-                                    <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{getClientNumber()}</td>
-                                </tr>
-                                <tr>
                                     <td style={{ padding: '3px 0', color: '#666' }}>N° Compte:</td>
-                                    <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{(depositSlip as any).savingsAccount?.accountNumber || (depositSlip as any).accountNumber || depositSlip.savingsAccountId || '-'}</td>
+                                    <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{(depositSlip as any).savingsAccount?.accountNumber || (depositSlip as any).accountNumber || '-'}</td>
                                 </tr>
                                 <tr>
                                     <td style={{ padding: '3px 0', color: '#666' }}>Agence:</td>

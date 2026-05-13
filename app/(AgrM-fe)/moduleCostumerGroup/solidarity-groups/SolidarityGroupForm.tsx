@@ -358,6 +358,7 @@ const SolidarityGroupForm: React.FC<SolidarityGroupFormProps> = ({
                             currency="BIF"
                             locale="fr-BI"
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-4">
@@ -370,6 +371,7 @@ const SolidarityGroupForm: React.FC<SolidarityGroupFormProps> = ({
                             currency="BIF"
                             locale="fr-BI"
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-4">
@@ -382,6 +384,7 @@ const SolidarityGroupForm: React.FC<SolidarityGroupFormProps> = ({
                             currency="BIF"
                             locale="fr-BI"
                             className="w-full"
+                            readOnly
                         />
                     </div>
                 </div>
@@ -417,6 +420,7 @@ const SolidarityGroupForm: React.FC<SolidarityGroupFormProps> = ({
                             currency="BIF"
                             locale="fr-BI"
                             className="w-full"
+                            readOnly
                         />
                     </div>
                     <div className="field col-12 md:col-4">

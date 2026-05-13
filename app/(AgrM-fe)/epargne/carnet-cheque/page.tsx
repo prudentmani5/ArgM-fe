@@ -9,6 +9,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { InputNumber } from 'primereact/inputnumber';
 import { Dialog } from 'primereact/dialog';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
@@ -57,6 +58,7 @@ function CheckbookOrderPage() {
     const [selectedOrder, setSelectedOrder] = useState<CheckbookOrder | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [deliveredToName, setDeliveredToName] = useState('');
+    const [deliverFirstCheckNumber, setDeliverFirstCheckNumber] = useState<number | null>(null);
     const toast = useRef<Toast>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -329,13 +331,18 @@ function CheckbookOrderPage() {
         setSelectedOrder(rowData);
         const clientName = getClientDisplayName(rowData.client);
         setDeliveredToName(clientName === '-' ? '' : clientName);
+        setDeliverFirstCheckNumber(rowData.firstCheckNumber ?? null);
         setDeliverDialog(true);
     };
 
     const handleDeliver = () => {
         if (selectedOrder) {
             actionsApi.fetchData(
-                { deliveredToName, userAction: getCurrentUser() },
+                {
+                    deliveredToName,
+                    firstCheckNumber: deliverFirstCheckNumber,
+                    userAction: getCurrentUser()
+                },
                 'POST',
                 `${BASE_URL}/deliver/${selectedOrder.id}`,
                 'deliver'
@@ -674,7 +681,8 @@ function CheckbookOrderPage() {
                 <div className="p-fluid">
                     <p className="text-500 mb-3">
                         Commande: <strong>{selectedOrder?.orderNumber}</strong><br />
-                        Client: <strong>{getClientDisplayName(selectedOrder?.client)}</strong>
+                        Client: <strong>{getClientDisplayName(selectedOrder?.client)}</strong><br />
+                        Feuilles: <strong>{selectedOrder?.numberOfLeaves}</strong>
                     </p>
                     <div className="field">
                         <label htmlFor="deliveredToName" className="font-medium">Remis à (nom du bénéficiaire)</label>
@@ -685,6 +693,32 @@ function CheckbookOrderPage() {
                             placeholder="Nom de la personne qui récupère le carnet..."
                             className="w-full"
                         />
+                    </div>
+                    <div className="field">
+                        <label htmlFor="deliverFirstCheckNumber" className="font-medium">
+                            N° du Premier Chèque *
+                        </label>
+                        <InputNumber
+                            id="deliverFirstCheckNumber"
+                            value={deliverFirstCheckNumber}
+                            onValueChange={(e) => setDeliverFirstCheckNumber(e.value ?? null)}
+                            useGrouping={false}
+                            min={1}
+                            placeholder="Ex: 1001"
+                            className="w-full"
+                        />
+                        {deliverFirstCheckNumber && selectedOrder?.numberOfLeaves && (
+                            <small className="text-blue-600">
+                                <i className="pi pi-info-circle mr-1"></i>
+                                Plage: {deliverFirstCheckNumber} → {deliverFirstCheckNumber + selectedOrder.numberOfLeaves - 1}
+                            </small>
+                        )}
+                        {!deliverFirstCheckNumber && (
+                            <small className="text-orange-500">
+                                <i className="pi pi-exclamation-triangle mr-1"></i>
+                                Requis pour la validation des chèques au retrait
+                            </small>
+                        )}
                     </div>
                 </div>
             </Dialog>
@@ -719,7 +753,7 @@ function CheckbookOrderPage() {
                             order={selectedOrder}
                             companyName=" AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
-                            companyPhone="+257 22 XX XX XX"
+                            companyPhone="+257 22 69 21 01 93"
                         />
                     </div>
                 )}

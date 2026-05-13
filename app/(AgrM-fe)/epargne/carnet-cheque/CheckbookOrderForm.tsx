@@ -320,6 +320,33 @@ const CheckbookOrderForm: React.FC<CheckbookOrderFormProps> = ({
                 </div>
             </div>
 
+            {/* View Mode: Check number range (assigned at delivery) */}
+            {isViewMode && (order.firstCheckNumber || order.lastCheckNumber) && (
+                <div className="surface-100 p-3 border-round mb-3">
+                    <h6 className="mt-0 mb-3">
+                        <i className="pi pi-hashtag mr-2 text-blue-500"></i>
+                        Numérotation du Carnet
+                    </h6>
+                    <div className="grid">
+                        <div className="col-12 md:col-4">
+                            <small className="text-500">N° Premier Chèque:</small>
+                            <div className="font-bold text-lg">{order.firstCheckNumber ?? '-'}</div>
+                        </div>
+                        <div className="col-12 md:col-4">
+                            <small className="text-500">N° Dernier Chèque:</small>
+                            <div className="font-bold text-lg">{order.lastCheckNumber ?? '-'}</div>
+                        </div>
+                        <div className="col-12 md:col-4">
+                            <small className="text-500">Plage:</small>
+                            <div className="font-bold text-lg text-blue-700">
+                                {order.firstCheckNumber} → {order.lastCheckNumber}
+                                <span className="text-sm text-500 font-normal ml-2">({order.numberOfLeaves} chèques)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* View Mode: Balance Info */}
             {isViewMode && (order.balanceBefore !== undefined || order.balanceAfter !== undefined) && (
                 <div className="surface-100 p-3 border-round mb-3">

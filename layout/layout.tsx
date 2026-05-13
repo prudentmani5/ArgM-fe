@@ -3,6 +3,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { PrimeReactContext } from 'primereact/api';
 import { useEventListener, useMountEffect, useResizeListener, useUnmountEffect } from 'primereact/hooks';
 import { classNames, DomHandler } from 'primereact/utils';
+import Cookies from 'js-cookie';
 import React, { useCallback, useContext, useEffect, useRef } from 'react';
 import AppConfig from './AppConfig';
 import AppRightMenu from './AppRightMenu';
@@ -12,6 +13,8 @@ import AppNavBar from './AppNavBar';
 import { LayoutContext } from './context/layoutcontext';
 import AppBreadcrumb from './AppBreadCrumb';
 import AppFooter from './AppFooter';
+import IdleTimeoutWarning from './IdleTimeoutWarning';
+import { useIdleTimeout } from '../hooks/useIdleTimeout';
 import type { AppTopbarRef, ChildContainerProps } from '../types/types';
 
 const Layout = (props: ChildContainerProps) => {
@@ -22,6 +25,21 @@ const Layout = (props: ChildContainerProps) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     let timeout: NodeJS.Timeout | null = null;
+
+    // Session timeout — logout after 5 minutes of inactivity
+    const handleLogout = useCallback(() => {
+        Cookies.remove('token');
+        Cookies.remove('appUser');
+        Cookies.remove('XSRF-TOKEN');
+        window.location.href = '/auth/login2';
+    }, []);
+
+    const isLoggedIn = typeof window !== 'undefined' && !!Cookies.get('token');
+
+    const { isWarningVisible, remainingSeconds, resetTimer, forceLogout } = useIdleTimeout(
+        handleLogout,
+        isLoggedIn
+    );
 
     const [bindMenuOutsideClickListener, unbindMenuOutsideClickListener] = useEventListener({
         type: 'click',
@@ -183,6 +201,13 @@ const Layout = (props: ChildContainerProps) => {
                 {/* <AppConfig /> */}
                 <div className="layout-mask"></div>
             </div>
+
+            <IdleTimeoutWarning
+                visible={isWarningVisible}
+                remainingSeconds={remainingSeconds}
+                onStayLoggedIn={resetTimer}
+                onLogout={forceLogout}
+            />
         </React.Fragment>
     );
 };

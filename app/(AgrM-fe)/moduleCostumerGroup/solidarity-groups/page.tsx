@@ -4,8 +4,9 @@ import { TabPanel, TabView, TabViewTabChangeEvent } from 'primereact/tabview';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { useEffect, useRef, useState } from 'react';
 import useConsumApi from '../../../../hooks/fetchData/useConsumApi';
-import { SolidarityGroup, GroupStatus, GroupMember, MemberStatus, GroupType, GuaranteeType, Province, Commune, Zone, ActivitySector, Branch, GroupRole, ClientInfo, MeetingFrequency } from './SolidarityGroup';
+import { SolidarityGroup, GroupStatus, GroupMember, MemberStatus, MemberDocument, GroupType, GuaranteeType, Province, Commune, Zone, ActivitySector, Branch, GroupRole, MeetingFrequency } from './SolidarityGroup';
 import SolidarityGroupForm from './SolidarityGroupForm';
+import AddGroupMemberForm, { NewMemberFormData } from './AddGroupMemberForm';
 import { FileUploadSelectEvent } from 'primereact/fileupload';
 import { Button } from 'primereact/button';
 import Cookies from 'js-cookie';
@@ -15,14 +16,13 @@ import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
-import { Dropdown } from 'primereact/dropdown';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { InputNumber } from 'primereact/inputnumber';
-import { Calendar } from 'primereact/calendar';
 import { Avatar } from 'primereact/avatar';
 import { Card } from 'primereact/card';
 import { Divider } from 'primereact/divider';
 import { Image } from 'primereact/image';
+import { Dropdown } from 'primereact/dropdown';
+import { InputTextarea } from 'primereact/inputtextarea';
 import { buildApiUrl } from '../../../../utils/apiConfig';
 
 function SolidarityGroupComponent() {
@@ -40,11 +40,21 @@ function SolidarityGroupComponent() {
     const [memberDialog, setMemberDialog] = useState(false);
     const [selectedGroupForMembers, setSelectedGroupForMembers] = useState<SolidarityGroup | null>(null);
     const [members, setMembers] = useState<GroupMember[]>([]);
-    const [newMember, setNewMember] = useState<GroupMember>(new GroupMember());
     const [addMemberDialog, setAddMemberDialog] = useState(false);
     const [viewMemberDialog, setViewMemberDialog] = useState(false);
     const [selectedMember, setSelectedMember] = useState<GroupMember | null>(null);
-    const [clients, setClients] = useState<ClientInfo[]>([]);
+    const [memberDocuments, setMemberDocuments] = useState<MemberDocument[]>([]);
+
+    // Status change dialog
+    const [changeStatusDialog, setChangeStatusDialog] = useState(false);
+    const [memberForStatusChange, setMemberForStatusChange] = useState<GroupMember | null>(null);
+    const [newMemberStatus, setNewMemberStatus] = useState<string>('');
+    const [statusChangeReason, setStatusChangeReason] = useState('');
+
+    // Edit member dialog
+    const [editMemberDialog, setEditMemberDialog] = useState(false);
+    const [memberEditInitialData, setMemberEditInitialData] = useState<Partial<NewMemberFormData> | undefined>(undefined);
+    const [memberForEdit, setMemberForEdit] = useState<GroupMember | null>(null);
 
     // File upload states
     const [bylawsDocumentFile, setBylawsDocumentFile] = useState<File | null>(null);
@@ -64,11 +74,13 @@ function SolidarityGroupComponent() {
     const { data: searchData, loading: searchLoading, fetchData: fetchSearchData, callType: searchCallType } = useConsumApi('');
     const { data: refData, fetchData: fetchRefData, callType: refCallType } = useConsumApi('');
     const { data: memberData, loading: memberLoading, fetchData: fetchMemberData, callType: memberCallType } = useConsumApi('');
+    const { data: docsData, loading: docsLoading, fetchData: fetchDocsData } = useConsumApi('');
+    const { data: locationData, fetchData: fetchLocationData, callType: locationCallType } = useConsumApi('');
+    const [memberLocationNames, setMemberLocationNames] = useState<{ province: string; commune: string; zone: string }>({ province: '', commune: '', zone: '' });
     const toast = useRef<Toast>(null);
 
     const BASE_URL = buildApiUrl('/api/solidarity-groups');
     const REF_URL = buildApiUrl('/api/reference-data');
-    const CLIENT_URL = buildApiUrl('/api/clients');
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
         toast.current?.show({ severity, summary, detail, life: 3000 });
@@ -105,7 +117,6 @@ function SolidarityGroupComponent() {
                 case 'loadGroupRoles': setGroupRoles(Array.isArray(refData) ? refData : []); break;
                 case 'loadCommunes': setCommunes(Array.isArray(refData) ? refData : []); break;
                 case 'loadZones': setZones(Array.isArray(refData) ? refData : []); break;
-                case 'loadClients': setClients(Array.isArray(refData) ? refData : refData.content || []); break;
             }
         }
     }, [refData, refCallType]);
@@ -113,16 +124,35 @@ function SolidarityGroupComponent() {
     useEffect(() => {
         if (error) {
             console.error('❌ API Error:', error, 'CallType:', callType);
+            if (callType === 'createGroup') showToast('error', 'Erreur', 'L\'enregistrement a échoué');
+            else if (callType === 'updateGroup') showToast('error', 'Erreur', 'La mise à jour a échoué');
+            setBtnLoading(false);
         }
         if (data) {
             if (callType === 'loadGroups') {
                 const groupsData = Array.isArray(data) ? data : data.content || [];
-                console.log('📋 Groups loaded:', groupsData.length, groupsData);
                 setGroups(groupsData);
             } else if (callType === 'generateCode') {
                 setGroup(prev => ({ ...prev, groupCode: data.groupCode }));
+            } else if (callType === 'approveGroup') {
+                showToast('success', 'Succès', 'Groupe approuvé avec succès');
+                loadAllData();
+            } else if (callType === 'deleteGroup') {
+                showToast('success', 'Succès', 'Groupe supprimé avec succès');
+                loadAllData();
+            } else if (callType === 'createGroup') {
+                setGroup(new SolidarityGroup());
+                setBylawsDocumentFile(null);
+                showToast('success', 'Succès', 'Groupe enregistré avec succès');
+                generateGroupCode();
+            } else if (callType === 'updateGroup') {
+                showToast('success', 'Succès', 'Groupe mis à jour avec succès');
+                setGroupEdit(new SolidarityGroup());
+                setBylawsDocumentFileEdit(null);
+                setEditGroupDialog(false);
+                loadAllData();
             }
-            handleAfterApiCall();
+            setBtnLoading(false);
         }
     }, [data, error, callType]);
 
@@ -138,6 +168,7 @@ function SolidarityGroupComponent() {
         }
     }, [searchData, searchCallType]);
 
+
     useEffect(() => {
         if (memberData) {
             if (memberCallType === 'loadMembers') {
@@ -145,7 +176,23 @@ function SolidarityGroupComponent() {
             } else if (memberCallType === 'addMember') {
                 showToast('success', 'Succès', 'Membre ajouté avec succès');
                 setAddMemberDialog(false);
-                setNewMember(new GroupMember());
+                if (selectedGroupForMembers) {
+                    fetchMemberData(null, 'GET', `${BASE_URL}/${selectedGroupForMembers.id}/members`, 'loadMembers');
+                }
+            } else if (memberCallType === 'updateStatus') {
+                showToast('success', 'Succès', 'Statut mis à jour avec succès');
+                setChangeStatusDialog(false);
+                setMemberForStatusChange(null);
+                setNewMemberStatus('');
+                setStatusChangeReason('');
+                if (selectedGroupForMembers) {
+                    fetchMemberData(null, 'GET', `${BASE_URL}/${selectedGroupForMembers.id}/members`, 'loadMembers');
+                }
+            } else if (memberCallType === 'updateProfile') {
+                showToast('success', 'Succès', 'Membre modifié avec succès');
+                setEditMemberDialog(false);
+                setMemberForEdit(null);
+                setMemberEditInitialData(undefined);
                 if (selectedGroupForMembers) {
                     fetchMemberData(null, 'GET', `${BASE_URL}/${selectedGroupForMembers.id}/members`, 'loadMembers');
                 }
@@ -157,6 +204,27 @@ function SolidarityGroupComponent() {
             }
         }
     }, [memberData, memberCallType]);
+
+    useEffect(() => {
+        if (docsData) {
+            setMemberDocuments(Array.isArray(docsData) ? docsData : []);
+        }
+    }, [docsData]);
+
+    useEffect(() => {
+        if (!locationData) return;
+        const list: any[] = Array.isArray(locationData) ? locationData : [];
+        if (locationCallType === 'loadViewCommunes') {
+            const found = list.find((c: any) => c.id === selectedMember?.memberProfile?.communeId);
+            setMemberLocationNames(prev => ({ ...prev, commune: found?.name || '' }));
+            if (selectedMember?.memberProfile?.communeId) {
+                fetchLocationData(null, 'GET', `${REF_URL}/zones/findbycommune/${selectedMember.memberProfile.communeId}`, 'loadViewZones');
+            }
+        } else if (locationCallType === 'loadViewZones') {
+            const found = list.find((z: any) => z.id === selectedMember?.memberProfile?.zoneId);
+            setMemberLocationNames(prev => ({ ...prev, zone: found?.name || '' }));
+        }
+    }, [locationData, locationCallType]);
 
     const loadReferenceData = () => {
         fetchRefData(null, 'GET', `${REF_URL}/group-types/findactive`, 'loadGroupTypes');
@@ -343,35 +411,6 @@ function SolidarityGroupComponent() {
         return true;
     };
 
-    const handleAfterApiCall = () => {
-        if (error) {
-            if (callType === 'createGroup') {
-                showToast('error', 'Erreur', 'L\'enregistrement a échoué');
-            } else if (callType === 'updateGroup') {
-                showToast('error', 'Erreur', 'La mise à jour a échoué');
-            }
-        } else if (data && !error) {
-            if (callType === 'createGroup') {
-                setGroup(new SolidarityGroup());
-                setBylawsDocumentFile(null);
-                showToast('success', 'Succès', 'Groupe enregistré avec succès');
-                generateGroupCode();
-            } else if (callType === 'updateGroup') {
-                showToast('success', 'Succès', 'Groupe mis à jour avec succès');
-                setGroupEdit(new SolidarityGroup());
-                setBylawsDocumentFileEdit(null);
-                setEditGroupDialog(false);
-                loadAllData();
-            } else if (callType === 'deleteGroup') {
-                showToast('success', 'Succès', 'Groupe supprimé avec succès');
-                loadAllData();
-            } else if (callType === 'approveGroup') {
-                showToast('success', 'Succès', 'Groupe approuvé avec succès');
-                loadAllData();
-            }
-        }
-        setBtnLoading(false);
-    };
 
     const generateGroupCode = () => {
         fetchData(null, 'GET', `${BASE_URL}/generatecode`, 'generateCode');
@@ -408,9 +447,20 @@ function SolidarityGroupComponent() {
     };
 
     const loadGroupToEdit = (data: SolidarityGroup) => {
-        setGroupEdit(data);
-        if (data.provinceId) handleProvinceChange(data.provinceId);
-        if (data.communeId) setTimeout(() => handleCommuneChange(data.communeId!), 500);
+        const d = data as any;
+        const enriched: SolidarityGroup = {
+            ...data,
+            groupTypeId:     data.groupTypeId     || d.groupType?.id,
+            branchId:        data.branchId        || d.branch?.id,
+            primarySectorId: data.primarySectorId || d.primarySector?.id,
+            guaranteeTypeId: data.guaranteeTypeId || d.guaranteeType?.id,
+            provinceId:      data.provinceId      || d.province?.id,
+            communeId:       data.communeId       || d.commune?.id,
+            zoneId:          data.zoneId          || d.zone?.id,
+        };
+        setGroupEdit(enriched);
+        if (enriched.provinceId) handleProvinceChange(enriched.provinceId);
+        if (enriched.communeId) setTimeout(() => handleCommuneChange(enriched.communeId!), 500);
         setEditGroupDialog(true);
     };
 
@@ -422,42 +472,170 @@ function SolidarityGroupComponent() {
     const openMemberDialog = (group: SolidarityGroup) => {
         setSelectedGroupForMembers(group);
         fetchMemberData(null, 'GET', `${BASE_URL}/${group.id}/members`, 'loadMembers');
-        fetchRefData(null, 'GET', `${CLIENT_URL}/findall`, 'loadClients');
         setMemberDialog(true);
     };
 
     const openAddMemberDialog = () => {
-        setNewMember(new GroupMember());
         setAddMemberDialog(true);
     };
 
-    const handleAddMember = () => {
-        if (!newMember.clientId) {
-            showToast('warn', 'Attention', 'Veuillez sélectionner un client');
+    const handleNewMemberSubmit = (formData: NewMemberFormData) => {
+        if (!formData.lastName?.trim()) {
+            showToast('warn', 'Attention', 'Le nom est obligatoire');
             return;
         }
-        if (!newMember.roleId) {
-            showToast('warn', 'Attention', 'Veuillez sélectionner un rôle');
+        if (!formData.firstName?.trim()) {
+            showToast('warn', 'Attention', 'Le prénom est obligatoire');
             return;
         }
-        // Check if client is already a member of this group
-        const isAlreadyMember = members.some(
-            member => member.clientId === newMember.clientId || member.client?.id === newMember.clientId
-        );
-        if (isAlreadyMember) {
-            showToast('warn', 'Attention', 'Ce client est déjà membre de ce groupe');
+        if (!formData.phonePrimary?.trim()) {
+            showToast('warn', 'Attention', 'Le téléphone principal est obligatoire');
             return;
         }
+        if (!formData.roleId) {
+            showToast('warn', 'Attention', 'Le rôle dans le groupe est obligatoire');
+            return;
+        }
+        if (!selectedGroupForMembers) return;
+
+        const payload = {
+            profileFirstName: formData.firstName,
+            profileLastName: formData.lastName,
+            profileGender: formData.gender,
+            profileDateOfBirth: formData.dateOfBirth || null,
+            profilePlaceOfBirth: formData.placeOfBirth,
+            profileIdDocumentTypeId: formData.idDocumentTypeId,
+            profileIdDocumentNumber: formData.idDocumentNumber,
+            profileIdDocumentIssueDate: formData.idDocumentIssueDate || null,
+            profileIdDocumentExpiryDate: formData.idDocumentExpiryDate || null,
+            profilePhonePrimary: formData.phonePrimary,
+            profilePhoneSecondary: formData.phoneSecondary,
+            profileEmail: formData.email,
+            profileProvinceId: formData.provinceId,
+            profileCommuneId: formData.communeId,
+            profileZoneId: formData.zoneId,
+            profileStreetAddress: formData.streetAddress,
+            roleId: formData.roleId,
+            joinDate: formData.joinDate,
+            shareContribution: formData.shareContribution,
+            espaceHumaineDocumentPath: formData.espaceHumaineDocumentPath || null,
+            idCarteDocumentPath: formData.idCarteDocumentPath || null,
+            userAction: getConnectedUser()
+        };
+
+        fetchMemberData(payload, 'POST', `${BASE_URL}/${selectedGroupForMembers.id}/members/add-member-profile`, 'addMember');
+    };
+
+    const openChangeStatusDialog = (member: GroupMember) => {
+        setMemberForStatusChange(member);
+        setNewMemberStatus(member.status || '');
+        setStatusChangeReason('');
+        setChangeStatusDialog(true);
+    };
+
+    const openEditMemberDialog = async (member: GroupMember) => {
+        const p = member.memberProfile;
+        const cl = member.client as any;
+
+        // Fetch existing documents so we can show them as pre-loaded
+        let espaceHumainePath = '';
+        let idCartePath = '';
         if (selectedGroupForMembers) {
-            // Add connected user action
-            const memberToSave = { ...newMember, userAction: getConnectedUser() };
-            fetchMemberData(memberToSave, 'POST', `${BASE_URL}/${selectedGroupForMembers.id}/members/add`, 'addMember');
+            try {
+                const token = Cookies.get('token');
+                const res = await fetch(
+                    buildApiUrl(`/api/solidarity-groups/${selectedGroupForMembers.id}/members/${member.id}/documents`),
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+                if (res.ok) {
+                    const docs: any[] = await res.json();
+                    espaceHumainePath = docs.find(d => d.documentType === 'ESPACE_HUMAINE')?.filePath || '';
+                    idCartePath = docs.find(d => d.documentType === 'ID_CARTE')?.filePath || '';
+                }
+            } catch { /* ignore */ }
         }
+
+        const initialData: Partial<NewMemberFormData> = {
+            // Identity
+            firstName: p?.firstName || cl?.firstName || '',
+            lastName: p?.lastName || cl?.lastName || '',
+            gender: p?.gender || '',
+            dateOfBirth: p?.dateOfBirth || '',
+            placeOfBirth: p?.placeOfBirth || '',
+            // ID Document
+            idDocumentTypeId: p?.idDocumentTypeId || null,
+            idDocumentNumber: p?.idDocumentNumber || '',
+            idDocumentIssueDate: p?.idDocumentIssueDate || '',
+            idDocumentExpiryDate: p?.idDocumentExpiryDate || '',
+            // Contact
+            phonePrimary: p?.phonePrimary || cl?.phonePrimary || '',
+            phoneSecondary: p?.phoneSecondary || '',
+            email: p?.email || cl?.email || '',
+            // Address
+            provinceId: p?.provinceId || null,
+            communeId: p?.communeId || null,
+            zoneId: p?.zoneId || null,
+            streetAddress: p?.streetAddress || '',
+            // Group membership
+            roleId: member.role?.id || (member as any).roleId || null,
+            joinDate: member.joinDate || '',
+            shareContribution: member.shareContribution || 0,
+            branchId: (selectedGroupForMembers as any)?.branch?.id || selectedGroupForMembers?.branchId || null,
+            // Existing documents
+            espaceHumaineDocumentPath: espaceHumainePath,
+            idCarteDocumentPath: idCartePath,
+        };
+        setMemberEditInitialData(initialData);
+        setMemberForEdit(member);
+        setEditMemberDialog(true);
+    };
+
+    const handleStatusChange = () => {
+        if (!memberForStatusChange || !selectedGroupForMembers || !newMemberStatus) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner un nouveau statut');
+            return;
+        }
+        const url = `${BASE_URL}/${selectedGroupForMembers.id}/members/${memberForStatusChange.id}/update-status?newStatus=${encodeURIComponent(newMemberStatus)}&reason=${encodeURIComponent(statusChangeReason)}&userAction=${encodeURIComponent(getConnectedUser())}`;
+        fetchMemberData(null, 'PUT', url, 'updateStatus');
+    };
+
+    const handleMemberProfileUpdate = (formData: NewMemberFormData) => {
+        if (!memberForEdit || !selectedGroupForMembers) return;
+        const payload = {
+            profileFirstName: formData.firstName,
+            profileLastName: formData.lastName,
+            profileGender: formData.gender,
+            profileDateOfBirth: formData.dateOfBirth || null,
+            profilePlaceOfBirth: formData.placeOfBirth,
+            profileIdDocumentTypeId: formData.idDocumentTypeId,
+            profileIdDocumentNumber: formData.idDocumentNumber,
+            profileIdDocumentIssueDate: formData.idDocumentIssueDate || null,
+            profileIdDocumentExpiryDate: formData.idDocumentExpiryDate || null,
+            profilePhonePrimary: formData.phonePrimary,
+            profilePhoneSecondary: formData.phoneSecondary,
+            profileEmail: formData.email,
+            profileProvinceId: formData.provinceId,
+            profileCommuneId: formData.communeId,
+            profileZoneId: formData.zoneId,
+            profileStreetAddress: formData.streetAddress,
+            roleId: formData.roleId,
+            joinDate: formData.joinDate,
+            shareContribution: formData.shareContribution,
+            espaceHumaineDocumentPath: formData.espaceHumaineDocumentPath || null,
+            idCarteDocumentPath: formData.idCarteDocumentPath || null,
+            userAction: getConnectedUser()
+        };
+        fetchMemberData(payload, 'PUT', `${BASE_URL}/${selectedGroupForMembers.id}/members/${memberForEdit.id}/update-profile`, 'updateProfile');
     };
 
     const confirmRemoveMember = (member: GroupMember) => {
+        const memberName = member.client
+            ? `${member.client.firstName || ''} ${member.client.lastName || ''}`.trim()
+            : member.memberProfile
+                ? `${member.memberProfile.firstName || ''} ${member.memberProfile.lastName || ''}`.trim()
+                : member.clientName || 'ce membre';
         confirmDialog({
-            message: `Voulez-vous vraiment retirer "${member.clientName}" du groupe ?`,
+            message: `Voulez-vous vraiment retirer "${memberName}" du groupe ?`,
             header: 'Confirmation',
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',
@@ -624,16 +802,18 @@ function SolidarityGroupComponent() {
                     tooltipOptions={{ position: 'top' }}
                     size="small"
                 />
-                <Button
-                    icon="pi pi-trash"
-                    onClick={() => confirmDelete(data)}
-                    rounded
-                    text
-                    severity='danger'
-                    tooltip="Supprimer"
-                    tooltipOptions={{ position: 'top' }}
-                    size="small"
-                />
+                {data.status !== GroupStatus.ACTIVE && (
+                    <Button
+                        icon="pi pi-trash"
+                        onClick={() => confirmDelete(data)}
+                        rounded
+                        text
+                        severity='danger'
+                        tooltip="Supprimer"
+                        tooltipOptions={{ position: 'top' }}
+                        size="small"
+                    />
+                )}
             </div>
         );
     };
@@ -669,14 +849,22 @@ function SolidarityGroupComponent() {
     };
 
     const memberClientTemplate = (rowData: GroupMember) => {
-        const clientName = rowData.client
-            ? `${rowData.client.firstName || ''} ${rowData.client.lastName || ''} ${rowData.client.businessName || ''}`.trim()
-            : rowData.clientName || 'N/A';
-        const clientNumber = rowData.client?.clientNumber || rowData.clientNumber || '';
+        let displayName: string;
+        let displaySub: string;
+        if (rowData.client) {
+            displayName = `${rowData.client.firstName || ''} ${rowData.client.lastName || ''} ${rowData.client.businessName || ''}`.trim() || 'N/A';
+            displaySub = rowData.client.clientNumber || rowData.clientNumber || '';
+        } else if (rowData.memberProfile) {
+            displayName = `${rowData.memberProfile.firstName || ''} ${rowData.memberProfile.lastName || ''}`.trim() || 'N/A';
+            displaySub = rowData.clientName || '';
+        } else {
+            displayName = rowData.clientName || 'N/A';
+            displaySub = rowData.clientNumber || '';
+        }
         return (
             <div className="flex flex-column">
-                <span className="font-semibold">{clientName}</span>
-                <small className="text-500">{clientNumber}</small>
+                <span className="font-semibold">{displayName}</span>
+                {displaySub && <small className="text-500">{displaySub}</small>}
             </div>
         );
     };
@@ -693,7 +881,7 @@ function SolidarityGroupComponent() {
     };
 
     const memberPhoneTemplate = (rowData: GroupMember) => {
-        return rowData.client?.phonePrimary || rowData.clientPhone || 'N/A';
+        return rowData.client?.phonePrimary || rowData.memberProfile?.phonePrimary || rowData.clientPhone || 'N/A';
     };
 
     const memberActions = (rowData: GroupMember): React.ReactNode => {
@@ -703,6 +891,17 @@ function SolidarityGroupComponent() {
                     icon="pi pi-eye"
                     onClick={() => {
                         setSelectedMember(rowData);
+                        setMemberDocuments([]);
+                        // Reset & resolve location names
+                        const mp = rowData.memberProfile;
+                        const provName = mp?.provinceId ? (provinces.find(p => p.id === mp.provinceId)?.name || '') : '';
+                        setMemberLocationNames({ province: provName, commune: '', zone: '' });
+                        if (mp?.provinceId) {
+                            fetchLocationData(null, 'GET', `${REF_URL}/communes/findbyprovince/${mp.provinceId}`, 'loadViewCommunes');
+                        }
+                        if (selectedGroupForMembers) {
+                            fetchDocsData(null, 'GET', `${BASE_URL}/${selectedGroupForMembers.id}/members/${rowData.id}/documents`, 'loadMemberDocs');
+                        }
                         setViewMemberDialog(true);
                     }}
                     rounded
@@ -712,6 +911,28 @@ function SolidarityGroupComponent() {
                     tooltipOptions={{ position: 'top' }}
                     size="small"
                 />
+                <Button
+                    icon="pi pi-sync"
+                    onClick={() => openChangeStatusDialog(rowData)}
+                    rounded
+                    text
+                    severity='warning'
+                    tooltip="Changer le statut"
+                    tooltipOptions={{ position: 'top' }}
+                    size="small"
+                />
+                {rowData.status !== MemberStatus.ACTIVE && (
+                    <Button
+                        icon="pi pi-pencil"
+                        onClick={() => openEditMemberDialog(rowData)}
+                        rounded
+                        text
+                        severity='success'
+                        tooltip="Modifier le membre"
+                        tooltipOptions={{ position: 'top' }}
+                        size="small"
+                    />
+                )}
                 <Button
                     icon="pi pi-user-minus"
                     onClick={() => confirmRemoveMember(rowData)}
@@ -1200,85 +1421,20 @@ function SolidarityGroupComponent() {
                 header={
                     <div className="flex align-items-center gap-2">
                         <i className="pi pi-user-plus text-xl text-primary"></i>
-                        <span>Ajouter un Nouveau Membre</span>
+                        <span>Ajouter un Nouveau Membre — {selectedGroupForMembers?.groupName}</span>
                     </div>
                 }
                 visible={addMemberDialog}
-                style={{ width: '45vw' }}
+                style={{ width: '75vw', maxWidth: '950px' }}
                 modal
                 onHide={() => setAddMemberDialog(false)}
+                maximizable
             >
-                <div className="p-fluid">
-                    <div className="field">
-                        <label htmlFor="clientId" className="font-bold">Client <span className="text-red-500">*</span></label>
-                        <Dropdown
-                            id="clientId"
-                            value={newMember.clientId}
-                            options={clients.map(c => ({
-                                ...c,
-                                displayName: `${c.clientNumber} - ${c.firstName || ''} ${c.lastName || ''} ${c.businessName || ''}`.trim()
-                            }))}
-                            optionLabel="displayName"
-                            optionValue="id"
-                            onChange={(e) => setNewMember(prev => ({ ...prev, clientId: e.value }))}
-                            placeholder="Sélectionner un client"
-                            filter
-                            className="w-full"
-                        />
-                    </div>
-                    <div className="field">
-                        <label htmlFor="roleId" className="font-bold">Rôle <span className="text-red-500">*</span></label>
-                        <Dropdown
-                            id="roleId"
-                            value={newMember.roleId}
-                            options={groupRoles}
-                            optionLabel="name"
-                            optionValue="id"
-                            onChange={(e) => setNewMember(prev => ({ ...prev, roleId: e.value }))}
-                            placeholder="Sélectionner un rôle"
-                            className="w-full"
-                        />
-                    </div>
-                    <div className="field">
-                        <label htmlFor="joinDate">Date d'Adhésion</label>
-                        <Calendar
-                            id="joinDate"
-                            value={newMember.joinDate ? new Date(newMember.joinDate) : new Date()}
-                            onChange={(e) => setNewMember(prev => ({
-                                ...prev,
-                                joinDate: e.value ? (e.value as Date).toISOString().split('T')[0] : ''
-                            }))}
-                            dateFormat="dd/mm/yy"
-                            showIcon
-                            className="w-full"
-                        />
-                    </div>
-                    <div className="field">
-                        <label htmlFor="shareContribution">Contribution aux Parts (BIF)</label>
-                        <InputNumber
-                            id="shareContribution"
-                            value={newMember.shareContribution}
-                            onValueChange={(e) => setNewMember(prev => ({ ...prev, shareContribution: e.value ?? 0 }))}
-                            mode="currency"
-                            currency="BIF"
-                            locale="fr-BI"
-                            className="w-full"
-                        />
-                    </div>
-                </div>
-                <div className="flex justify-content-end gap-2 mt-3">
-                    <Button
-                        label="Annuler"
-                        icon="pi pi-times"
-                        onClick={() => setAddMemberDialog(false)}
-                        className="p-button-text"
-                    />
-                    <Button
-                        label="Ajouter"
-                        icon="pi pi-check"
-                        onClick={handleAddMember}
-                    />
-                </div>
+                <AddGroupMemberForm
+                    loading={memberLoading}
+                    onAdd={handleNewMemberSubmit}
+                    onCancel={() => setAddMemberDialog(false)}
+                />
             </Dialog>
 
             {/* View Member Details Dialog */}
@@ -1290,187 +1446,354 @@ function SolidarityGroupComponent() {
                     </div>
                 }
                 visible={viewMemberDialog}
-                style={{ width: '70vw', maxWidth: '900px' }}
+                style={{ width: '90vw', maxWidth: '1200px' }}
                 modal
                 onHide={() => {
                     setViewMemberDialog(false);
                     setSelectedMember(null);
+                    setMemberDocuments([]);
+                    setMemberLocationNames({ province: '', commune: '', zone: '' });
                 }}
+                maximizable
             >
-                {selectedMember && (
-                    <div className="grid">
-                        {/* Left Column - Member Identity */}
-                        <div className="col-12 md:col-4">
-                            <Card className="mb-3">
-                                <div className="flex flex-column align-items-center text-center mb-3">
-                                    <Avatar
-                                        icon="pi pi-user"
-                                        size="xlarge"
-                                        shape="circle"
-                                        className="bg-primary text-white"
-                                        style={{ width: '80px', height: '80px', fontSize: '2rem' }}
-                                    />
-                                    <h4 className="m-0 mt-3">
-                                        {selectedMember.client
-                                            ? `${selectedMember.client.firstName || ''} ${selectedMember.client.lastName || ''}`.trim() || selectedMember.client.businessName
-                                            : selectedMember.clientName || 'N/A'}
-                                    </h4>
-                                    <p className="text-500 m-0">{selectedMember.client?.clientNumber || selectedMember.clientNumber}</p>
-                                    <div className="flex gap-2 mt-2 flex-wrap justify-content-center">
-                                        <Tag value={selectedMember.role?.name || selectedMember.roleName || 'N/A'} severity="info" />
-                                        {memberStatusTemplate(selectedMember)}
+                {selectedMember && (() => {
+                    const mp = selectedMember.memberProfile;
+                    const cl = selectedMember.client;
+                    const fullName = cl
+                        ? (`${cl.firstName || ''} ${cl.lastName || ''}`.trim() || cl.businessName || 'N/A')
+                        : mp
+                            ? `${mp.firstName || ''} ${mp.lastName || ''}`.trim() || 'N/A'
+                            : selectedMember.clientName || 'N/A';
+                    const genderLabel = mp?.gender === 'M' ? 'Masculin'
+                        : mp?.gender === 'F' ? 'Féminin' : null;
+                    return (
+                        <div className="grid">
+                            {/* ─── Column 1: Identité ─── */}
+                            <div className="col-12 md:col-4">
+                                <Card className="mb-3">
+                                    <div className="flex flex-column align-items-center text-center mb-3">
+                                        <Avatar
+                                            icon="pi pi-user"
+                                            size="xlarge"
+                                            shape="circle"
+                                            className="bg-primary text-white"
+                                            style={{ width: '80px', height: '80px', fontSize: '2rem' }}
+                                        />
+                                        <h4 className="m-0 mt-3">{fullName}</h4>
+                                        <p className="text-500 m-0 text-sm">{cl?.clientNumber || selectedMember.clientNumber || (mp ? 'Profil Groupe' : '')}</p>
+                                        <div className="flex gap-2 mt-2 flex-wrap justify-content-center">
+                                            <Tag value={selectedMember.role?.name || selectedMember.roleName || 'N/A'} severity="info" />
+                                            {memberStatusTemplate(selectedMember)}
+                                        </div>
+                                        {(selectedMember.isExecutive || selectedMember.role?.isExecutive) && (
+                                            <Tag value="Membre Exécutif" severity="warning" className="mt-2" />
+                                        )}
                                     </div>
-                                    {(selectedMember.isExecutive || selectedMember.role?.isExecutive) && (
-                                        <Tag value="Membre Exécutif" severity="warning" className="mt-2" />
-                                    )}
-                                </div>
-                                <Divider />
-                                <div className="flex flex-column gap-2">
-                                    <div className="flex align-items-center gap-2">
-                                        <i className="pi pi-phone text-primary"></i>
-                                        <span>{selectedMember.client?.phonePrimary || selectedMember.clientPhone || 'N/A'}</span>
+                                    <Divider />
+                                    <div className="flex flex-column gap-2">
+                                        {genderLabel && (
+                                            <div className="flex justify-content-between align-items-center">
+                                                <span className="text-500">Genre</span>
+                                                <span className="font-semibold">{genderLabel}</span>
+                                            </div>
+                                        )}
+                                        {mp?.dateOfBirth && (
+                                            <div className="flex justify-content-between align-items-center">
+                                                <span className="text-500">Date de naissance</span>
+                                                <span className="font-semibold">{new Date(mp.dateOfBirth).toLocaleDateString('fr-FR')}</span>
+                                            </div>
+                                        )}
+                                        {mp?.placeOfBirth && (
+                                            <div className="flex justify-content-between align-items-center">
+                                                <span className="text-500">Lieu de naissance</span>
+                                                <span className="font-semibold">{mp.placeOfBirth}</span>
+                                            </div>
+                                        )}
+                                        {selectedMember.membershipNumber && (
+                                            <div className="flex justify-content-between align-items-center">
+                                                <span className="text-500">N° Membre</span>
+                                                <span className="font-semibold">{selectedMember.membershipNumber}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Membre depuis</span>
+                                            <span className="font-semibold">{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
                                     </div>
-                                    {selectedMember.client?.email && (
+                                </Card>
+
+                                {/* Document d'identité */}
+                                <Card title="Document d'Identité" className="mb-3">
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">N° Document</span>
+                                            <span className="font-semibold">{mp?.idDocumentNumber || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Date d'émission</span>
+                                            <span className="font-semibold">
+                                                {mp?.idDocumentIssueDate ? new Date(mp.idDocumentIssueDate).toLocaleDateString('fr-FR') : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Date d'expiration</span>
+                                            <span className="font-semibold">
+                                                {mp?.idDocumentExpiryDate ? new Date(mp.idDocumentExpiryDate).toLocaleDateString('fr-FR') : 'N/A'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+
+                            {/* ─── Column 2: Contact, Adresse, Groupe ─── */}
+                            <div className="col-12 md:col-4">
+                                <Card title="Coordonnées" className="mb-3">
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex align-items-center gap-2">
+                                            <i className="pi pi-phone text-primary"></i>
+                                            <span className="text-500 w-8rem">Tél. Principal</span>
+                                            <span className="font-semibold">{mp?.phonePrimary || cl?.phonePrimary || selectedMember.clientPhone || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex align-items-center gap-2">
+                                            <i className="pi pi-phone text-500"></i>
+                                            <span className="text-500 w-8rem">Tél. Secondaire</span>
+                                            <span className="font-semibold">{mp?.phoneSecondary || 'N/A'}</span>
+                                        </div>
                                         <div className="flex align-items-center gap-2">
                                             <i className="pi pi-envelope text-primary"></i>
-                                            <span>{selectedMember.client.email}</span>
+                                            <span className="text-500 w-8rem">Email</span>
+                                            <span className="font-semibold" style={{ wordBreak: 'break-all' }}>{mp?.email || cl?.email || 'N/A'}</span>
                                         </div>
-                                    )}
-                                    <div className="flex align-items-center gap-2">
-                                        <i className="pi pi-calendar text-primary"></i>
-                                        <span>Membre depuis le {selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                     </div>
-                                    {selectedMember.membershipNumber && (
-                                        <div className="flex align-items-center gap-2">
-                                            <i className="pi pi-id-card text-primary"></i>
-                                            <span>N° {selectedMember.membershipNumber}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-                        </div>
+                                </Card>
 
-                        {/* Middle Column - Financial Info */}
-                        <div className="col-12 md:col-4">
-                            <Card title="Informations Financières" className="mb-3">
-                                <div className="flex flex-column gap-3">
-                                    <div className="flex justify-content-between align-items-center">
-                                        <span className="text-500">Contribution de Part</span>
-                                        <span className="font-bold text-lg text-primary">
-                                            {selectedMember.shareContribution ? `${selectedMember.shareContribution.toLocaleString('fr-FR')} BIF` : '0 BIF'}
-                                        </span>
-                                    </div>
-                                    <Divider className="my-1" />
-                                    <div className="flex justify-content-between align-items-center">
-                                        <span className="text-500">Total Contributions</span>
-                                        <span className="font-bold text-lg text-green-600">
-                                            {selectedMember.totalContributions ? `${selectedMember.totalContributions.toLocaleString('fr-FR')} BIF` : '0 BIF'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            <Card title="Statut" className="mb-3">
-                                <div className="flex flex-column gap-3">
-                                    <div className="flex justify-content-between align-items-center">
-                                        <span className="text-500">État Actuel</span>
-                                        {memberStatusTemplate(selectedMember)}
-                                    </div>
-                                    {selectedMember.statusReason && (
-                                        <div>
-                                            <span className="text-500 text-sm">Raison:</span>
-                                            <p className="m-0 mt-1 text-600 text-sm">{selectedMember.statusReason}</p>
-                                        </div>
-                                    )}
-                                    {selectedMember.statusChangedAt && (
-                                        <div className="flex justify-content-between align-items-center">
-                                            <span className="text-500">Dernière modification</span>
-                                            <span className="font-semibold">{new Date(selectedMember.statusChangedAt).toLocaleDateString('fr-FR')}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Right Column - Exit Info & Notes */}
-                        <div className="col-12 md:col-4">
-                            {(selectedMember.exitDate || selectedMember.exitType || selectedMember.exitReason) && (
-                                <Card className="mb-3 bg-red-50">
-                                    <div className="flex align-items-center gap-2 mb-3">
-                                        <i className="pi pi-sign-out text-red-500 text-xl"></i>
-                                        <span className="font-bold text-red-600">Informations de Sortie</span>
-                                    </div>
+                                <Card title="Adresse" className="mb-3">
                                     <div className="flex flex-column gap-2">
-                                        {selectedMember.exitDate && (
-                                            <div className="flex justify-content-between">
-                                                <span className="text-500">Date de Sortie</span>
-                                                <span className="font-semibold text-red-600">{new Date(selectedMember.exitDate).toLocaleDateString('fr-FR')}</span>
+                                        {mp?.streetAddress && (
+                                            <div className="flex justify-content-between align-items-start">
+                                                <span className="text-500">Rue / Quartier</span>
+                                                <span className="font-semibold text-right" style={{ maxWidth: '60%' }}>{mp.streetAddress}</span>
                                             </div>
                                         )}
-                                        {selectedMember.exitType && (
-                                            <div className="flex justify-content-between">
-                                                <span className="text-500">Type de Sortie</span>
-                                                <Tag
-                                                    value={
-                                                        selectedMember.exitType === 'VOLUNTARY_WITHDRAWAL' ? 'Retrait Volontaire' :
-                                                        selectedMember.exitType === 'EXCLUSION' ? 'Exclusion' :
-                                                        selectedMember.exitType === 'TRANSFER' ? 'Transfert' :
-                                                        selectedMember.exitType === 'GROUP_DISSOLUTION' ? 'Dissolution Groupe' : selectedMember.exitType
-                                                    }
-                                                    severity="danger"
-                                                />
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Province</span>
+                                            <span className="font-semibold">{memberLocationNames.province || (mp?.provinceId ? '...' : 'N/A')}</span>
+                                        </div>
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Commune</span>
+                                            <span className="font-semibold">{memberLocationNames.commune || (mp?.communeId ? '...' : 'N/A')}</span>
+                                        </div>
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Zone</span>
+                                            <span className="font-semibold">{memberLocationNames.zone || (mp?.zoneId ? '...' : 'N/A')}</span>
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                <Card title="Participation au Groupe" className="mb-3">
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Rôle</span>
+                                            <div className="flex align-items-center gap-1">
+                                                <span className="font-semibold">{selectedMember.role?.name || selectedMember.roleName || 'N/A'}</span>
+                                                {(selectedMember.isExecutive || selectedMember.role?.isExecutive) && (
+                                                    <Tag value="Exécutif" severity="warning" className="text-xs" />
+                                                )}
                                             </div>
-                                        )}
-                                        {selectedMember.exitReason && (
-                                            <div className="mt-2">
-                                                <span className="text-500">Raison:</span>
-                                                <p className="m-0 mt-1 text-red-600 text-sm">{selectedMember.exitReason}</p>
+                                        </div>
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Date d'Adhésion</span>
+                                            <span className="font-semibold">{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
+                                        {selectedMember.approvedAt && (
+                                            <div className="flex justify-content-between align-items-center">
+                                                <span className="text-500">Approuvé le</span>
+                                                <span className="font-semibold">{new Date(selectedMember.approvedAt).toLocaleDateString('fr-FR')}</span>
                                             </div>
                                         )}
                                     </div>
                                 </Card>
-                            )}
+                            </div>
 
-                            <Card title="Dates Clés" className="mb-3">
-                                <div className="flex flex-column gap-2">
-                                    <div className="flex justify-content-between">
-                                        <span className="text-500">Date d'Adhésion</span>
-                                        <span className="font-semibold">{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                            {/* ─── Column 3: Finances, Statut, Historique ─── */}
+                            <div className="col-12 md:col-4">
+                                <Card title="Informations Financières" className="mb-3">
+                                    <div className="flex flex-column gap-3">
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Contribution de Part</span>
+                                            <span className="font-bold text-lg text-primary">
+                                                {selectedMember.shareContribution ? `${selectedMember.shareContribution.toLocaleString('fr-FR')} BIF` : '0 BIF'}
+                                            </span>
+                                        </div>
+                                        <Divider className="my-1" />
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">Total Contributions</span>
+                                            <span className="font-bold text-lg text-green-600">
+                                                {selectedMember.totalContributions ? `${selectedMember.totalContributions.toLocaleString('fr-FR')} BIF` : '0 BIF'}
+                                            </span>
+                                        </div>
                                     </div>
-                                    {selectedMember.approvedAt && (
+                                </Card>
+
+                                <Card title="Statut" className="mb-3">
+                                    <div className="flex flex-column gap-3">
+                                        <div className="flex justify-content-between align-items-center">
+                                            <span className="text-500">État Actuel</span>
+                                            {memberStatusTemplate(selectedMember)}
+                                        </div>
+                                        {selectedMember.statusReason && (
+                                            <div>
+                                                <span className="text-500 text-sm">Raison:</span>
+                                                <p className="m-0 mt-1 text-600 text-sm">{selectedMember.statusReason}</p>
+                                            </div>
+                                        )}
+                                        {selectedMember.statusChangedAt && (
+                                            <div className="flex justify-content-between align-items-center">
+                                                <span className="text-500">Dernière modification</span>
+                                                <span className="font-semibold">{new Date(selectedMember.statusChangedAt).toLocaleDateString('fr-FR')}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+
+                                {(selectedMember.exitDate || selectedMember.exitType || selectedMember.exitReason) && (
+                                    <Card className="mb-3 bg-red-50">
+                                        <div className="flex align-items-center gap-2 mb-3">
+                                            <i className="pi pi-sign-out text-red-500 text-xl"></i>
+                                            <span className="font-bold text-red-600">Informations de Sortie</span>
+                                        </div>
+                                        <div className="flex flex-column gap-2">
+                                            {selectedMember.exitDate && (
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Date de Sortie</span>
+                                                    <span className="font-semibold text-red-600">{new Date(selectedMember.exitDate).toLocaleDateString('fr-FR')}</span>
+                                                </div>
+                                            )}
+                                            {selectedMember.exitType && (
+                                                <div className="flex justify-content-between">
+                                                    <span className="text-500">Type</span>
+                                                    <Tag
+                                                        value={
+                                                            selectedMember.exitType === 'VOLUNTARY_WITHDRAWAL' ? 'Retrait Volontaire' :
+                                                            selectedMember.exitType === 'EXCLUSION' ? 'Exclusion' :
+                                                            selectedMember.exitType === 'TRANSFER' ? 'Transfert' :
+                                                            selectedMember.exitType === 'GROUP_DISSOLUTION' ? 'Dissolution Groupe' : selectedMember.exitType
+                                                        }
+                                                        severity="danger"
+                                                    />
+                                                </div>
+                                            )}
+                                            {selectedMember.exitReason && (
+                                                <div className="mt-2">
+                                                    <span className="text-500">Raison:</span>
+                                                    <p className="m-0 mt-1 text-red-600 text-sm">{selectedMember.exitReason}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Card>
+                                )}
+
+                                <Card title="Dates Clés" className="mb-3">
+                                    <div className="flex flex-column gap-2">
                                         <div className="flex justify-content-between">
-                                            <span className="text-500">Date d'Approbation</span>
-                                            <span className="font-semibold">{new Date(selectedMember.approvedAt).toLocaleDateString('fr-FR')}</span>
+                                            <span className="text-500">Adhésion</span>
+                                            <span className="font-semibold">{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        </div>
+                                        {selectedMember.approvedAt && (
+                                            <div className="flex justify-content-between">
+                                                <span className="text-500">Approbation</span>
+                                                <span className="font-semibold">{new Date(selectedMember.approvedAt).toLocaleDateString('fr-FR')}</span>
+                                            </div>
+                                        )}
+                                        {selectedMember.createdAt && (
+                                            <div className="flex justify-content-between">
+                                                <span className="text-500">Créé le</span>
+                                                <span className="font-semibold">{new Date(selectedMember.createdAt).toLocaleDateString('fr-FR')}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+
+                                {selectedMember.notes && (
+                                    <Card title="Notes" className="mb-3">
+                                        <p className="m-0 text-600 line-height-3">{selectedMember.notes}</p>
+                                    </Card>
+                                )}
+
+                                {selectedMember.userAction && (
+                                    <Card title="Informations de Création">
+                                        <div className="flex align-items-center gap-2">
+                                            <i className="pi pi-user text-primary"></i>
+                                            <span className="text-500">Ajouté par:</span>
+                                            <span className="font-semibold text-primary">{selectedMember.userAction}</span>
+                                        </div>
+                                    </Card>
+                                )}
+                            </div>
+
+                            {/* ─── Documents Row (full width) ─── */}
+                            <div className="col-12 mt-2">
+                                <Card title="Documents Joints">
+                                    {docsLoading ? (
+                                        <div className="text-center py-3">
+                                            <i className="pi pi-spin pi-spinner text-2xl text-primary"></i>
+                                        </div>
+                                    ) : memberDocuments.length === 0 ? (
+                                        <div className="text-center py-3">
+                                            <i className="pi pi-file text-3xl text-300 mb-2" style={{ display: 'block' }}></i>
+                                            <span className="text-500">Aucun document joint</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-3">
+                                            {memberDocuments.map((doc, idx) => {
+                                                const isImage = doc.fileMimeType?.startsWith('image/') ||
+                                                    !!doc.filePath?.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+                                                const docLabel = doc.documentType === 'ESPACE_HUMAINE' ? 'Espace Humaine'
+                                                    : doc.documentType === 'ID_CARTE' ? "Carte d'Identité"
+                                                    : doc.documentType || 'Document';
+                                                const fileUrl = doc.filePath
+                                                    ? buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(doc.filePath)}`)
+                                                    : '';
+                                                return (
+                                                    <div key={idx} className="surface-100 border-round p-3 flex flex-column align-items-center gap-2" style={{ minWidth: '180px', maxWidth: '220px' }}>
+                                                        <Tag value={docLabel} severity="info" />
+                                                        {isImage && fileUrl ? (
+                                                            <Image
+                                                                src={fileUrl}
+                                                                alt={docLabel}
+                                                                width="160"
+                                                                preview
+                                                                imageClassName="border-round shadow-1"
+                                                            />
+                                                        ) : fileUrl ? (
+                                                            <Button
+                                                                icon="pi pi-eye"
+                                                                label="Voir"
+                                                                className="p-button-outlined p-button-info w-full"
+                                                                onClick={() => window.open(fileUrl, '_blank')}
+                                                                size="small"
+                                                            />
+                                                        ) : null}
+                                                        {doc.fileName && (
+                                                            <small className="text-500 text-center text-xs" style={{ wordBreak: 'break-all' }}>
+                                                                {doc.fileName}
+                                                            </small>
+                                                        )}
+                                                        {doc.uploadedAt && (
+                                                            <small className="text-400 text-xs">
+                                                                {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
+                                                            </small>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
-                                    {selectedMember.createdAt && (
-                                        <div className="flex justify-content-between">
-                                            <span className="text-500">Créé le</span>
-                                            <span className="font-semibold">{new Date(selectedMember.createdAt).toLocaleDateString('fr-FR')}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-
-                            {selectedMember.notes && (
-                                <Card title="Notes" className="mb-3">
-                                    <p className="m-0 text-600 line-height-3">{selectedMember.notes}</p>
                                 </Card>
-                            )}
-
-                            {/* Créé par */}
-                            {selectedMember.userAction && (
-                                <Card title="Informations de Création">
-                                    <div className="flex align-items-center gap-2">
-                                        <i className="pi pi-user text-primary"></i>
-                                        <span className="text-500">Ajouté par:</span>
-                                        <span className="font-semibold text-primary">{selectedMember.userAction}</span>
-                                    </div>
-                                </Card>
-                            )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
                 <Divider className="mt-3 mb-3" />
                 <div className="flex justify-content-end gap-2">
                     <Button
@@ -1483,6 +1806,120 @@ function SolidarityGroupComponent() {
                         }}
                     />
                 </div>
+            </Dialog>
+
+            {/* Change Member Status Dialog */}
+            <Dialog
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-sync text-xl text-orange-500"></i>
+                        <span>Changer le Statut du Membre</span>
+                    </div>
+                }
+                visible={changeStatusDialog}
+                style={{ width: '450px' }}
+                modal
+                onHide={() => {
+                    setChangeStatusDialog(false);
+                    setMemberForStatusChange(null);
+                    setNewMemberStatus('');
+                    setStatusChangeReason('');
+                }}
+            >
+                {memberForStatusChange && (
+                    <div className="flex flex-column gap-3">
+                        <div className="surface-100 border-round p-3">
+                            <div className="font-semibold">
+                                {memberForStatusChange.client
+                                    ? `${(memberForStatusChange.client as any).firstName || ''} ${(memberForStatusChange.client as any).lastName || ''}`.trim()
+                                    : memberForStatusChange.memberProfile
+                                        ? `${memberForStatusChange.memberProfile.firstName || ''} ${memberForStatusChange.memberProfile.lastName || ''}`.trim()
+                                        : memberForStatusChange.clientName || 'N/A'}
+                            </div>
+                            <div className="flex align-items-center gap-2 mt-1">
+                                <span className="text-500 text-sm">Statut actuel:</span>
+                                {memberStatusTemplate(memberForStatusChange)}
+                            </div>
+                        </div>
+                        <div className="field">
+                            <label className="font-semibold mb-2 block">Nouveau Statut *</label>
+                            <Dropdown
+                                value={newMemberStatus}
+                                onChange={(e) => setNewMemberStatus(e.value)}
+                                options={[
+                                    { label: 'En Attente', value: 'PENDING' },
+                                    { label: 'Actif', value: 'ACTIVE' },
+                                    { label: 'Suspendu', value: 'SUSPENDED' },
+                                    { label: 'Retiré', value: 'WITHDRAWN' },
+                                    { label: 'Exclu', value: 'EXCLUDED' },
+                                ]}
+                                placeholder="Sélectionner un statut"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="field">
+                            <label className="font-semibold mb-2 block">Raison</label>
+                            <InputTextarea
+                                value={statusChangeReason}
+                                onChange={(e) => setStatusChangeReason(e.target.value)}
+                                rows={3}
+                                placeholder="Motif du changement de statut..."
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="flex justify-content-end gap-2">
+                            <Button
+                                label="Annuler"
+                                icon="pi pi-times"
+                                severity="secondary"
+                                onClick={() => {
+                                    setChangeStatusDialog(false);
+                                    setMemberForStatusChange(null);
+                                    setNewMemberStatus('');
+                                    setStatusChangeReason('');
+                                }}
+                            />
+                            <Button
+                                label="Confirmer"
+                                icon="pi pi-check"
+                                loading={memberLoading}
+                                onClick={handleStatusChange}
+                                disabled={!newMemberStatus}
+                            />
+                        </div>
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Edit Member Dialog */}
+            <Dialog
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-user-edit text-xl text-primary"></i>
+                        <span>Modifier le Membre</span>
+                    </div>
+                }
+                visible={editMemberDialog}
+                style={{ width: '75vw', maxWidth: '950px' }}
+                modal
+                onHide={() => {
+                    setEditMemberDialog(false);
+                    setMemberForEdit(null);
+                    setMemberEditInitialData(undefined);
+                }}
+                maximizable
+            >
+                <AddGroupMemberForm
+                    loading={memberLoading}
+                    onAdd={handleMemberProfileUpdate}
+                    onCancel={() => {
+                        setEditMemberDialog(false);
+                        setMemberForEdit(null);
+                        setMemberEditInitialData(undefined);
+                    }}
+                    initialData={memberEditInitialData}
+                    editMode
+                />
             </Dialog>
 
             <div className="card">
@@ -1601,8 +2038,28 @@ function SolidarityGroupComponent() {
                                     >
                                         <Column header="Groupe" body={groupNameTemplate} sortable sortField="groupName" style={{ minWidth: '220px' }} />
                                         <Column header="Membres" body={memberCountTemplate} style={{ minWidth: '100px' }} />
-                                        <Column header="Fréquence" body={frequencyTemplate} style={{ minWidth: '120px' }} />
-                                        <Column field="meetingLocation" header="Lieu de Réunion" style={{ minWidth: '150px' }} />
+                                        <Column
+                                            header="Agence"
+                                            body={(row: SolidarityGroup) => (row as any).branch?.name || '-'}
+                                            style={{ minWidth: '120px' }}
+                                        />
+                                        <Column
+                                            header="Adresse"
+                                            body={(row: SolidarityGroup) => {
+                                                const parts = [
+                                                    (row as any).province?.name,
+                                                    (row as any).commune?.name,
+                                                    (row as any).zone?.name
+                                                ].filter(Boolean);
+                                                return parts.length > 0
+                                                    ? <div className="flex flex-column gap-1">
+                                                        {(row as any).province?.name && <span className="text-sm"><i className="pi pi-map-marker text-xs mr-1 text-500" />{(row as any).province.name}</span>}
+                                                        {(row as any).commune?.name && <span className="text-xs text-500">{(row as any).commune.name}{(row as any).zone?.name ? ` / ${(row as any).zone.name}` : ''}</span>}
+                                                      </div>
+                                                    : <span className="text-400">-</span>;
+                                            }}
+                                            style={{ minWidth: '160px' }}
+                                        />
                                         <Column header="Statut" body={statusBodyTemplate} sortable style={{ minWidth: '110px' }} />
                                         <Column field="userAction" header="Créé par" style={{ minWidth: '120px' }} />
                                         <Column

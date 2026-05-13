@@ -20,7 +20,7 @@ interface PrintableEngagementReceiptProps {
 }
 
 const PrintableEngagementReceipt = forwardRef<HTMLDivElement, PrintableEngagementReceiptProps>(
-    ({ request, savingsAccount, credits, companyName = "AGRINOVA MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ request, savingsAccount, credits, companyName = "AGRINOVA MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
         const formatCurrency = (value: number | undefined | null) => {
             if (value === undefined || value === null) return '0 FBU';

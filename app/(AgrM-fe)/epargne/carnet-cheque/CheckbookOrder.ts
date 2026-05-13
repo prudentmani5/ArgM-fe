@@ -39,6 +39,8 @@ export interface CheckbookOrder {
     deliveredToName?: string;
     pieceId?: string;
     closingVerified?: boolean;
+    firstCheckNumber?: number;
+    lastCheckNumber?: number;
     caisseId?: number;
     userAction?: string;
     createdAt?: string;
@@ -77,6 +79,8 @@ export class CheckbookOrderClass implements CheckbookOrder {
     deliveredToName?: string;
     pieceId?: string;
     closingVerified?: boolean;
+    firstCheckNumber?: number;
+    lastCheckNumber?: number;
     caisseId?: number;
     userAction?: string;
     createdAt?: string;

@@ -15,6 +15,7 @@ import { Toolbar } from 'primereact/toolbar';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { Divider } from 'primereact/divider';
 import Cookies from 'js-cookie';
 
 import useConsumApi, { getUserAction } from '../../../../hooks/fetchData/useConsumApi';
@@ -119,11 +120,14 @@ function CaissePage() {
     const [billetageCaisse, setBilletageCaisse] = useState<CptCaisse | null>(null);
     const [billetageCount, setBilletageCount] = useState<CptCashCount>(new CptCashCount());
     const [billetageOperationType, setBilletageOperationType] = useState<string>('');
+    const [billetageContrepartieAccount, setBilletageContrepartieAccount] = useState<any>(null);
+    const [billetageOperationMontant, setBilletageOperationMontant] = useState<number>(0);
 
     // Tab 6: Billetage details per caisse
     const [billetageDetails, setBilletageDetails] = useState<{ [caisseId: string]: CptCashCount | null }>({});
     const [billetageDetailsLoading, setBilletageDetailsLoading] = useState(false);
     const [billetageDetailCaisse, setBilletageDetailCaisse] = useState<CptCaisse | null>(null);
+    const [internalBilletageDetails, setInternalBilletageDetails] = useState<{ [accountId: string]: CptCashCount | null }>({});
 
     // Tab 7: Historique Transferts
     const [transferHistory, setTransferHistory] = useState<VirementInterne[]>([]);
@@ -157,6 +161,7 @@ function CaissePage() {
     const { data: virementData, loading: virementLoading, error: virementError, fetchData: fetchVirement, callType: virementCallType } = useConsumApi('');
     const { data: internalAccountsData, fetchData: fetchInternalAccounts, callType: internalAccountsCallType } = useConsumApi('');
     const { data: billetageData, loading: billetageLoading, error: billetageError, fetchData: fetchBilletage, callType: billetageCallType } = useConsumApi('');
+    const { fetchData: fetchBilletageIA } = useConsumApi('');
     // billetageDetail hook removed — loadAllBilletageDetails now uses direct fetch with Promise.all
     const { data: transferHistoryData, loading: transferHistoryLoading, fetchData: fetchTransferHistory, callType: transferHistoryCallType } = useConsumApi('');
     const { data: pendingData, fetchData: fetchPending, callType: pendingCallType } = useConsumApi('');
@@ -369,6 +374,9 @@ function CaissePage() {
                 setBilletageCaisse(updatedCaisse);
                 setBilletageOperationType(opLabel);
                 setBilletageCount(new CptCashCount());
+                // Capture contrepartie internal account and operation amount before state is cleared
+                setBilletageContrepartieAccount(getSelectedInternalAccount());
+                setBilletageOperationMontant(operationMontant);
                 setBilletageVisible(true);
             }
             setOperationMontant(0);
@@ -397,6 +405,8 @@ function CaissePage() {
             setBilletageVisible(false);
             setBilletageCaisse(null);
             setBilletageCount(new CptCashCount());
+            setBilletageContrepartieAccount(null);
+            setBilletageOperationMontant(0);
         }
         if (billetageError && billetageCallType === 'saveBilletage') {
             toast.current?.show({ severity: 'error', summary: 'Erreur', detail: billetageError.message || 'Erreur lors du billetage', life: 5000 });
@@ -546,7 +556,7 @@ function CaissePage() {
     };
 
     // Credit/Debit handlers
-    const handleCredit = () => {
+    const handleCredit = async () => {
         if (!operationCaisse || !operationMontant || !operationContrepartie) {
             toast.current?.show({ severity: 'warn', summary: 'Attention', detail: 'Veuillez selectionner une caisse, saisir le montant et le compte de contrepartie', life: 3000 });
             return;
@@ -565,6 +575,31 @@ function CaissePage() {
                 return;
             }
         }
+
+        // Check if internal account has an existing billetage and if it matches the operation amount
+        let iaBilletageStatus = '';
+        if (ia?.accountId) {
+            try {
+                const token = Cookies.get('token');
+                const res = await fetch(`${INTERNAL_ACCOUNTS_URL}/billetage/latest/${ia.accountId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok && res.status !== 204) {
+                    const existingBilletage = await res.json();
+                    const billetageTotal = existingBilletage.totalPhysique || 0;
+                    if (Math.abs(billetageTotal - operationMontant) < 0.01) {
+                        iaBilletageStatus = `✅ Billetage ${ia.codeCompte}: ${formatNumber(billetageTotal)} FBu — correspond au montant\n\n`;
+                    } else {
+                        iaBilletageStatus = `⚠️ Billetage ${ia.codeCompte}: ${formatNumber(billetageTotal)} FBu — ne correspond pas au montant (${formatNumber(operationMontant)} FBu)\n\n`;
+                    }
+                } else {
+                    iaBilletageStatus = `⚠️ Aucun billetage enregistre pour ${ia.codeCompte}\n\n`;
+                }
+            } catch {
+                // Ignore fetch errors — proceed without billetage check
+            }
+        }
+
         const isClosed = operationCaisse.status !== 'OPEN';
         const creditLabel = isClosed ? 'Dotation initiale (Virement comptable)' : 'Approvisionnement';
         const soldeCaisse = operationCaisse.soldeActuel ?? 0;
@@ -573,6 +608,7 @@ function CaissePage() {
             message: `${creditLabel} de la caisse "${operationCaisse.codeCaisse}" de ${formatNumber(operationMontant)} FBu.\n\n` +
                 `--- Caisse ---\nSolde actuel: ${formatNumber(soldeCaisse)} FBu\nSolde apres: ${formatNumber(soldeCaisse + operationMontant)} FBu\n\n` +
                 (ia ? `--- Compte Interne (${ia.codeCompte}) ---\nSolde actuel: ${formatNumber(iaSolde)} FBu\nSolde apres: ${formatNumber((iaSolde ?? 0) - operationMontant)} FBu\n\n` : `Compte contrepartie: ${operationContrepartie}\n\n`) +
+                iaBilletageStatus +
                 (isClosed ? 'Note: La caisse est fermee. Ce virement servira de dotation initiale.\n\n' : '') +
                 'Confirmer ?',
             header: `Confirmation - ${creditLabel}`,
@@ -721,23 +757,48 @@ function CaissePage() {
             return;
         }
         const dataToSend = { ...billetageCount, userAction: getUserAction() };
+        // Save caisse billetage
         fetchBilletage(dataToSend, 'POST', `${BASE_URL}/billetage/${billetageCaisse.caisseId}`, 'saveBilletage');
+        // Update internal account (source) billetage: subtract what moved, keep what remains
+        if (billetageContrepartieAccount?.accountId) {
+            const token = Cookies.get('token');
+            const iaId = billetageContrepartieAccount.accountId;
+            fetch(`${INTERNAL_ACCOUNTS_URL}/billetage/latest/${iaId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).then(async res => {
+                if (res.ok && res.status !== 204) {
+                    const existing = await res.json();
+                    // Subtract moved denominations from existing IA billetage
+                    const remaining: any = { userAction: getUserAction() };
+                    DENOMINATIONS.forEach(d => {
+                        const moved = (billetageCount as any)[d.field] || 0;
+                        const had = (existing as any)[d.field] || 0;
+                        remaining[d.field] = Math.max(0, had - moved);
+                    });
+                    fetchBilletageIA(remaining, 'POST', `${INTERNAL_ACCOUNTS_URL}/billetage/${iaId}`, 'saveBilletageIA');
+                }
+                // No existing billetage → nothing to subtract, skip
+            }).catch(() => { /* ignore network errors */ });
+        }
     };
 
     const handleSkipBilletage = () => {
         setBilletageVisible(false);
         setBilletageCaisse(null);
         setBilletageCount(new CptCashCount());
+        setBilletageContrepartieAccount(null);
+        setBilletageOperationMontant(0);
     };
 
-    // Load latest billetage for all active caisses
+    // Load latest billetage for all active caisses and internal accounts
     const loadAllBilletageDetails = async () => {
         const activeCaisses = caisses.filter(c => c.actif);
-        if (activeCaisses.length === 0) return;
         setBilletageDetailsLoading(true);
         try {
             const token = Cookies.get('token');
-            const results: { [caisseId: string]: CptCashCount | null } = {};
+
+            // Caisses billetage
+            const caisseResults: { [caisseId: string]: CptCashCount | null } = {};
             await Promise.all(activeCaisses.map(async (c) => {
                 try {
                     const res = await fetch(`${BASE_URL}/billetage/latest/${c.caisseId}`, {
@@ -746,18 +807,41 @@ function CaissePage() {
                     if (res.ok && res.status !== 204) {
                         const text = await res.text();
                         if (text && text.trim()) {
-                            results[String(c.caisseId)] = JSON.parse(text) as CptCashCount;
+                            caisseResults[String(c.caisseId)] = JSON.parse(text) as CptCashCount;
                         } else {
-                            results[String(c.caisseId)] = null;
+                            caisseResults[String(c.caisseId)] = null;
                         }
                     } else {
-                        results[String(c.caisseId)] = null;
+                        caisseResults[String(c.caisseId)] = null;
                     }
                 } catch {
-                    results[String(c.caisseId)] = null;
+                    caisseResults[String(c.caisseId)] = null;
                 }
             }));
-            setBilletageDetails(results);
+            setBilletageDetails(caisseResults);
+
+            // Internal accounts billetage
+            const iaResults: { [accountId: string]: CptCashCount | null } = {};
+            await Promise.all(internalAccounts.map(async (a: any) => {
+                try {
+                    const res = await fetch(`${INTERNAL_ACCOUNTS_URL}/billetage/latest/${a.accountId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok && res.status !== 204) {
+                        const text = await res.text();
+                        if (text && text.trim()) {
+                            iaResults[String(a.accountId)] = JSON.parse(text) as CptCashCount;
+                        } else {
+                            iaResults[String(a.accountId)] = null;
+                        }
+                    } else {
+                        iaResults[String(a.accountId)] = null;
+                    }
+                } catch {
+                    iaResults[String(a.accountId)] = null;
+                }
+            }));
+            setInternalBilletageDetails(iaResults);
         } catch (e) {
             console.error('Error loading billetage details:', e);
         } finally {
@@ -2424,6 +2508,83 @@ function CaissePage() {
                         </div>
                     )}
 
+                    {/* Internal Accounts Billetage — shown first */}
+                    {Object.keys(internalBilletageDetails).length > 0 && (() => {
+                        const accountsWithBilletage = internalAccounts.filter((a: any) =>
+                            internalBilletageDetails[String(a.accountId)] != null
+                        );
+                        if (accountsWithBilletage.length === 0) return null;
+                        return (
+                            <div className="mb-4">
+                                <h4 className="m-0 mb-3 flex align-items-center gap-2" style={{ color: '#00695C' }}>
+                                    <i className="pi pi-building-columns"></i>
+                                    Comptes Internes
+                                    <Tag value={String(accountsWithBilletage.length)} severity="success" className="ml-2" />
+                                </h4>
+                                <div className="grid">
+                                    {accountsWithBilletage.map((a: any) => {
+                                        const detail = internalBilletageDetails[String(a.accountId)];
+                                        const hasBilletage = detail && detail.totalPhysique != null;
+                                        return (
+                                            <div key={a.accountId} className="col-12 md:col-6 lg:col-4">
+                                                <div className="surface-card border-round shadow-1 p-3 h-full" style={{ borderTop: '3px solid #00695C' }}>
+                                                    <div className="flex align-items-center justify-content-between mb-2">
+                                                        <div>
+                                                            <span className="font-bold">{a.accountNumber}</span>
+                                                            <span className="text-500 text-sm ml-2">{a.libelle}</span>
+                                                        </div>
+                                                        <Tag value={a.actif ? 'Actif' : 'Inactif'} severity={a.actif ? 'success' : 'danger'} />
+                                                    </div>
+                                                    {hasBilletage ? (
+                                                        <>
+                                                            <div className="text-xs text-400 mb-2">
+                                                                <i className="pi pi-clock mr-1"></i>
+                                                                {formatDateTime(detail.countDate)}
+                                                                {detail.countedBy && <span> — par {detail.countedBy}</span>}
+                                                            </div>
+                                                            <DataTable
+                                                                value={DENOMINATIONS.filter(d => ((detail as any)[d.field] || 0) > 0)}
+                                                                size="small"
+                                                                showGridlines
+                                                                footer={
+                                                                    <div className="flex justify-content-between">
+                                                                        <span className="font-bold">Total billets</span>
+                                                                        <span className="font-bold text-green-600">{formatNumber(detail.totalPhysique)} FBu</span>
+                                                                    </div>
+                                                                }
+                                                            >
+                                                                <Column header="Denomination" body={(d: any) => (
+                                                                    <span className="text-sm">{formatNumber(d.value)} FBu</span>
+                                                                )} />
+                                                                <Column header="Qte" body={(d: any) => (
+                                                                    <span className="font-semibold">{(detail as any)[d.field] || 0}</span>
+                                                                )} style={{ textAlign: 'center', width: '60px' }} />
+                                                                <Column header="Montant" body={(d: any) => (
+                                                                    <span className="font-bold text-primary">{formatNumber(((detail as any)[d.field] || 0) * d.value)} FBu</span>
+                                                                )} style={{ textAlign: 'right' }} />
+                                                            </DataTable>
+                                                            {detail.notes && (
+                                                                <div className="mt-2 text-sm text-600">
+                                                                    <i className="pi pi-comment mr-1"></i>{detail.notes}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-center p-3 text-400">
+                                                            <i className="pi pi-inbox text-2xl mb-2" style={{ display: 'block' }}></i>
+                                                            <span className="text-sm">Aucun billetage enregistre</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <Divider />
+                            </div>
+                        );
+                    })()}
+
                     {/* Render by caisse level */}
                     {Object.keys(billetageDetails).length > 0 && (() => {
                         const levels = [
@@ -2532,6 +2693,7 @@ function CaissePage() {
                             );
                         });
                     })()}
+
                 </TabPanel>
             </TabView>
 
@@ -2646,7 +2808,7 @@ function CaissePage() {
                             <Dropdown
                                 id="compteComptable"
                                 value={caisse.compteComptable || '571'}
-                                options={comptes.filter(c => c.typeCompte === 0 && c.codeCompte?.startsWith('5'))}
+                                options={comptes}
                                 onChange={(e) => setCaisse(prev => ({ ...prev, compteComptable: e.value }))}
                                 optionValue="codeCompte"
                                 optionLabel="codeCompte"
@@ -2945,6 +3107,15 @@ function CaissePage() {
                                 <span className="font-bold text-blue-600">{formatNumber(billetageCaisse.soldeActuel)} FBu</span>
                             </div>
                         </div>
+
+                        {billetageContrepartieAccount && (
+                            <div className="p-2 border-round mb-3 flex align-items-center gap-2" style={{ background: '#E0F2F1', borderLeft: '3px solid #00695C' }}>
+                                <i className="pi pi-building-columns text-teal-700"></i>
+                                <span className="text-sm text-teal-800">
+                                    Compte interne affecte: <strong>{billetageContrepartieAccount.accountNumber} — {billetageContrepartieAccount.libelle}</strong>
+                                </span>
+                            </div>
+                        )}
 
                         <DataTable value={DENOMINATIONS} size="small" showGridlines
                             footer={

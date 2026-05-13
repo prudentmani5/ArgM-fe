@@ -10,7 +10,7 @@ interface PrintableTermDepositCertificateProps {
 }
 
 const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTermDepositCertificateProps>(
-    ({ account, history, companyName = "AGRINOVA MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ account, history, companyName = "AGRINOVA MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
         const formatCurrency = (value: number | undefined | null) => {
             if (value === undefined || value === null) return '0 BIF';

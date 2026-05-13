@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import PrintableRightsList from './PrintableRightsList';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
@@ -41,6 +42,37 @@ const AppUserRolesPage = () => {
 
     const { data, loading, error, fetchData, callType } = useConsumApi('');
     const toast = useRef<Toast>(null);
+    const printRef = useRef<HTMLDivElement>(null);
+
+    const handlePrintRights = () => {
+        if (!printRef.current) return;
+        const printContent = printRef.current.innerHTML.replace(
+            /src="\/layout\//g,
+            `src="${window.location.origin}/layout/`
+        );
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Tableau des Droits d'Accès — AGRINOVA MICROFINANCE</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #fff; }
+        @page { size: A4 portrait; margin: 0; }
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>${printContent}</body>
+</html>`);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => { printWindow.print(); printWindow.close(); }, 600);
+        }
+    };
 
     // ── Authorities grouping ──
     const groupedAuthorities = useMemo(() => {
@@ -426,21 +458,34 @@ const AppUserRolesPage = () => {
                     <div className="card" style={{ borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
 
                         {/* Page header */}
-                        <div className="flex align-items-center gap-3 mb-4 pb-3" style={{ borderBottom: '2px solid #e2e8f0' }}>
-                            <div
-                                className="flex align-items-center justify-content-center"
-                                style={{
-                                    width: '42px', height: '42px', borderRadius: '10px',
-                                    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                                    color: '#fff', fontSize: '1.2rem'
-                                }}
-                            >
-                                <i className="pi pi-shield" />
+                        <div className="flex align-items-center justify-content-between flex-wrap gap-2 mb-4 pb-3" style={{ borderBottom: '2px solid #e2e8f0' }}>
+                            <div className="flex align-items-center gap-3">
+                                <div
+                                    className="flex align-items-center justify-content-center"
+                                    style={{
+                                        width: '42px', height: '42px', borderRadius: '10px',
+                                        background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                                        color: '#fff', fontSize: '1.2rem'
+                                    }}
+                                >
+                                    <i className="pi pi-shield" />
+                                </div>
+                                <div>
+                                    <h5 className="m-0" style={{ color: '#1e293b', fontWeight: 700 }}>Gestion des Rôles Utilisateurs</h5>
+                                    <p className="m-0 mt-1" style={{ color: '#64748b', fontSize: '0.85rem' }}>Créez et gérez les rôles et leurs autorisations</p>
+                                </div>
                             </div>
-                            <div>
-                                <h5 className="m-0" style={{ color: '#1e293b', fontWeight: 700 }}>Gestion des Rôles Utilisateurs</h5>
-                                <p className="m-0 mt-1" style={{ color: '#64748b', fontSize: '0.85rem' }}>Créez et gérez les rôles et leurs autorisations</p>
-                            </div>
+                            <Button
+                                label="Document officiel des droits"
+                                icon="pi pi-file-pdf"
+                                severity="secondary"
+                                outlined
+                                size="small"
+                                onClick={handlePrintRights}
+                                disabled={authorities.length === 0}
+                                tooltip="Imprimer le tableau officiel de tous les droits d'accès"
+                                tooltipOptions={{ position: 'left' }}
+                            />
                         </div>
 
                         <TabView activeIndex={activeIndex} onTabChange={handleTabChange}>
@@ -613,6 +658,11 @@ const AppUserRolesPage = () => {
                     <Button label="Enregistrer" icon="pi pi-check" onClick={handleUpdate} loading={btnLoading} />
                 </div>
             </Dialog>
+
+            {/* Hidden printable document */}
+            <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+                <PrintableRightsList ref={printRef} authorities={authorities} />
+            </div>
 
             {/* ── Delete Dialog ── */}
             <Dialog

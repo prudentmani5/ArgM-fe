@@ -11,11 +11,12 @@ interface PrintableWithdrawalReceiptProps {
 }
 
 const PrintableWithdrawalReceipt = forwardRef<HTMLDivElement, PrintableWithdrawalReceiptProps>(
-    ({ withdrawal, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ withdrawal, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
+        const slipCurrencyCode = (withdrawal as any).currency?.code || (withdrawal as any).savingsAccount?.currency?.code || 'FBU';
         const formatCurrency = (value: number | undefined) => {
-            if (value === undefined || value === null) return '0 FBU';
-            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+            if (value === undefined || value === null) return `0 ${slipCurrencyCode}`;
+            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + slipCurrencyCode;
         };
 
         const formatDate = (dateString: string | undefined) => {
@@ -33,11 +34,14 @@ const PrintableWithdrawalReceipt = forwardRef<HTMLDivElement, PrintableWithdrawa
             return timeString.substring(0, 5);
         };
 
+        const isGroup = !!(withdrawal as any).solidarityGroup;
         const getClientName = () => {
+            if (isGroup) return (withdrawal as any).solidarityGroup?.groupName || (withdrawal as any).solidarityGroup?.name || '-';
             return getClientDisplayName(withdrawal.client);
         };
 
         const getClientNumber = () => {
+            if (isGroup) return (withdrawal as any).solidarityGroup?.groupCode || '-';
             return withdrawal.client?.clientNumber || '-';
         };
 
@@ -124,11 +128,11 @@ const PrintableWithdrawalReceipt = forwardRef<HTMLDivElement, PrintableWithdrawa
                         <table style={{ width: '100%', fontSize: '11px' }}>
                             <tbody>
                                 <tr>
-                                    <td style={{ padding: '3px 0', color: '#666', width: '45%' }}>Nom du Client:</td>
+                                    <td style={{ padding: '3px 0', color: '#666', width: '45%' }}>{isGroup ? 'Groupe:' : 'Nom du Client:'}</td>
                                     <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{getClientName()}</td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '3px 0', color: '#666' }}>N&deg; Client:</td>
+                                    <td style={{ padding: '3px 0', color: '#666' }}>{isGroup ? 'Code Groupe:' : 'N° Client:'}</td>
                                     <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{getClientNumber()}</td>
                                 </tr>
                                 <tr>

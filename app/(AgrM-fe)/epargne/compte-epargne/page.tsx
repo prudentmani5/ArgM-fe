@@ -14,7 +14,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { FileUpload } from 'primereact/fileupload';
 import Cookies from 'js-cookie';
-import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL, buildApiUrl } from '@/utils/apiConfig';
 import { formatLocalDate } from '@/utils/dateUtils';
 import { SavingsAccount, SavingsAccountClass } from './SavingsAccount';
@@ -30,6 +30,7 @@ const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currenc
 const STATUSES_URL = `${API_BASE_URL}/api/financial-products/reference/savings-account-statuses`;
 const INTERNAL_ACCOUNTS_URL = `${API_BASE_URL}/api/comptability/internal-accounts`;
 const TERM_DURATIONS_URL = `${API_BASE_URL}/api/epargne/term-durations`;
+const GROUPS_URL = `${API_BASE_URL}/api/solidarity-groups`;
 
 // Fallback statuses when API is forbidden (caissier role)
 const FALLBACK_STATUSES = [
@@ -37,6 +38,7 @@ const FALLBACK_STATUSES = [
     { id: 2, code: 'INACTIVE', name: 'Inactive', nameFr: 'Inactif' },
     { id: 3, code: 'DORMANT', name: 'Dormant', nameFr: 'Dormant' },
     { id: 4, code: 'CLOSED', name: 'Closed', nameFr: 'Fermé' },
+    { id: 5, code: 'PENDING_ACTIVATION', name: 'Pending Activation', nameFr: "En attente d'activation" },
 ];
 
 function SavingsAccountPage() {
@@ -92,12 +94,21 @@ function SavingsAccountPage() {
     const validateTermApi = useConsumApi('');
     const maturityApi = useConsumApi('');
     const historyApi = useConsumApi('');
+    const previewInterestApi = useConsumApi('');
+    const processInterestApi = useConsumApi('');
     const [maturityDialog, setMaturityDialog] = useState(false);
     const [maturityAccount, setMaturityAccount] = useState<SavingsAccount | null>(null);
     const [historyDialog, setHistoryDialog] = useState(false);
     const [historyAccount, setHistoryAccount] = useState<SavingsAccount | null>(null);
     const [termDepositHistory, setTermDepositHistory] = useState<any[]>([]);
     const [pendingPrint, setPendingPrint] = useState(false);
+    const [monthlyInterestDialog, setMonthlyInterestDialog] = useState(false);
+    const [monthlyInterestPreview, setMonthlyInterestPreview] = useState<any[]>([]);
+    const [monthlyInterestResult, setMonthlyInterestResult] = useState<any[]>([]);
+    const [monthlyInterestStep, setMonthlyInterestStep] = useState<'preview' | 'result'>('preview');
+    const [isProcessingInterest, setIsProcessingInterest] = useState(false);
+    const [schedulerStatus, setSchedulerStatus] = useState<any>(null);
+    const schedulerStatusApi = useConsumApi('');
     const [documentsDialog, setDocumentsDialog] = useState(false);
     const [documentsAccount, setDocumentsAccount] = useState<SavingsAccount | null>(null);
     const [accountDocuments, setAccountDocuments] = useState<any[]>([]);
@@ -108,9 +119,20 @@ function SavingsAccountPage() {
     const [loadingDocs, setLoadingDocs] = useState(false);
     const fileUploadRef = useRef<FileUpload>(null);
 
+    // Group savings accounts
+    const [solidarityGroups, setSolidarityGroups] = useState<any[]>([]);
+    const [groupAccount, setGroupAccount] = useState<SavingsAccount>(new SavingsAccountClass());
+    const [groupAccounts, setGroupAccounts] = useState<SavingsAccount[]>([]);
+    const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
+    const [groupActiveIndex, setGroupActiveIndex] = useState(0);
+    const groupsApi = useConsumApi('');
+    const groupAccountsApi = useConsumApi('');
+    const groupActionsApi = useConsumApi('');
+
     useEffect(() => {
         loadReferenceData();
         loadSavingsAccounts();
+        loadGroupAccounts();
     }, []);
 
     // Handle clients data
@@ -201,7 +223,7 @@ function SavingsAccountPage() {
                     showToast('success', 'Succès', 'Compte d\'épargne créé avec succès');
                     {
                         const type = savingsAccount.accountType;
-                        const tabIndex = type === 'TERM_DEPOSIT' ? 2 : type === 'BLOCKED' ? 3 : 1;
+                        const tabIndex = type === 'TERM_DEPOSIT' ? 2 : type === 'BLOCKED' ? 4 : 1;
                         resetForm();
                         loadSavingsAccounts();
                         setActiveIndex(tabIndex);
@@ -212,7 +234,7 @@ function SavingsAccountPage() {
                     showToast('success', 'Succès', 'Compte d\'épargne mis à jour avec succès');
                     {
                         const type = savingsAccount.accountType;
-                        const tabIndex = type === 'TERM_DEPOSIT' ? 2 : type === 'BLOCKED' ? 3 : 1;
+                        const tabIndex = type === 'TERM_DEPOSIT' ? 2 : type === 'BLOCKED' ? 4 : 1;
                         resetForm();
                         loadSavingsAccounts();
                         setActiveIndex(tabIndex);
@@ -296,6 +318,60 @@ function SavingsAccountPage() {
         }
     }, [historyApi.data]);
 
+    // Handle scheduler status response
+    useEffect(() => {
+        if (schedulerStatusApi.data) {
+            setSchedulerStatus(schedulerStatusApi.data);
+        }
+    }, [schedulerStatusApi.data]);
+
+    // Handle monthly interest preview response
+    useEffect(() => {
+        if (previewInterestApi.data) {
+            const data = Array.isArray(previewInterestApi.data) ? previewInterestApi.data : [];
+            setMonthlyInterestPreview(data);
+            setMonthlyInterestStep('preview');
+        }
+        if (previewInterestApi.error) {
+            showToast('error', 'Erreur', previewInterestApi.error.message || 'Erreur lors du calcul');
+        }
+    }, [previewInterestApi.data, previewInterestApi.error]);
+
+    // Handle monthly interest process response
+    useEffect(() => {
+        if (processInterestApi.data) {
+            const data = Array.isArray(processInterestApi.data) ? processInterestApi.data : [];
+            setMonthlyInterestResult(data);
+            setMonthlyInterestStep('result');
+            setIsProcessingInterest(false);
+            loadSavingsAccounts();
+            showToast('success', 'Succès', `Intérêts crédités sur ${data.length} compte(s)`);
+        }
+        if (processInterestApi.error) {
+            showToast('error', 'Erreur', processInterestApi.error.message || 'Erreur lors du traitement');
+            setIsProcessingInterest(false);
+        }
+    }, [processInterestApi.data, processInterestApi.error]);
+
+    const openMonthlyInterestDialog = () => {
+        setMonthlyInterestPreview([]);
+        setMonthlyInterestResult([]);
+        setMonthlyInterestStep('preview');
+        setMonthlyInterestDialog(true);
+        previewInterestApi.fetchData(null, 'GET', `${BASE_URL}/preview-monthly-interest`, 'previewInterest');
+        schedulerStatusApi.fetchData(null, 'GET', `${BASE_URL}/monthly-interest-status`, 'schedulerStatus');
+    };
+
+    const handleProcessMonthlyInterest = () => {
+        setIsProcessingInterest(true);
+        processInterestApi.fetchData(
+            { userAction: getUserAction() },
+            'POST',
+            `${BASE_URL}/process-monthly-interest`,
+            'processInterest'
+        );
+    };
+
     // Load documents for a specific savings account
     const loadAccountDocuments = async (accountId: number) => {
         setLoadingDocs(true);
@@ -320,18 +396,70 @@ function SavingsAccountPage() {
         }
     };
 
+    // Handle solidarity groups data
+    useEffect(() => {
+        if (groupsApi.data) {
+            const all = Array.isArray(groupsApi.data) ? groupsApi.data : groupsApi.data.content || [];
+            setSolidarityGroups(all.filter((g: any) => g.status === 'ACTIVE' || g.status === undefined));
+        }
+    }, [groupsApi.data]);
+
+    // Handle group savings accounts data
+    useEffect(() => {
+        if (groupAccountsApi.data) {
+            setGroupAccounts(Array.isArray(groupAccountsApi.data) ? groupAccountsApi.data : []);
+        }
+    }, [groupAccountsApi.data]);
+
+    // Handle group account actions (create/update/delete)
+    useEffect(() => {
+        if (groupActionsApi.data) {
+            switch (groupActionsApi.callType) {
+                case 'createGroup':
+                    showToast('success', 'Succès', 'Compte groupe créé avec succès');
+                    resetGroupForm();
+                    loadGroupAccounts();
+                    setActiveIndex(3);
+                    setGroupActiveIndex(1);
+                    setIsSubmittingGroup(false);
+                    break;
+                case 'updateGroup':
+                    showToast('success', 'Succès', 'Compte groupe mis à jour avec succès');
+                    resetGroupForm();
+                    loadGroupAccounts();
+                    setActiveIndex(3);
+                    setGroupActiveIndex(1);
+                    setIsSubmittingGroup(false);
+                    break;
+                case 'deleteGroup':
+                    showToast('success', 'Succès', 'Compte groupe supprimé avec succès');
+                    loadGroupAccounts();
+                    break;
+            }
+        }
+        if (groupActionsApi.error) {
+            showToast('error', 'Erreur', groupActionsApi.error.message || 'Une erreur est survenue');
+            setIsSubmittingGroup(false);
+        }
+    }, [groupActionsApi.data, groupActionsApi.error, groupActionsApi.callType]);
+
     const loadReferenceData = () => {
         clientsApi.fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
         currenciesApi.fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
         statusesApi.fetchData(null, 'GET', `${STATUSES_URL}/findall`, 'loadStatuses');
-        internalAccountsApi.fetchData(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findall`, 'loadInternalAccounts');
+        internalAccountsApi.fetchData(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findactive`, 'loadInternalAccounts');
         termDurationsApi.fetchData(null, 'GET', `${TERM_DURATIONS_URL}/findall`, 'loadTermDurations');
+        groupsApi.fetchData(null, 'GET', `${GROUPS_URL}/findall`, 'loadGroups');
     };
 
     const loadSavingsAccounts = () => {
         setLoading(true);
         accountsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadAccounts');
+    };
+
+    const loadGroupAccounts = () => {
+        groupAccountsApi.fetchData(null, 'GET', `${BASE_URL}/findallgroup`, 'loadGroupAccounts');
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -425,6 +553,86 @@ function SavingsAccountPage() {
         setSelectedClientType('');
     };
 
+    const handleGroupChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setGroupAccount(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleGroupDropdownChange = (name: string, value: any) => {
+        setGroupAccount(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleGroupDateChange = (name: string, value: Date | null) => {
+        setGroupAccount(prev => ({
+            ...prev,
+            [name]: value ? formatLocalDate(value) : null
+        }));
+    };
+
+    const handleGroupNumberChange = (name: string, value: number | null | undefined) => {
+        setGroupAccount(prev => ({ ...prev, [name]: value ?? 0 }));
+    };
+
+    const validateGroupForm = (): boolean => {
+        if (!groupAccount.solidarityGroupId) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner un groupe de solidarité');
+            return false;
+        }
+        if (!groupAccount.branchId) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner une agence');
+            return false;
+        }
+        if (!groupAccount.currencyId) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner une devise');
+            return false;
+        }
+        return true;
+    };
+
+    const handleGroupSubmit = () => {
+        if (isSubmittingGroup) return;
+        if (!validateGroupForm()) return;
+        setIsSubmittingGroup(true);
+        const payload = { ...groupAccount, userAction: getCurrentUser() };
+        if (groupAccount.id) {
+            groupActionsApi.fetchData(payload, 'PUT', `${BASE_URL}/update/${groupAccount.id}`, 'updateGroup');
+        } else {
+            groupActionsApi.fetchData(payload, 'POST', `${BASE_URL}/new`, 'createGroup');
+        }
+    };
+
+    const resetGroupForm = () => {
+        setGroupAccount(new SavingsAccountClass());
+    };
+
+    const editGroupAccount = (rowData: SavingsAccount) => {
+        setGroupAccount({
+            ...rowData,
+            solidarityGroupId: rowData.solidarityGroup?.id || rowData.solidarityGroupId,
+            branchId: rowData.branch?.id || rowData.branchId,
+            currencyId: rowData.currency?.id || rowData.currencyId,
+            statusId: rowData.status?.id || rowData.statusId,
+            internalAccountId: rowData.internalAccountId || null,
+            termDurationId: rowData.termDuration?.id || rowData.termDurationId || null
+        });
+        setGroupActiveIndex(0);
+        setActiveIndex(3);
+    };
+
+    const confirmDeleteGroupAccount = (rowData: SavingsAccount) => {
+        confirmDialog({
+            message: `Êtes-vous sûr de vouloir supprimer le compte "${rowData.accountNumber}" ?`,
+            header: 'Confirmation de suppression',
+            icon: 'pi pi-exclamation-triangle',
+            acceptClassName: 'p-button-danger',
+            acceptLabel: 'Oui, supprimer',
+            rejectLabel: 'Annuler',
+            accept: () => {
+                groupActionsApi.fetchData(null, 'DELETE', `${BASE_URL}/delete/${rowData.id}`, 'deleteGroup');
+            }
+        });
+    };
+
     const viewAccount = (rowData: SavingsAccount) => {
         // Set IDs from nested objects for proper dropdown display
         setSelectedAccount({
@@ -467,17 +675,19 @@ function SavingsAccountPage() {
 
     const openStatusDialog = (rowData: SavingsAccount) => {
         setStatusChangeAccount(rowData);
-        setNewStatusId(rowData.status?.id || rowData.statusId);
+        setNewStatusId(null);
         setStatusDialog(true);
     };
 
     const handleStatusChange = () => {
         if (!statusChangeAccount || !newStatusId) return;
+        const selectedStatus = statuses.find(s => s.id === newStatusId);
+        if (!selectedStatus?.code) return;
         const currentUser = getCurrentUser();
         statusApi.fetchData(
-            { statusId: newStatusId, userAction: currentUser },
+            { statusCode: selectedStatus.code, userAction: currentUser },
             'PUT',
-            `${BASE_URL}/update/${statusChangeAccount.id}`,
+            `${BASE_URL}/change-status/${statusChangeAccount.id}`,
             'changeStatus'
         );
     };
@@ -998,12 +1208,13 @@ function SavingsAccountPage() {
 
                 <TabPanel header="Liste des Comptes" leftIcon="pi pi-list mr-2">
                     <DataTable
-                        value={savingsAccounts.filter(a => a.accountType !== 'TERM_DEPOSIT' && a.accountType !== 'BLOCKED')}
+                        value={savingsAccounts.filter(a => !a.solidarityGroup && a.accountType !== 'TERM_DEPOSIT' && a.accountType !== 'BLOCKED')}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         loading={loading}
                         globalFilter={globalFilter}
+                        globalFilterFields={['accountNumber', 'client.firstName', 'client.lastName', 'client.businessName', 'branch.name', 'userAction']}
                         header={header}
                         emptyMessage="Aucun compte d'épargne trouvé"
                         stripedRows
@@ -1054,26 +1265,36 @@ function SavingsAccountPage() {
 
                 <TabPanel header="Dépôts à Terme" leftIcon="pi pi-clock mr-2">
                     <DataTable
-                        value={savingsAccounts.filter(a => a.accountType === 'TERM_DEPOSIT')}
+                        value={savingsAccounts.filter(a => !a.solidarityGroup && a.accountType === 'TERM_DEPOSIT')}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         loading={loading}
                         globalFilter={globalFilter}
+                        globalFilterFields={['accountNumber', 'client.firstName', 'client.lastName', 'client.businessName', 'branch.name', 'userAction']}
                         header={
                             <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
                                 <div>
                                     <h5 className="m-0">Comptes Dépôt à Terme</h5>
-                                    <small className="text-500">Opération autorisée: Virement uniquement</small>
+                                    <small className="text-500">Dépôts et retraits autorisés — Intérêts calculés et crédités mensuellement</small>
                                 </div>
-                                <span className="p-input-icon-left">
-                                    <i className="pi pi-search" />
-                                    <InputText
-                                        value={globalFilter}
-                                        onChange={(e) => setGlobalFilter(e.target.value)}
-                                        placeholder="Rechercher..."
+                                <div className="flex gap-2 align-items-center">
+                                    <Button
+                                        label="Calculer Intérêts du Mois"
+                                        icon="pi pi-percentage"
+                                        className="p-button-warning p-button-sm"
+                                        onClick={openMonthlyInterestDialog}
+                                        tooltip="Calculer et créditer les intérêts mensuels sur tous les comptes Dépôt à Terme"
                                     />
-                                </span>
+                                    <span className="p-input-icon-left">
+                                        <i className="pi pi-search" />
+                                        <InputText
+                                            value={globalFilter}
+                                            onChange={(e) => setGlobalFilter(e.target.value)}
+                                            placeholder="Rechercher..."
+                                        />
+                                    </span>
+                                </div>
                             </div>
                         }
                         emptyMessage="Aucun compte dépôt à terme trouvé"
@@ -1091,18 +1312,10 @@ function SavingsAccountPage() {
                             body={(row) => row.client ? (row.client.businessName || `${row.client.firstName || ''} ${row.client.lastName || ''}`.trim() || '-') : '-'}
                         />
                         <Column field="branch.name" header="Agence" sortable />
-                        <Column
-                            header="Durée"
-                            sortable
-                            sortField="termDuration.nameFr"
-                            body={(row) => row.termDuration ? `${row.termDuration.nameFr} (${row.termDuration.months} mois)` : '-'}
-                        />
-                        <Column header="Solde / Bloqué" body={balanceBodyTemplate} sortable sortField="currentBalance" />
+                        <Column header="Solde Actuel" body={balanceBodyTemplate} sortable sortField="currentBalance" />
                         <Column field="interestRate" header="Taux (%)" sortable body={(row) => `${(row.interestRate || 0).toFixed(2)} %`} />
-                        <Column field="termStartDate" header="Début" sortable body={(row) => row.termStartDate ? new Date(row.termStartDate).toLocaleDateString('fr-FR') : '-'} />
-                        <Column field="maturityDate" header="Échéance" sortable body={(row) => row.maturityDate ? new Date(row.maturityDate).toLocaleDateString('fr-FR') : '-'} />
                         <Column
-                            header="Intérêts Courus"
+                            header="Intérêts du Mois"
                             sortable
                             sortField="accruedInterest"
                             body={(row) => {
@@ -1111,20 +1324,307 @@ function SavingsAccountPage() {
                                 return `${interest.toLocaleString('fr-FR')} ${code}`;
                             }}
                         />
+                        <Column field="openingDate" header="Date d'Ouverture" sortable />
                         <Column header="Statut" body={statusBodyTemplate} />
                         <Column field="userAction" header="Utilisateur" sortable />
-                        <Column header="Actions" body={termDepositActionsTemplate} style={{ width: '250px' }} />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
                     </DataTable>
+                </TabPanel>
+
+                <TabPanel header="Comptes Groupe" leftIcon="pi pi-users mr-2">
+                    <TabView activeIndex={groupActiveIndex} onTabChange={(e) => setGroupActiveIndex(e.index)}>
+                        <TabPanel header="Nouveau Compte Groupe" leftIcon="pi pi-plus mr-2">
+                            <div className="card p-fluid">
+                                <div className="surface-100 p-3 border-round mb-4">
+                                    <h5 className="m-0 mb-3 text-primary">
+                                        <i className="pi pi-wallet mr-2"></i>
+                                        Informations du Compte
+                                    </h5>
+                                    <div className="formgrid grid">
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Numéro de Compte</label>
+                                            <InputText value={groupAccount.accountNumber} disabled placeholder="Généré automatiquement" className="w-full" readOnly />
+                                        </div>
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Type de Compte *</label>
+                                            <Dropdown
+                                                value={groupAccount.accountType}
+                                                options={[
+                                                    { label: 'Épargne Régulière', value: 'REGULAR' },
+                                                    { label: 'Dépôt à Terme', value: 'TERM_DEPOSIT' },
+                                                    { label: 'Épargne Bloqué', value: 'BLOCKED' }
+                                                ]}
+                                                onChange={(e) => handleGroupDropdownChange('accountType', e.value)}
+                                                optionLabel="label" optionValue="value"
+                                                placeholder="Sélectionner le type" className="w-full"
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Statut</label>
+                                            <Dropdown
+                                                value={groupAccount.statusId}
+                                                options={statuses}
+                                                onChange={(e) => handleGroupDropdownChange('statusId', e.value)}
+                                                optionLabel="nameFr" optionValue="id"
+                                                placeholder="Sélectionner le statut" className="w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="surface-100 p-3 border-round mb-4">
+                                    <h5 className="m-0 mb-3 text-primary">
+                                        <i className="pi pi-users mr-2"></i>
+                                        Groupe et Agence
+                                    </h5>
+                                    <div className="formgrid grid">
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Groupe de Solidarité *</label>
+                                            <Dropdown
+                                                value={groupAccount.solidarityGroupId}
+                                                options={solidarityGroups}
+                                                onChange={(e) => handleGroupDropdownChange('solidarityGroupId', e.value)}
+                                                optionLabel="groupName" optionValue="id"
+                                                placeholder="Sélectionner un groupe"
+                                                filter filterBy="groupName,groupCode"
+                                                filterPlaceholder="Rechercher..."
+                                                className="w-full"
+                                                itemTemplate={(item: any) => <span>{item.groupName} ({item.groupCode})</span>}
+                                                valueTemplate={(item: any, props: any) => item ? <span>{item.groupName} ({item.groupCode})</span> : <span>{props?.placeholder}</span>}
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Agence *</label>
+                                            <Dropdown
+                                                value={groupAccount.branchId}
+                                                options={branches}
+                                                onChange={(e) => handleGroupDropdownChange('branchId', e.value)}
+                                                optionLabel="name" optionValue="id"
+                                                placeholder="Sélectionner l'agence"
+                                                filter className="w-full"
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Devise *</label>
+                                            <Dropdown
+                                                value={groupAccount.currencyId}
+                                                options={currencies}
+                                                onChange={(e) => handleGroupDropdownChange('currencyId', e.value)}
+                                                optionLabel="code" optionValue="id"
+                                                placeholder="Sélectionner la devise" className="w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="formgrid grid">
+                                        <div className="field col-12 md:col-6">
+                                            <label className="font-medium">Compte Interne (suivi)</label>
+                                            <Dropdown
+                                                value={groupAccount.internalAccountId}
+                                                options={internalAccounts.filter((a: any) => a.actif)}
+                                                onChange={(e) => handleGroupDropdownChange('internalAccountId', e.value)}
+                                                optionLabel="_displayLabel" optionValue="accountId"
+                                                placeholder="Sélectionner le compte interne"
+                                                filter filterBy="_displayLabel" className="w-full"
+                                                itemTemplate={(item: any) => <span>{item.codeCompte} - {item.libelle} ({item.accountNumber})</span>}
+                                                valueTemplate={(item: any, props: any) => item ? <span>{item.codeCompte} - {item.libelle}</span> : <span>{props?.placeholder}</span>}
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-3">
+                                            <label className="font-medium">Signatures Requises</label>
+                                            <InputNumber
+                                                value={groupAccount.requiredSignatures}
+                                                onValueChange={(e) => handleGroupNumberChange('requiredSignatures', e.value)}
+                                                min={1} max={10} showButtons className="w-full"
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-3">
+                                            <label className="font-medium">Date d'Ouverture *</label>
+                                            <Calendar
+                                                value={groupAccount.openingDate ? new Date(groupAccount.openingDate) : null}
+                                                onChange={(e) => handleGroupDateChange('openingDate', e.value as Date | null)}
+                                                dateFormat="dd/mm/yy" showIcon className="w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {groupAccount.accountType !== 'BLOCKED' && (
+                                <div className="surface-100 p-3 border-round mb-4">
+                                    <h5 className="m-0 mb-3 text-primary"><i className="pi pi-dollar mr-2"></i>Soldes et Paramètres</h5>
+                                    <div className="formgrid grid">
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Taux d'Intérêt (%)</label>
+                                            <InputNumber
+                                                value={groupAccount.interestRate}
+                                                onValueChange={(e) => handleGroupNumberChange('interestRate', e.value)}
+                                                mode="decimal" suffix=" %" min={0} max={100}
+                                                minFractionDigits={2} maxFractionDigits={2} className="w-full"
+                                                readOnly={groupAccount.accountType !== 'TERM_DEPOSIT'}
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Solde Minimum</label>
+                                            <InputNumber
+                                                value={groupAccount.minimumBalance}
+                                                onValueChange={(e) => handleGroupNumberChange('minimumBalance', e.value)}
+                                                mode="decimal" min={0} className="w-full" readOnly
+                                            />
+                                        </div>
+                                    </div>
+                                    {groupAccount.accountType === 'TERM_DEPOSIT' && (
+                                    <div className="formgrid grid mt-2">
+                                        <div className="field col-12 md:col-6">
+                                            <label className="font-medium">Compte Interne (intérêts) *</label>
+                                            <Dropdown
+                                                value={groupAccount.interestInternalAccountId}
+                                                options={internalAccounts.filter((a: any) => a.actif)}
+                                                onChange={(e) => handleGroupDropdownChange('interestInternalAccountId', e.value)}
+                                                optionLabel="_displayLabel" optionValue="accountId"
+                                                placeholder="Sélectionner le compte intérêts"
+                                                filter filterBy="_displayLabel" className="w-full"
+                                                itemTemplate={(item: any) => <span>{item.codeCompte} - {item.libelle} ({item.accountNumber})</span>}
+                                                valueTemplate={(item: any, props: any) => item ? <span>{item.codeCompte} - {item.libelle}</span> : <span>{props?.placeholder}</span>}
+                                            />
+                                        </div>
+                                    </div>
+                                    )}
+                                </div>
+                                )}
+
+                                {groupAccount.accountType === 'BLOCKED' && (
+                                <div className="surface-100 p-3 border-round mb-4">
+                                    <h5 className="m-0 mb-3 text-primary"><i className="pi pi-lock mr-2"></i>Paramètres Épargne Bloqué</h5>
+                                    <div className="formgrid grid">
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Durée du Blocage</label>
+                                            <Dropdown
+                                                value={groupAccount.termDurationId}
+                                                options={termDurations}
+                                                onChange={(e) => {
+                                                    const td = termDurations.find((t: any) => t.id === e.value);
+                                                    handleGroupDropdownChange('termDurationId', e.value);
+                                                    if (td) handleGroupNumberChange('interestRate', td.interestRate);
+                                                }}
+                                                optionLabel="nameFr" optionValue="id"
+                                                placeholder="Sélectionner la durée" className="w-full"
+                                                itemTemplate={(item: any) => <span>{item.nameFr} ({item.months} mois) - {item.interestRate?.toFixed(2)}%</span>}
+                                                valueTemplate={(item: any, props: any) => item ? <span>{item.nameFr} ({item.months} mois) - {item.interestRate?.toFixed(2)}%</span> : <span>{props?.placeholder}</span>}
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Taux d'Intérêt (%)</label>
+                                            <InputNumber
+                                                value={groupAccount.interestRate}
+                                                mode="decimal" suffix=" %" min={0} max={100}
+                                                minFractionDigits={2} maxFractionDigits={2}
+                                                className="w-full" disabled={!!groupAccount.termDurationId} readOnly
+                                            />
+                                        </div>
+                                        <div className="field col-12 md:col-4">
+                                            <label className="font-medium">Date de Début du Blocage</label>
+                                            <Calendar
+                                                value={groupAccount.termStartDate ? new Date(groupAccount.termStartDate) : null}
+                                                onChange={(e) => {
+                                                    const date = e.value as Date | null;
+                                                    handleGroupDateChange('termStartDate', date);
+                                                    const td = termDurations.find((t: any) => t.id === groupAccount.termDurationId);
+                                                    if (date && td) {
+                                                        const maturity = new Date(date);
+                                                        maturity.setMonth(maturity.getMonth() + td.months);
+                                                        handleGroupDateChange('maturityDate', maturity);
+                                                    }
+                                                }}
+                                                dateFormat="dd/mm/yy" showIcon className="w-full" readOnlyInput
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        <Tag value="Virement autorisé" severity="success" icon="pi pi-check" />
+                                        <Tag value="Dépôt interdit" severity="danger" icon="pi pi-times" />
+                                        <Tag value="Retrait interdit" severity="danger" icon="pi pi-times" />
+                                    </div>
+                                </div>
+                                )}
+
+                                <div className="surface-100 p-3 border-round mb-4">
+                                    <h5 className="m-0 mb-3 text-primary"><i className="pi pi-file mr-2"></i>Notes</h5>
+                                    <InputText name="notes" value={groupAccount.notes || ''} onChange={handleGroupChange} placeholder="Notes additionnelles..." className="w-full" />
+                                </div>
+                            </div>
+                            <div className="flex gap-2 mt-4">
+                                <Button
+                                    label={groupAccount.id ? 'Mettre à jour' : 'Créer le Compte'}
+                                    icon="pi pi-save"
+                                    onClick={handleGroupSubmit}
+                                    loading={isSubmittingGroup}
+                                    disabled={isSubmittingGroup}
+                                    className="p-button-success"
+                                />
+                                <Button label="Réinitialiser" icon="pi pi-refresh" onClick={resetGroupForm} className="p-button-secondary" />
+                            </div>
+                        </TabPanel>
+
+                        <TabPanel header="Liste des Comptes Groupe" leftIcon="pi pi-list mr-2">
+                            <DataTable
+                                value={groupAccounts}
+                                paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={groupAccountsApi.loading}
+                                globalFilter={globalFilter}
+                                globalFilterFields={['accountNumber', 'solidarityGroup.groupName', 'solidarityGroup.groupCode', 'branch.name', 'userAction']}
+                                header={
+                                    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                        <h5 className="m-0">Comptes Épargne des Groupes</h5>
+                                        <span className="p-input-icon-left">
+                                            <i className="pi pi-search" />
+                                            <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Rechercher..." />
+                                        </span>
+                                    </div>
+                                }
+                                emptyMessage="Aucun compte groupe trouvé"
+                                stripedRows showGridlines size="small"
+                                sortField="openingDate" sortOrder={-1}
+                            >
+                                <Column field="accountNumber" header="N° Compte" sortable />
+                                <Column
+                                    header="Groupe"
+                                    sortable sortField="solidarityGroup.groupName"
+                                    body={(row) => row.solidarityGroup ? `${row.solidarityGroup.groupName} (${row.solidarityGroup.groupCode})` : '-'}
+                                />
+                                <Column field="branch.name" header="Agence" sortable />
+                                <Column header="Type" body={accountTypeBodyTemplate} />
+                                <Column header="Solde" body={balanceBodyTemplate} sortable sortField="currentBalance" />
+                                <Column field="openingDate" header="Date d'Ouverture" sortable />
+                                <Column header="Statut" body={statusBodyTemplate} />
+                                <Column field="userAction" header="Utilisateur" sortable />
+                                <Column
+                                    header="Actions"
+                                    style={{ width: '160px' }}
+                                    body={(rowData: SavingsAccount) => (
+                                        <div className="flex gap-1 flex-wrap">
+                                            <Button icon="pi pi-eye" className="p-button-rounded p-button-info p-button-sm" onClick={() => viewAccount(rowData)} tooltip="Voir" />
+                                            <Button icon="pi pi-sync" className="p-button-rounded p-button-help p-button-sm" onClick={() => openStatusDialog(rowData)} tooltip="Changer Statut" />
+                                            <Button icon="pi pi-folder" className="p-button-rounded p-button-sm" severity="info" onClick={() => openDocumentsDialog(rowData)} tooltip="Documents" />
+                                            <Button icon="pi pi-pencil" className="p-button-rounded p-button-warning p-button-sm" onClick={() => editGroupAccount(rowData)} tooltip="Modifier" />
+                                            {(rowData.status?.code === 'PENDING_ACTIVATION' || rowData.status?.nameFr === 'En attente d\'activation') && (
+                                                <Button icon="pi pi-trash" className="p-button-rounded p-button-danger p-button-sm" onClick={() => confirmDeleteGroupAccount(rowData)} tooltip="Supprimer" />
+                                            )}
+                                        </div>
+                                    )}
+                                />
+                            </DataTable>
+                        </TabPanel>
+                    </TabView>
                 </TabPanel>
 
                 <TabPanel header="Épargne Bloqué" leftIcon="pi pi-lock mr-2">
                     <DataTable
-                        value={savingsAccounts.filter(a => a.accountType === 'BLOCKED')}
+                        value={savingsAccounts.filter(a => !a.solidarityGroup && a.accountType === 'BLOCKED')}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         loading={loading}
                         globalFilter={globalFilter}
+                        globalFilterFields={['accountNumber', 'client.firstName', 'client.lastName', 'client.businessName', 'branch.name', 'userAction']}
                         header={
                             <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
                                 <div>
@@ -1173,6 +1673,116 @@ function SavingsAccountPage() {
                 </TabPanel>
             </TabView>
 
+            {/* Dialog Intérêts Mensuels DAT */}
+            <Dialog
+                header={monthlyInterestStep === 'preview' ? 'Calcul des Intérêts Mensuels — Dépôt à Terme' : 'Résultat — Intérêts Crédités'}
+                visible={monthlyInterestDialog}
+                style={{ width: '750px' }}
+                onHide={() => setMonthlyInterestDialog(false)}
+                footer={
+                    <div className="flex justify-content-end gap-2">
+                        <Button
+                            label="Fermer"
+                            icon="pi pi-times"
+                            className="p-button-text"
+                            onClick={() => setMonthlyInterestDialog(false)}
+                        />
+                        {monthlyInterestStep === 'preview' && monthlyInterestPreview.length > 0 && (
+                            <Button
+                                label="Confirmer et Créditer"
+                                icon="pi pi-check"
+                                className="p-button-success"
+                                loading={isProcessingInterest}
+                                disabled={isProcessingInterest}
+                                onClick={handleProcessMonthlyInterest}
+                            />
+                        )}
+                    </div>
+                }
+            >
+                {monthlyInterestStep === 'preview' && (
+                    <div>
+                        {/* Scheduler status banner */}
+                        <div className={`p-3 border-round mb-3 flex align-items-center gap-2 ${schedulerStatus?.currentMonthProcessed ? 'surface-200' : 'bg-blue-50'}`}>
+                            <i className={`pi ${schedulerStatus?.currentMonthProcessed ? 'pi-check-circle text-green-500' : 'pi-clock text-blue-500'}`} />
+                            <div>
+                                <div className="font-semibold text-sm">
+                                    Tâche planifiée: {schedulerStatus?.nextRunDescription || '1er de chaque mois à 00h01'}
+                                </div>
+                                <small className="text-600">
+                                    {schedulerStatus?.currentMonthProcessed
+                                        ? `✓ Mois en cours déjà traité automatiquement — ${schedulerStatus.lastRunMessage}`
+                                        : 'Mois en cours non encore traité automatiquement. Vous pouvez lancer manuellement ci-dessous.'}
+                                </small>
+                            </div>
+                        </div>
+                        {monthlyInterestPreview.length === 0 ? (
+                            <div className="text-center p-4 text-500">
+                                <i className="pi pi-info-circle mr-2" />
+                                Aucun compte éligible (solde positif + taux + compte intérêts requis)
+                            </div>
+                        ) : (
+                            <>
+                                <div className="surface-50 p-3 border-round mb-3">
+                                    <small className="text-600">
+                                        <i className="pi pi-info-circle mr-1" />
+                                        Intérêt = Solde du mois × Taux / 12. Seuls les montants présents tout le mois sont rémunérés.
+                                    </small>
+                                </div>
+                                <DataTable value={monthlyInterestPreview} size="small" stripedRows showGridlines>
+                                    <Column field="accountNumber" header="N° Compte" sortable />
+                                    <Column field="clientName" header="Client" sortable />
+                                    <Column header="Solde du Mois" body={(row) => `${(row.balance || 0).toLocaleString('fr-FR')} ${row.currency}`} />
+                                    <Column field="interestRate" header="Taux (%)" body={(row) => `${(row.interestRate || 0).toFixed(2)} %`} />
+                                    <Column
+                                        header="Intérêt Calculé"
+                                        body={(row) => (
+                                            <span className="font-bold text-green-600">
+                                                {(row.calculatedInterest || 0).toLocaleString('fr-FR')} {row.currency}
+                                            </span>
+                                        )}
+                                    />
+                                </DataTable>
+                                <div className="surface-100 p-3 border-round mt-3 flex justify-content-between align-items-center">
+                                    <span className="font-bold">Total intérêts à créditer :</span>
+                                    <span className="font-bold text-green-600 text-lg">
+                                        {monthlyInterestPreview.reduce((s, r) => s + (r.calculatedInterest || 0), 0).toLocaleString('fr-FR')} {monthlyInterestPreview[0]?.currency || 'BIF'}
+                                    </span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+                {monthlyInterestStep === 'result' && (
+                    <div>
+                        <div className="surface-50 p-3 border-round mb-3 text-center">
+                            <i className="pi pi-check-circle text-green-500 mr-2" style={{ fontSize: '1.5rem' }} />
+                            <span className="text-green-600 font-bold">{monthlyInterestResult.length} compte(s) traité(s) avec succès</span>
+                        </div>
+                        <DataTable value={monthlyInterestResult} size="small" stripedRows showGridlines>
+                            <Column field="accountNumber" header="N° Compte" sortable />
+                            <Column field="clientName" header="Client" sortable />
+                            <Column
+                                header="Intérêt Crédité"
+                                body={(row) => (
+                                    <span className="font-bold text-green-600">
+                                        + {(row.interest || 0).toLocaleString('fr-FR')} {row.currency}
+                                    </span>
+                                )}
+                            />
+                            <Column
+                                header="Nouveau Solde"
+                                body={(row) => (
+                                    <span className="font-bold text-primary">
+                                        {(row.newBalance || 0).toLocaleString('fr-FR')} {row.currency}
+                                    </span>
+                                )}
+                            />
+                        </DataTable>
+                    </div>
+                )}
+            </Dialog>
+
             {/* Dialog pour voir les détails */}
             <Dialog
                 header="Détails du Compte"
@@ -1182,7 +1792,9 @@ function SavingsAccountPage() {
             >
                 {selectedAccount && (() => {
                     const acc = selectedAccount;
-                    const clientName = acc.client?.businessName || `${acc.client?.firstName || ''} ${acc.client?.lastName || ''}`.trim() || '-';
+                    const clientName = acc.solidarityGroup
+                        ? `${acc.solidarityGroup.groupName} (${acc.solidarityGroup.groupCode})`
+                        : acc.client?.businessName || `${acc.client?.firstName || ''} ${acc.client?.lastName || ''}`.trim() || '-';
                     const branchName = acc.branch?.name || '-';
                     const cCode = acc.currency?.code || 'BIF';
                     const statusName = acc.status?.nameFr || acc.status?.name || '-';
@@ -1212,7 +1824,7 @@ function SavingsAccountPage() {
 
                             <div className="surface-100 p-3 border-round mb-3">
                                 <h6 className="mt-0 mb-2 text-primary"><i className="pi pi-user mr-2"></i>Client et Agence</h6>
-                                <DetailRow label="Client" value={clientName} />
+                                <DetailRow label={acc.solidarityGroup ? 'Groupe de Solidarité' : 'Client'} value={clientName} />
                                 <DetailRow label="Agence" value={branchName} />
                                 <DetailRow label="Devise" value={cCode} />
                                 {internalAcc && <DetailRow label="Compte Interne" value={`${internalAcc.codeCompte} - ${internalAcc.libelle}`} />}
@@ -1482,7 +2094,7 @@ function SavingsAccountPage() {
                             icon="pi pi-check"
                             className="p-button-success"
                             onClick={handleStatusChange}
-                            disabled={!newStatusId || newStatusId === (statusChangeAccount?.status?.id || statusChangeAccount?.statusId)}
+                            disabled={!newStatusId || statuses.find(s => s.id === newStatusId)?.code === statusChangeAccount?.status?.code}
                         />
                     </div>
                 }

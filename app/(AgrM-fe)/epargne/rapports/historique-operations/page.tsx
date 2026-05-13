@@ -174,7 +174,7 @@ const RapportHistoriqueOperationsPage = () => {
 
         const companyName = 'AgrM MICROFINANCE';
         const companyAddress = 'Bujumbura, Burundi';
-        const companyPhone = '+257 22 XX XX XX';
+        const companyPhone = '+257 22 69 21 01 93';
 
         const account = getSelectedAccount();
         const reportTitle = 'RELEVÉ DE COMPTE';

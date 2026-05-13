@@ -22,6 +22,7 @@ import { getClientDisplayName } from '@/utils/clientUtils';
 import { filterOwnRecordsForCaissier } from '@/utils/userUtils';
 
 const REQUEST_TYPE = 'HISTORIQUE';
+const ROWS_PER_PAGE = 20;
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/statement-requests`;
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
@@ -65,6 +66,7 @@ function HistoriqueRequestPage() {
         netMovement: 0, openingBalance: 0, closingBalance: 0
     });
     const [loadingOperations, setLoadingOperations] = useState(false);
+    const [pagePreview, setPagePreview] = useState<{ operationCount: number; pageCount: number; loading: boolean } | undefined>(undefined);
     const toast = useRef<Toast>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +76,7 @@ function HistoriqueRequestPage() {
     const requestsApi = useConsumApi('');
     const actionsApi = useConsumApi('');
     const operationsApi = useConsumApi('');
+    const previewApi = useConsumApi('');
 
     useEffect(() => {
         loadReferenceData();
@@ -154,6 +157,35 @@ function HistoriqueRequestPage() {
         }
         if (actionsApi.error) showToast('error', 'Erreur', actionsApi.error.message || 'Une erreur est survenue');
     }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
+
+    // Trigger preview fetch when account + both dates are set
+    useEffect(() => {
+        if (request.savingsAccountId && request.periodStart && request.periodEnd) {
+            setPagePreview({ operationCount: 0, pageCount: 0, loading: true });
+            const params = new URLSearchParams();
+            params.append('accountId', String(request.savingsAccountId));
+            params.append('dateFrom', request.periodStart);
+            params.append('dateTo', request.periodEnd);
+            previewApi.fetchData(null, 'GET', `${REPORTS_URL}/operation-history?${params.toString()}`, 'preview');
+        } else {
+            setPagePreview(undefined);
+        }
+    }, [request.savingsAccountId, request.periodStart, request.periodEnd]);
+
+    // Handle preview response — compute pages and auto-update fee
+    useEffect(() => {
+        if (previewApi.data && previewApi.callType === 'preview') {
+            const responseData = previewApi.data as any;
+            const ops = responseData.data || responseData.content || [];
+            const count = responseData.totalOperations || ops.length || 0;
+            const pages = Math.max(1, Math.ceil(count / ROWS_PER_PAGE));
+            setPagePreview({ operationCount: count, pageCount: pages, loading: false });
+            setRequest(prev => ({ ...prev, feeAmount: pages * 1000 }));
+        }
+        if (previewApi.error && previewApi.callType === 'preview') {
+            setPagePreview(prev => prev ? { ...prev, loading: false } : undefined);
+        }
+    }, [previewApi.data, previewApi.callType, previewApi.error]);
 
     useEffect(() => {
         if (operationsApi.data) {
@@ -429,6 +461,8 @@ function HistoriqueRequestPage() {
                         comptesComptables={comptesComptables}
                         onSavingsAccountChange={handleSavingsAccountChange}
                         fixedRequestType="HISTORIQUE"
+                        pagePreview={pagePreview}
+                        rowsPerPage={ROWS_PER_PAGE}
                     />
                     <div className="flex gap-2 mt-4">
                         <Button label="Créer la Demande" icon="pi pi-save" onClick={handleSubmit} className="p-button-success" disabled={!can('EPARGNE_STATEMENT_CREATE')} />
@@ -440,6 +474,10 @@ function HistoriqueRequestPage() {
                     <DataTable value={requests} paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]} loading={loading} globalFilter={globalFilter} header={header} emptyMessage="Aucune demande d'historique trouvée" stripedRows showGridlines size="small" sortField="requestDate" sortOrder={-1}>
                         <Column field="requestNumber" header="N° Demande" sortable />
                         <Column field="client" header="Client" body={clientBodyTemplate} sortable />
+                        <Column header="N° Compte" body={(row: StatementRequest) => {
+                            const account = savingsAccounts.find((acc: any) => acc.id === row.savingsAccountId);
+                            return account?.accountNumber || '-';
+                        }} />
                         <Column field="requestDate" header="Date" sortable />
                         <Column header="Période" body={(row: StatementRequest) => {
                             if (row.periodStart && row.periodEnd) {
@@ -500,7 +538,7 @@ function HistoriqueRequestPage() {
                             totals={operationsTotals}
                             companyName="AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
-                            companyPhone="+257 22 XX XX XX"
+                            companyPhone="+257 22 69 21 01 93"
                         />
                     </div>
                 )}

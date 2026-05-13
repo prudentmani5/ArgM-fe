@@ -27,7 +27,17 @@ interface DepositSlipFormProps {
     onSavingsAccountChange?: (accountId: number) => void;
     isViewMode?: boolean;
     branchLocked?: boolean;
+    selectedAccountGroup?: any;
+    internalAccounts?: any[];
 }
+
+const DEPOSIT_TYPES = [
+    { label: 'Dépôt Normal', value: 'NORMAL' },
+    { label: "Dépôt d'Ouverture de Compte", value: 'OUVERTURE_COMPTE' }
+];
+
+const FICHE_AMOUNT = 4000;
+const PART_SOCIAL_AMOUNT = 1000;
 
 const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
     depositSlip,
@@ -42,7 +52,9 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
     currencies,
     onSavingsAccountChange,
     isViewMode = false,
-    branchLocked = false
+    branchLocked = false,
+    selectedAccountGroup,
+    internalAccounts = []
 }) => {
     const [denominations, setDenominations] = useState<{ [key: number]: number }>({});
 
@@ -84,8 +96,11 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
         return (denominations[denomination] || 0) * denomination;
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+    const selectedCurrency = currencies.find((c: any) => c.id === depositSlip.currencyId);
+    const currencyCode = selectedCurrency?.code || 'FBU';
+
+    const formatCurrency = (value: number, code?: string) => {
+        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + (code || currencyCode);
     };
 
     const depositorRelationships = [
@@ -97,8 +112,120 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
         { label: 'Autre', value: 'AUTRE' }
     ];
 
+    const isOuverture = (depositSlip.depositType || 'NORMAL') === 'OUVERTURE_COMPTE';
+
     return (
         <div className="card p-fluid">
+
+            {/* Type de dépôt */}
+            <div className="surface-50 p-3 border-round mb-4" style={{ border: '2px solid #e3e8f0' }}>
+                <h5 className="m-0 mb-3 text-primary">
+                    <i className="pi pi-tag mr-2"></i>
+                    Type de Dépôt
+                </h5>
+                <div className="formgrid grid">
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="depositType" className="font-medium">Type *</label>
+                        <Dropdown
+                            id="depositType"
+                            value={depositSlip.depositType || 'NORMAL'}
+                            options={DEPOSIT_TYPES}
+                            onChange={(e) => handleDropdownChange('depositType', e.value)}
+                            disabled={isViewMode}
+                            className="w-full"
+                        />
+                    </div>
+                    {isOuverture && (
+                        <div className="col-12 md:col-6 flex align-items-end">
+                            <div className="p-2 border-round bg-blue-50 w-full">
+                                <i className="pi pi-info-circle text-blue-500 mr-2"></i>
+                                <span className="text-blue-700 text-sm font-medium">
+                                    Frais fixes : Fiche d'identification 4 000 FBU + Part social 1 000 FBU = 5 000 FBU
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Opening fees section */}
+                {isOuverture && (
+                    <div className="mt-3 p-3 border-round" style={{ background: '#f0f7ff', border: '1px solid #b3d4f5' }}>
+                        <h6 className="m-0 mb-3 text-blue-700">
+                            <i className="pi pi-dollar mr-2"></i>
+                            Frais d'Ouverture de Compte
+                        </h6>
+                        <div className="formgrid grid">
+                            <div className="field col-12 md:col-6">
+                                <label htmlFor="ficheIdentificationAccountId" className="font-medium">
+                                    Compte — Fiche d'Identification
+                                </label>
+                                <Dropdown
+                                    id="ficheIdentificationAccountId"
+                                    value={depositSlip.ficheIdentificationAccountId}
+                                    options={internalAccounts.filter((a: any) => a.actif !== false)}
+                                    onChange={(e) => handleDropdownChange('ficheIdentificationAccountId', e.value)}
+                                    optionLabel="libelle"
+                                    optionValue="accountId"
+                                    placeholder="Sélectionner le compte..."
+                                    disabled={isViewMode}
+                                    filter
+                                    filterBy="accountNumber,libelle,codeCompte"
+                                    className="w-full"
+                                    itemTemplate={(item: any) => (
+                                        <span>{item.accountNumber} - {item.libelle} ({item.codeCompte})</span>
+                                    )}
+                                    valueTemplate={(item: any, props: any) => {
+                                        if (item) return <span>{item.accountNumber} - {item.libelle}</span>;
+                                        return <span>{props?.placeholder}</span>;
+                                    }}
+                                />
+                                <small className="text-500">Montant fixe :
+                                    <span className="font-bold text-orange-600 ml-1">
+                                        {new Intl.NumberFormat('fr-BI').format(FICHE_AMOUNT)} FBU
+                                    </span>
+                                </small>
+                            </div>
+                            <div className="field col-12 md:col-6">
+                                <label htmlFor="partSocialAccountId" className="font-medium">
+                                    Compte — Frais d'adhesion
+                                </label>
+                                <Dropdown
+                                    id="partSocialAccountId"
+                                    value={depositSlip.partSocialAccountId}
+                                    options={internalAccounts.filter((a: any) => a.actif !== false)}
+                                    onChange={(e) => handleDropdownChange('partSocialAccountId', e.value)}
+                                    optionLabel="libelle"
+                                    optionValue="accountId"
+                                    placeholder="Sélectionner le compte..."
+                                    disabled={isViewMode}
+                                    filter
+                                    filterBy="accountNumber,libelle,codeCompte"
+                                    className="w-full"
+                                    itemTemplate={(item: any) => (
+                                        <span>{item.accountNumber} - {item.libelle} ({item.codeCompte})</span>
+                                    )}
+                                    valueTemplate={(item: any, props: any) => {
+                                        if (item) return <span>{item.accountNumber} - {item.libelle}</span>;
+                                        return <span>{props?.placeholder}</span>;
+                                    }}
+                                />
+                                <small className="text-500">Montant fixe :
+                                    <span className="font-bold text-orange-600 ml-1">
+                                        {new Intl.NumberFormat('fr-BI').format(PART_SOCIAL_AMOUNT)} FBU
+                                    </span>
+                                </small>
+                            </div>
+                        </div>
+                        <div className="flex justify-content-end mt-2 pt-2" style={{ borderTop: '1px dashed #b3d4f5' }}>
+                            <span className="text-sm text-600 mr-2">Total frais d'ouverture :</span>
+                            <span className="font-bold text-lg text-blue-700">
+                                {new Intl.NumberFormat('fr-BI').format(FICHE_AMOUNT + PART_SOCIAL_AMOUNT)} FBU
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <div className="surface-100 p-3 border-round mb-4">
                 <h5 className="m-0 mb-3 text-primary">
                     <i className="pi pi-file mr-2"></i>
@@ -186,43 +313,69 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                             filterBy="accountNumber,client.firstName,client.lastName,client.businessName"
                             filterPlaceholder="Rechercher par numéro de compte"
                             className="w-full"
-                            itemTemplate={(item: any) => (
-                                <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.currentBalance || 0)})</span>
-                            )}
+                            itemTemplate={(item: any) => {
+                                const holderName = item.solidarityGroup
+                                    ? (item.solidarityGroup.groupName || item.solidarityGroup.name || 'Groupe')
+                                    : getClientDisplayName(item.client);
+                                return <span>{item.accountNumber} - {holderName} ({formatCurrency(item.currentBalance || 0, item.currency?.code)})</span>;
+                            }}
                             valueTemplate={(item: any, props: any) => {
-                                if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
+                                if (item) {
+                                    const holderName = item.solidarityGroup
+                                        ? (item.solidarityGroup.groupName || item.solidarityGroup.name || 'Groupe')
+                                        : getClientDisplayName(item.client);
+                                    return <span>{item.accountNumber} - {holderName}</span>;
+                                }
                                 return <span>{props?.placeholder}</span>;
                             }}
                         />
                     </div>
                     <div className="field col-12 md:col-6">
-                        <label htmlFor="clientId" className="font-medium">Client (auto-rempli)</label>
-                        <Dropdown
-                            id="clientId"
-                            value={depositSlip.clientId}
-                            options={clients}
-                            onChange={(e) => handleDropdownChange('clientId', e.value)}
-                            optionLabel="clientNumber"
-                            optionValue="id"
-                            placeholder="Sélectionnez d'abord un compte..."
-                            disabled={true}
-                            className="w-full"
-                            filterBy="clientNumber,firstName,lastName,businessName"
-                            itemTemplate={(item: any) => (
-                                <span>{getClientDisplayName(item)} - {item.clientNumber}</span>
-                            )}
-                            valueTemplate={(item: any, props: any) => {
-                                if (item) return <span>{getClientDisplayName(item)} - {item.clientNumber}</span>;
-                                return <span>{props?.placeholder}</span>;
-                            }}
-                        />
+                        {selectedAccountGroup ? (
+                            <>
+                                <label htmlFor="groupAutoFill" className="font-medium">Groupe (auto-rempli)</label>
+                                <InputText
+                                    id="groupAutoFill"
+                                    value={selectedAccountGroup.groupName || selectedAccountGroup.name || ''}
+                                    disabled
+                                    className="w-full"
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <label htmlFor="clientId" className="font-medium">Client (auto-rempli)</label>
+                                <Dropdown
+                                    id="clientId"
+                                    value={depositSlip.clientId}
+                                    options={clients}
+                                    onChange={(e) => handleDropdownChange('clientId', e.value)}
+                                    optionLabel="clientNumber"
+                                    optionValue="id"
+                                    placeholder="Sélectionnez d'abord un compte..."
+                                    disabled={true}
+                                    className="w-full"
+                                    filterBy="clientNumber,firstName,lastName,businessName"
+                                    itemTemplate={(item: any) => (
+                                        <span>{getClientDisplayName(item)} - {item.clientNumber}</span>
+                                    )}
+                                    valueTemplate={(item: any, props: any) => {
+                                        if (item) return <span>{getClientDisplayName(item)} - {item.clientNumber}</span>;
+                                        return <span>{props?.placeholder}</span>;
+                                    }}
+                                />
+                            </>
+                        )}
                     </div>
                 </div>
                 {depositSlip.savingsAccountId && (
                     <div className="mt-2 p-2 surface-50 border-round">
                         <div className="flex align-items-center gap-2">
                             <i className="pi pi-info-circle text-blue-500"></i>
-                            <span className="text-500">Le client est automatiquement récupéré depuis le compte sélectionné</span>
+                            <span className="text-500">
+                                {selectedAccountGroup
+                                    ? 'Le groupe est automatiquement récupéré depuis le compte sélectionné'
+                                    : 'Le client est automatiquement récupéré depuis le compte sélectionné'}
+                            </span>
                         </div>
                     </div>
                 )}
@@ -326,7 +479,7 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                 <div className="flex justify-content-end align-items-center gap-3">
                     <span className="text-xl font-medium">TOTAL:</span>
                     <span className="text-2xl font-bold text-green-600">
-                        {formatCurrency(depositSlip.totalAmount)}
+                        {formatCurrency(depositSlip.totalAmount, currencyCode)}
                     </span>
                 </div>
             </div>

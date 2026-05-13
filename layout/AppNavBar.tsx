@@ -122,6 +122,7 @@ const AppNavBar = () => {
                     'EPARGNE_DEPOSIT_CREATE', 'EPARGNE_DEPOSIT_COMPLETE', 'EPARGNE_DEPOSIT_CANCEL',
                     'EPARGNE_TERM_DEPOSIT_CREATE', 'EPARGNE_TERM_DEPOSIT_MANAGE', 'EPARGNE_TERM_DEPOSIT_CLOSE',
                     'EPARGNE_COMPULSORY_CREATE', 'EPARGNE_COMPULSORY_RELEASE',
+                    'EPARGNE_DECOUVERT_CREATE', 'EPARGNE_DECOUVERT_VERIFY', 'EPARGNE_DECOUVERT_APPROVE', 'EPARGNE_DECOUVERT_DISBURSE',
                     'ACCOUNTING_CASH_MANAGEMENT', 'GUICHET_CAISSE', 'CAISSE_VALIDATE_CLOSING', 'CAISSE_ACKNOWLEDGE_RECEIPT'
                 ]) : false,
                 items: [
@@ -147,7 +148,8 @@ const AppNavBar = () => {
                             { label: 'Types d\'Opérations', icon: 'pi pi-exchange', to: '/epargne/reference-data/types-operation' },
                             { label: 'Statuts de Livret', icon: 'pi pi-tags', to: '/epargne/reference-data/statuts-livret' },
                             { label: 'Durées de Terme', icon: 'pi pi-clock', to: '/epargne/reference-data/durees-terme' },
-                            { label: 'Niveaux d\'Autorisation', icon: 'pi pi-shield', to: '/epargne/reference-data/niveaux-autorisation' }
+                            { label: 'Niveaux d\'Autorisation', icon: 'pi pi-shield', to: '/epargne/reference-data/niveaux-autorisation' },
+                            { label: 'Séries de Reçus', icon: 'pi pi-file', to: '/epargne/reference-data/series-recu' }
                         ]
                     },
                     {
@@ -156,7 +158,8 @@ const AppNavBar = () => {
                             'EPARGNE_VIEW', 'EPARGNE_CREATE',
                             'EPARGNE_VIREMENT_CREATE', 'EPARGNE_VIREMENT_VALIDATE', 'EPARGNE_VIREMENT_BATCH_CREATE', 'EPARGNE_VIREMENT_BATCH_VALIDATE',
                             'EPARGNE_CHECKBOOK_CREATE', 'EPARGNE_CHECKBOOK_VALIDATE', 'EPARGNE_CHECKBOOK_RECEIVE', 'EPARGNE_CHECKBOOK_DELIVER',
-                            'EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER'
+                            'EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER',
+                            'EPARGNE_DECOUVERT_CREATE', 'EPARGNE_DECOUVERT_VERIFY', 'EPARGNE_DECOUVERT_APPROVE', 'EPARGNE_DECOUVERT_DISBURSE'
                         ]) : false,
                         items: [
                             { label: 'Ouverture Compte', icon: 'pi pi-wallet', to: '/epargne/compte-epargne', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_CREATE', 'EPARGNE_UPDATE']) : false },
@@ -164,6 +167,7 @@ const AppNavBar = () => {
                             { label: 'Versement', icon: 'pi pi-file-import', to: '/epargne/bordereaux-depot' },
                             { label: 'Retrait', icon: 'pi pi-file-export', to: '/epargne/demandes-retrait' },*/
                             { label: 'Virements', icon: 'pi pi-arrow-right-arrow-left', to: '/epargne/virements', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIREMENT_CREATE', 'EPARGNE_VIREMENT_VALIDATE', 'EPARGNE_VIREMENT_BATCH_CREATE', 'EPARGNE_VIREMENT_BATCH_VALIDATE']) : false },
+                            { label: 'Découvert', icon: 'pi pi-arrow-circle-down', to: '/epargne/decouvert', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DECOUVERT_CREATE', 'EPARGNE_DECOUVERT_VERIFY', 'EPARGNE_DECOUVERT_APPROVE', 'EPARGNE_DECOUVERT_DISBURSE']) : false },
                             { label: 'Carnet de Chèques', icon: 'pi pi-book', to: '/epargne/carnet-cheque', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_CHECKBOOK_CREATE', 'EPARGNE_CHECKBOOK_VALIDATE', 'EPARGNE_CHECKBOOK_RECEIVE', 'EPARGNE_CHECKBOOK_DELIVER']) : false },
                             { label: 'Demande de Situation', icon: 'pi pi-file', to: '/epargne/demande-situation', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']) : false },
                             { label: 'Demande d\'Historique', icon: 'pi pi-history', to: '/epargne/demande-historique', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']) : false },
@@ -187,6 +191,7 @@ const AppNavBar = () => {
                             { label: 'Rapport Demandes Historique', icon: 'pi pi-history', to: '/epargne/rapports/demandes-historique' },
                             { label: 'Rapport Frais de Tenue', icon: 'pi pi-money-bill', to: '/epargne/rapports/frais-tenue-compte' },
                             { label: 'Rapport Virements', icon: 'pi pi-arrows-h', to: '/epargne/rapports/virements' },
+                            { label: 'Rapport Découverts', icon: 'pi pi-arrow-circle-down', to: '/epargne/rapports/decouvert' },
                             { label: 'Rapport Comptes Réguliers', icon: 'pi pi-book', to: '/epargne/rapports/comptes-reguliers' },
                             { label: 'Rapport Comptes DAT', icon: 'pi pi-lock', to: '/epargne/rapports/comptes-dat' },
                             { label: 'Situation des Comptes', icon: 'pi pi-list', to: '/epargne/rapports/situation-comptes' }
@@ -445,24 +450,78 @@ const AppNavBar = () => {
                 ]
             },
             {
-                label: 'Rapprochement',
+                label: 'Tableau de bord Rapprochement',
                 icon: 'pi pi-check-square',
                 routePrefix: '/rapprochement',
                 visible: appUser ? hasAnyAuthority(appUser, [
                     'RAPPROCHEMENT_VIEW', 'RAPPROCHEMENT_CREATE', 'RAPPROCHEMENT_UPDATE',
                     'RAPPROCHEMENT_DELETE', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE',
                     'RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_REPORT',
-                    'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH'
+                    'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH',
+                    'DASHBOARD_DG_VIEW', 'DASHBOARD_CREDIT_OPS_VIEW', 'DASHBOARD_ACCOUNTING_VIEW', 'DASHBOARD_BRANCH_MANAGER_VIEW'
                 ]) : false,
                 items: [
-                    { label: 'Tableau de Bord', icon: 'pi pi-th-large', to: '/rapprochement', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
-                    { label: 'Rapprochement Bancaire', icon: 'pi pi-building', to: '/rapprochement/rapprochements', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE']) : false },
-                    { label: 'Relevés Bancaires', icon: 'pi pi-file-import', to: '/rapprochement/releves', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_CREATE']) : false },
-                    { label: 'Rapprochement Caisse', icon: 'pi pi-wallet', to: '/rapprochement/rapprochement-caisse', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
-                    { label: 'Portefeuille Crédits', icon: 'pi pi-briefcase', to: '/rapprochement/rapprochement-credits', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
-                    { label: 'Dépôts Épargne', icon: 'pi pi-money-bill', to: '/rapprochement/rapprochement-depots', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
-                    { label: 'Gestion des Écarts', icon: 'pi pi-exclamation-triangle', to: '/rapprochement/ecarts', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
-                    { label: 'Rapports', icon: 'pi pi-print', to: '/rapprochement/rapports', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_REPORT']) : false }
+                    {
+                        label: 'Rapprochement',
+                        items: [
+                            { label: 'Tableau de Bord', icon: 'pi pi-th-large', to: '/rapprochement', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                            { label: 'Rapprochement Bancaire', icon: 'pi pi-building', to: '/rapprochement/rapprochements', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE']) : false },
+                            { label: 'Relevés Bancaires', icon: 'pi pi-file-import', to: '/rapprochement/releves', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_CREATE']) : false },
+                            { label: 'Rapprochement Caisse', icon: 'pi pi-wallet', to: '/rapprochement/rapprochement-caisse', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                            { label: 'Portefeuille Crédits', icon: 'pi pi-briefcase', to: '/rapprochement/rapprochement-credits', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                            { label: 'Dépôts Épargne', icon: 'pi pi-money-bill', to: '/rapprochement/rapprochement-depots', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                            { label: 'Gestion des Écarts', icon: 'pi pi-exclamation-triangle', to: '/rapprochement/ecarts', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
+                            { label: 'Rapports', icon: 'pi pi-print', to: '/rapprochement/rapports', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_REPORT']) : false }
+                        ]
+                    },
+                    {
+                        label: 'Tableaux de Bord',
+                        visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_DG_VIEW', 'DASHBOARD_CREDIT_OPS_VIEW', 'DASHBOARD_ACCOUNTING_VIEW', 'DASHBOARD_BRANCH_MANAGER_VIEW']) : false,
+                        items: [
+                            { label: 'Direction Générale', icon: 'pi pi-building', to: '/dashbord/dg', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_DG_VIEW']) : false },
+                            { label: 'Chef d\'Agence', icon: 'pi pi-home', to: '/dashbord/chef-agence', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_BRANCH_MANAGER_VIEW']) : false },
+                            { label: 'Opérations Crédit', icon: 'pi pi-briefcase', to: '/dashbord/credit-ops', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_CREDIT_OPS_VIEW']) : false },
+                            { label: 'Comptabilité', icon: 'pi pi-calculator', to: '/dashbord/comptable', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_ACCOUNTING_VIEW']) : false }
+                        ]
+                    }
+                ]
+            },
+            {
+                label: 'Actionnaires',
+                icon: 'pi pi-star',
+                routePrefix: '/actionnaire',
+                visible: appUser ? hasAnyAuthority(appUser, [
+                    'SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW',
+                    'SHAREHOLDER_REPORT', 'SHAREHOLDER_SETTINGS'
+                ]) : false,
+                items: [
+                    {
+                        label: 'Registre & Souscriptions',
+                        visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW']) : false,
+                        items: [
+                            { label: 'Tableau de Bord', icon: 'pi pi-th-large', to: '/actionnaire/tableau-de-bord' },
+                            { label: 'Registre des Actionnaires', icon: 'pi pi-users', to: '/actionnaire/registre' },
+                            { label: 'Souscription de Parts', icon: 'pi pi-plus-circle', to: '/actionnaire/souscription', visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN']) : false },
+                            { label: 'Transfert et Rachat', icon: 'pi pi-arrow-right-arrow-left', to: '/actionnaire/transfert-rachat', visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN']) : false }
+                        ]
+                    },
+                    {
+                        label: 'Dividendes & AG',
+                        visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW']) : false,
+                        items: [
+                            { label: 'Dividendes', icon: 'pi pi-percentage', to: '/actionnaire/dividendes' },
+                            { label: 'Assemblées Générales', icon: 'pi pi-calendar', to: '/actionnaire/assemblees' },
+                            { label: 'Comptabilisation (1011)', icon: 'pi pi-book', to: '/actionnaire/comptabilisation' }
+                        ]
+                    },
+                    {
+                        label: 'Rapports & Config',
+                        visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW', 'SHAREHOLDER_REPORT', 'SHAREHOLDER_SETTINGS']) : false,
+                        items: [
+                            { label: 'Rapports', icon: 'pi pi-chart-bar', to: '/actionnaire/rapports', visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW', 'SHAREHOLDER_REPORT']) : false },
+                            { label: 'Paramètres', icon: 'pi pi-cog', to: '/actionnaire/parametres', visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_SETTINGS']) : false }
+                        ]
+                    }
                 ]
             },
             {
@@ -511,6 +570,116 @@ const AppNavBar = () => {
                 ]
             },
             {
+                label: 'RH',
+                icon: 'pi pi-id-card',
+                routePrefix: '/grh',
+                visible: appUser ? hasAnyAuthority(appUser, [
+                    'GRH_VIEW', 'GRH_CREATE', 'GRH_UPDATE', 'GRH_SETTINGS',
+                    'GRH_PAIE_VIEW', 'GRH_PAIE_CREATE', 'GRH_REPORT'
+                ]) : false,
+                items: [
+                    {
+                        label: 'Paramètres',
+                        visible: appUser ? hasAnyAuthority(appUser, ['GRH_SETTINGS']) : false,
+                        items: [
+                            { label: 'Catégorie', icon: 'pi pi-tag', to: '/grh/settings/categorie' },
+                            { label: 'Département', icon: 'pi pi-sitemap', to: '/grh/settings/department' },
+                            { label: 'Domaine Formation', icon: 'pi pi-book', to: '/grh/settings/domaineFormation' },
+                            { label: 'Fonction', icon: 'pi pi-briefcase', to: '/grh/settings/fonction' },
+                            { label: 'Grade', icon: 'pi pi-chart-bar', to: '/grh/settings/grade' },
+                            { label: 'Notation', icon: 'pi pi-star', to: '/grh/settings/notation' },
+                            { label: 'Pays', icon: 'pi pi-globe', to: '/grh/settings/pays' },
+                            { label: 'Poste', icon: 'pi pi-id-card', to: '/grh/settings/poste' },
+                            { label: 'Province', icon: 'pi pi-map', to: '/grh/settings/province' },
+                            { label: 'Service', icon: 'pi pi-building', to: '/grh/settings/service' },
+                            { label: 'Situation', icon: 'pi pi-info-circle', to: '/grh/settings/situation' },
+                            { label: 'Type Congé', icon: 'pi pi-calendar-times', to: '/grh/settings/typeConge' },
+                            { label: 'Type Diplôme', icon: 'pi pi-graduation-cap', to: '/grh/settings/typeDiplome' },
+                            { label: 'Banque', icon: 'pi pi-credit-card', to: '/grh/settings/banque' },
+                            { label: 'Commune', icon: 'pi pi-map-marker', to: '/grh/settings/commune' },
+                            { label: 'Colline', icon: 'pi pi-map-marker', to: '/grh/settings/colline' }
+                        ]
+                    },
+                    {
+                        label: 'Fiche Employé',
+                        visible: appUser ? hasAnyAuthority(appUser, ['GRH_VIEW', 'GRH_CREATE', 'GRH_UPDATE']) : false,
+                        items: [
+                            { label: 'Identification', icon: 'pi pi-user', to: '/grh/ficheEmploye/identification' },
+                            { label: 'Carrière', icon: 'pi pi-arrow-up-right', to: '/grh/ficheEmploye/carriere' },
+                            { label: 'Diplômes', icon: 'pi pi-graduation-cap', to: '/grh/ficheEmploye/diplome' },
+                            { label: 'Formation & Stage', icon: 'pi pi-book', to: '/grh/ficheEmploye/formationStage' },
+                            { label: 'Absences', icon: 'pi pi-clock', to: '/grh/ficheEmploye/absence' },
+                            { label: 'Congés', icon: 'pi pi-calendar-times', to: '/grh/ficheEmploye/conge' },
+                            { label: 'Actions Disciplinaires', icon: 'pi pi-exclamation-triangle', to: '/grh/ficheEmploye/actionDisciplinaire' },
+                            { label: 'Cotation', icon: 'pi pi-star', to: '/grh/ficheEmploye/cotation' },
+                            { label: 'Ayants Droit', icon: 'pi pi-users', to: '/grh/ficheEmploye/ayantDroit' },
+                            { label: 'Administration', icon: 'pi pi-cog', to: '/grh/ficheEmploye/administration' },
+                            { label: 'Sortie', icon: 'pi pi-sign-out', to: '/grh/ficheEmploye/sortie' },
+                            { label: 'Édition Fiche', icon: 'pi pi-print', to: '/grh/ficheEmploye/edition' }
+                        ]
+                    },
+                    {
+                        label: 'Gestion Paie',
+                        visible: appUser ? hasAnyAuthority(appUser, ['GRH_PAIE_VIEW', 'GRH_PAIE_CREATE']) : false,
+                        items: [
+                            { label: 'Période de Paie', icon: 'pi pi-calendar', to: '/grh/paie/periodePaie' },
+                            { label: 'Rubriques', icon: 'pi pi-list', to: '/grh/paie/paieRubrique' },
+                            { label: 'Paramètres Primes', icon: 'pi pi-plus-circle', to: '/grh/paie/primeParametre' },
+                            { label: 'Paramètres Indemnités', icon: 'pi pi-money-bill', to: '/grh/paie/indemniteParametre' },
+                            { label: 'Paramètres Retenues', icon: 'pi pi-minus-circle', to: '/grh/paie/retenueParametre' },
+                            { label: 'Tranches Impôt', icon: 'pi pi-percentage', to: '/grh/paie/trancheImpotParametre' },
+                            { label: 'Tranches Impôt Annuel', icon: 'pi pi-chart-bar', to: '/grh/paie/trancheImpotAnnuelParametre' },
+                            { label: 'Jours Fériés', icon: 'pi pi-sun', to: '/grh/paie/joursFeries' }
+                        ]
+                    },
+                    {
+                        label: 'Saisie Paie',
+                        visible: appUser ? hasAnyAuthority(appUser, ['GRH_PAIE_CREATE']) : false,
+                        items: [
+                            { label: 'Saisie Paie', icon: 'pi pi-pencil', to: '/grh/paie/saisie/paie' },
+                            { label: 'Saisie Prime', icon: 'pi pi-plus', to: '/grh/paie/saisie/prime' },
+                            { label: 'Saisie Indemnité', icon: 'pi pi-dollar', to: '/grh/paie/saisie/indemnite' },
+                            { label: 'Saisie Retenue', icon: 'pi pi-minus', to: '/grh/paie/saisie/retenue' },
+                            { label: 'Rappel', icon: 'pi pi-replay', to: '/grh/paie/saisie/rappel' },
+                            { label: 'Consultation', icon: 'pi pi-search', to: '/grh/paie/consultation' },
+                            { label: 'Comptabilisation', icon: 'pi pi-calculator', to: '/grh/paie/comptabilisation' }
+                        ]
+                    },
+                    {
+                        label: 'Pointage',
+                        visible: appUser ? hasAnyAuthority(appUser, ['GRH_PAIE_VIEW', 'GRH_PAIE_CREATE']) : false,
+                        items: [
+                            { label: 'Horaire', icon: 'pi pi-clock', to: '/grh/paie/fingerPrint/horaire' },
+                            { label: 'Shift Groupe', icon: 'pi pi-users', to: '/grh/paie/fingerPrint/shiftGroupe' },
+                            { label: 'Présence', icon: 'pi pi-check-circle', to: '/grh/paie/fingerPrint/attendance' },
+                            { label: 'Heures Supplémentaires', icon: 'pi pi-plus-circle', to: '/grh/paie/fingerPrint/heureSupplementaire' },
+                            { label: 'Mapping Présence', icon: 'pi pi-link', to: '/grh/paie/employeeAttendancyMapping' }
+                        ]
+                    },
+                    {
+                        label: 'Éditions',
+                        visible: appUser ? hasAnyAuthority(appUser, ['GRH_REPORT', 'GRH_PAIE_VIEW']) : false,
+                        items: [
+                            { label: 'Bulletin de Paie', icon: 'pi pi-file', to: '/grh/paie/editions/bulletinPaie' },
+                            { label: 'Journal de Paie', icon: 'pi pi-book', to: '/grh/paie/editions/journalPaie' },
+                            { label: 'Listing INSS', icon: 'pi pi-list', to: '/grh/paie/editions/listingInss' },
+                            { label: 'INSS Trimestriel', icon: 'pi pi-calendar', to: '/grh/paie/editions/listingInssTrimestriel' },
+                            { label: 'Listing IRE', icon: 'pi pi-list', to: '/grh/paie/editions/listingIre' },
+                            { label: 'IRE Récapitulatif', icon: 'pi pi-file-pdf', to: '/grh/paie/editions/listingIreRecapitulatif' },
+                            { label: 'Jours Prestés', icon: 'pi pi-calendar-plus', to: '/grh/paie/editions/listingJourPreste' },
+                            { label: 'Jubilé', icon: 'pi pi-star', to: '/grh/paie/editions/listingJubile' },
+                            { label: 'Listing Retenue', icon: 'pi pi-minus-circle', to: '/grh/paie/editions/listingRetenue' },
+                            { label: 'Retenue BHB', icon: 'pi pi-building', to: '/grh/paie/editions/listingRetenueBhb' },
+                            { label: 'Virement Bancaire', icon: 'pi pi-arrow-right-arrow-left', to: '/grh/paie/editions/virementBancaire' },
+                            { label: 'Paiement à Effectuer', icon: 'pi pi-money-bill', to: '/grh/paie/editions/paiementAEffectuer' },
+                            { label: 'Synthèse Consolidée', icon: 'pi pi-chart-pie', to: '/grh/paie/editions/syntheseConsolidE' },
+                            { label: 'Synthèse Salaire Base', icon: 'pi pi-chart-bar', to: '/grh/paie/editions/syntheseSalaireBase' },
+                            { label: 'Fond Pension Compl.', icon: 'pi pi-briefcase', to: '/grh/paie/editions/fondPensionComplementaire' }
+                        ]
+                    }
+                ]
+            },
+            {
                 label: 'Administration',
                 icon: 'pi pi-cog',
                 routePrefix: ['/usermanagement', '/tracking'],
@@ -519,23 +688,6 @@ const AppNavBar = () => {
                     { label: 'Créer un Utilisateur', icon: 'pi pi-user-plus', to: '/usermanagement/create-user', visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_CREATE']) : false },
                     { label: 'Gestion des utilisateurs', icon: 'pi pi-users', to: '/usermanagement', visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_VIEW']) : false },
                     { label: 'Journal d\'Audit', icon: 'pi pi-history', to: '/tracking', visible: appUser ? hasAnyAuthority(appUser, ['TRACKING_VIEW']) : false }
-                ]
-            },
-             {
-                label: 'Tableaux de Bord',
-                icon: 'pi pi-chart-bar',
-                routePrefix: '/dashbord',
-                visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_DG_VIEW', 'DASHBOARD_CREDIT_OPS_VIEW', 'DASHBOARD_ACCOUNTING_VIEW', 'DASHBOARD_BRANCH_MANAGER_VIEW']) : false,
-                items: [
-                    {
-                        label: 'Tableaux de Bord',
-                        items: [
-                            { label: 'Direction Générale', icon: 'pi pi-building', to: '/dashbord/dg', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_DG_VIEW']) : false },
-                            { label: 'Chef d\'Agence', icon: 'pi pi-home', to: '/dashbord/chef-agence', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_BRANCH_MANAGER_VIEW']) : false },
-                            { label: 'Opérations Crédit', icon: 'pi pi-briefcase', to: '/dashbord/credit-ops', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_CREDIT_OPS_VIEW']) : false },
-                            { label: 'Comptabilité', icon: 'pi pi-calculator', to: '/dashbord/comptable', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_ACCOUNTING_VIEW']) : false }
-                        ]
-                    }
                 ]
             },
             {

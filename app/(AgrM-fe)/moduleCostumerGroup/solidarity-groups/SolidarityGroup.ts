@@ -210,6 +210,18 @@ export class SolidarityGroup {
     }
 }
 
+// Member document (attached file)
+export interface MemberDocument {
+    id?: number;
+    documentType?: string;
+    filePath?: string;
+    fileName?: string;
+    fileMimeType?: string;
+    fileSizeBytes?: number;
+    uploadedAt?: string;
+    userAction?: string;
+}
+
 // GroupMember Class
 export class GroupMember {
     id?: number;
@@ -232,7 +244,7 @@ export class GroupMember {
     createdAt?: string;
     updatedAt?: string;
 
-    // Client info (from backend relationship)
+    // Client info (from backend relationship, null for profile-based members)
     client?: {
         id?: number;
         clientNumber?: string;
@@ -242,7 +254,31 @@ export class GroupMember {
         phonePrimary?: string;
         email?: string;
         photoPath?: string;
-    };
+    } | null;
+
+    // Profile info (from backend relationship, used when client is null)
+    memberProfile?: {
+        id?: number;
+        firstName?: string;
+        lastName?: string;
+        gender?: string;
+        dateOfBirth?: string;
+        placeOfBirth?: string;
+        idDocumentTypeId?: number;
+        idDocumentNumber?: string;
+        idDocumentIssueDate?: string;
+        idDocumentExpiryDate?: string;
+        phonePrimary?: string;
+        phoneSecondary?: string;
+        email?: string;
+        provinceId?: number;
+        communeId?: number;
+        zoneId?: number;
+        streetAddress?: string;
+        userAction?: string;
+        createdAt?: string;
+        updatedAt?: string;
+    } | null;
 
     // Role info (from backend relationship)
     role?: {

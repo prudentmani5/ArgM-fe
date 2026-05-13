@@ -21,6 +21,7 @@ import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { Calendar } from 'primereact/calendar';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import { buildApiUrl } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 // Types
 interface FraisTenueCompte {
@@ -90,6 +91,7 @@ interface FraisTenueCompteDetail {
     skipReason: string | null;
     pieceId: string | null;
     createdAt: string;
+    execution?: { accountType?: string };
 }
 
 interface PreviewResult {
@@ -103,6 +105,8 @@ interface PreviewResult {
     debitAccountCode: string;
     revenueAccountCode: string;
     totalActiveAccounts: number;
+    accountsToCharge: number;
+    accountsToSkip: number;
     withSufficientBalance: number;
     withInsufficientBalance: number;
     estimatedTotal: number;
@@ -128,10 +132,34 @@ const EMPTY_FRAIS: FraisTenueCompte = {
 };
 
 const ACCOUNT_TYPES = [
-    { label: 'Compte Ordinaire (REGULAR)', value: 'REGULAR' },
+    { label: 'Épargne Régulier (REGULAR)', value: 'REGULAR' },
     { label: 'Dépôt à Terme (TERM_DEPOSIT)', value: 'TERM_DEPOSIT' },
-    { label: 'Épargne Obligatoire (COMPULSORY)', value: 'COMPULSORY' }
+    { label: 'Épargne Bloqué (BLOCKED)', value: 'BLOCKED' }
 ];
+
+const ACCOUNT_TYPE_RULES: Record<string, { icon: string; color: string; title: string; rule: string; severity: 'success' | 'info' | 'warning' | 'danger' }> = {
+    REGULAR: {
+        icon: 'pi-check-circle',
+        color: '#1a7f37',
+        title: 'Épargne Régulier',
+        rule: 'Les frais sont prélevés systématiquement à chaque échéance sur tous les comptes actifs de ce type.',
+        severity: 'success'
+    },
+    TERM_DEPOSIT: {
+        icon: 'pi-clock',
+        color: '#2563eb',
+        title: 'Dépôt à Terme',
+        rule: 'Les frais sont prélevés systématiquement comme pour l\'épargne régulier. Le solde peut devenir négatif et sera récupéré lors du prochain dépôt.',
+        severity: 'info'
+    },
+    BLOCKED: {
+        icon: 'pi-ban',
+        color: '#c0392b',
+        title: 'Épargne Bloqué',
+        rule: 'Aucun frais n\'est prélevé sur les comptes bloqués. Ce type de compte est totalement exempté des frais de tenue de compte.',
+        severity: 'danger'
+    }
+};
 
 const FREQUENCIES = [
     { label: 'Mensuel', value: 'MONTHLY' },
@@ -399,7 +427,7 @@ export default function FraisTenueComptePage() {
     const executeBatch = () => {
         if (!selectedFraisId) return;
         confirmDialog({
-            message: `Êtes-vous sûr de vouloir exécuter le prélèvement des frais de tenue de compte ?\n\nCette action va débiter ${preview?.totalActiveAccounts || 0} comptes de ${formatCurrency(preview?.feeAmount || 0)} chacun.\n(${preview?.withInsufficientBalance || 0} comptes passeront en solde négatif)\n\nTotal estimé: ${formatCurrency(preview?.estimatedTotal || 0)}`,
+            message: `Êtes-vous sûr de vouloir exécuter le prélèvement des frais de tenue de compte ?\n\nComptes actifs (${getAccountTypeLabel(preview?.accountType || '')}): ${preview?.totalActiveAccounts || 0}\nComptes à débiter: ${preview?.accountsToCharge ?? preview?.totalActiveAccounts ?? 0} × ${formatCurrency(preview?.feeAmount || 0)}\n(${preview?.withInsufficientBalance || 0} compte(s) passeront en solde négatif)\n\nTotal estimé: ${formatCurrency(preview?.estimatedTotal || 0)}`,
             header: 'Confirmation du prélèvement',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Exécuter le Prélèvement',
@@ -425,8 +453,8 @@ export default function FraisTenueComptePage() {
             showToast('warn', 'Validation', 'Veuillez sélectionner les deux dates de la période');
             return;
         }
-        const from = periodFrom.toISOString().split('T')[0];
-        const to = periodTo.toISOString().split('T')[0];
+        const from = formatLocalDate(periodFrom);
+        const to = formatLocalDate(periodTo);
         setAffectedLoading(true);
         setAffectedDetails([]);
         fetchData(null, 'GET', `${BASE_URL}/details/by-period?dateFrom=${from}&dateTo=${to}`, 'loadAffectedDetails');
@@ -496,6 +524,27 @@ export default function FraisTenueComptePage() {
             <TabView>
                 {/* ===== TAB 1: Configuration ===== */}
                 <TabPanel header="Configuration" leftIcon="pi pi-cog mr-2">
+                    {/* Rules summary panel */}
+                    <div className="surface-50 border-round p-3 mb-4" style={{ border: '1px solid #e2e8f0' }}>
+                        <div className="font-bold mb-3">
+                            <i className="pi pi-info-circle mr-2 text-blue-500"></i>
+                            Règles de prélèvement par type de compte
+                        </div>
+                        <div className="grid">
+                            {Object.entries(ACCOUNT_TYPE_RULES).map(([type, rule]) => (
+                                <div key={type} className="col-12 md:col-4">
+                                    <div className="p-3 border-round h-full" style={{ border: `1px solid ${rule.color}20`, background: `${rule.color}08` }}>
+                                        <div className="flex align-items-center gap-2 mb-2">
+                                            <i className={`pi ${rule.icon}`} style={{ color: rule.color }}></i>
+                                            <span className="font-bold" style={{ color: rule.color }}>{rule.title}</span>
+                                        </div>
+                                        <p className="m-0 text-sm text-700">{rule.rule}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="flex justify-content-between align-items-center mb-3">
                         <h3 className="m-0">Configurations des frais</h3>
                         <Button label="Nouvelle Configuration" icon="pi pi-plus" onClick={openNewConfig} />
@@ -503,7 +552,15 @@ export default function FraisTenueComptePage() {
 
                     <DataTable value={configs} paginator rows={10} emptyMessage="Aucune configuration trouvée" stripedRows>
                         <Column field="label" header="Libellé" sortable />
-                        <Column field="accountType" header="Type de Compte" body={(row) => getAccountTypeLabel(row.accountType)} sortable />
+                        <Column field="accountType" header="Type de Compte" sortable body={(row) => {
+                            const rule = ACCOUNT_TYPE_RULES[row.accountType];
+                            return (
+                                <div className="flex align-items-center gap-2">
+                                    {rule && <i className={`pi ${rule.icon} text-sm`} style={{ color: rule.color }}></i>}
+                                    <span>{getAccountTypeLabel(row.accountType)}</span>
+                                </div>
+                            );
+                        }} />
                         <Column field="amount" header="Montant (FBU)" body={(row) => formatCurrency(row.amount)} sortable />
                         <Column field="frequency" header="Fréquence" body={(row) => getFrequencyLabel(row.frequency)} sortable />
                         <Column field="revenueAccountCode" header="Compte Revenu (Commission)" body={(row) => getCompteLibelle(row.revenueAccountCode)} sortable />
@@ -533,6 +590,19 @@ export default function FraisTenueComptePage() {
                             <div className="col-6">
                                 <label htmlFor="accountType" className="font-bold block mb-2">Type de Compte *</label>
                                 <Dropdown id="accountType" value={editingConfig.accountType} options={ACCOUNT_TYPES} onChange={(e) => setEditingConfig({ ...editingConfig, accountType: e.value })} />
+                                {editingConfig.accountType && ACCOUNT_TYPE_RULES[editingConfig.accountType] && (
+                                    <div className="mt-2 p-2 border-round text-sm flex align-items-start gap-2"
+                                        style={{
+                                            background: `${ACCOUNT_TYPE_RULES[editingConfig.accountType].color}10`,
+                                            border: `1px solid ${ACCOUNT_TYPE_RULES[editingConfig.accountType].color}40`
+                                        }}>
+                                        <i className={`pi ${ACCOUNT_TYPE_RULES[editingConfig.accountType].icon} mt-1`}
+                                            style={{ color: ACCOUNT_TYPE_RULES[editingConfig.accountType].color }}></i>
+                                        <span style={{ color: ACCOUNT_TYPE_RULES[editingConfig.accountType].color }}>
+                                            {ACCOUNT_TYPE_RULES[editingConfig.accountType].rule}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="col-6">
                                 <label htmlFor="amount" className="font-bold block mb-2">Montant (FBU) *</label>
@@ -614,11 +684,47 @@ export default function FraisTenueComptePage() {
                                         <Divider />
                                         <h4 className="mt-0">Aperçu du prélèvement</h4>
 
+                                        {/* Rule reminder for selected config type */}
+                                        {preview.accountType && ACCOUNT_TYPE_RULES[preview.accountType] && (
+                                            <div className="mb-3 p-2 border-round flex align-items-start gap-2"
+                                                style={{
+                                                    background: `${ACCOUNT_TYPE_RULES[preview.accountType].color}10`,
+                                                    border: `1px solid ${ACCOUNT_TYPE_RULES[preview.accountType].color}40`
+                                                }}>
+                                                <i className={`pi ${ACCOUNT_TYPE_RULES[preview.accountType].icon} mt-1`}
+                                                    style={{ color: ACCOUNT_TYPE_RULES[preview.accountType].color }}></i>
+                                                <div>
+                                                    <span className="font-bold" style={{ color: ACCOUNT_TYPE_RULES[preview.accountType].color }}>
+                                                        {ACCOUNT_TYPE_RULES[preview.accountType].title} — règle appliquée:
+                                                    </span>
+                                                    <span className="ml-2 text-sm text-700">
+                                                        {ACCOUNT_TYPE_RULES[preview.accountType].rule}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {preview.alreadyExecuted && (
                                             <Message severity="warn" className="w-full mb-3"
                                                 text={`Les frais ont déjà été prélevés pour la période ${formatDate(preview.periodStart)} au ${formatDate(preview.periodEnd)}. Un nouveau prélèvement sera bloqué.`}
                                             />
                                         )}
+
+                                        {/* Active accounts status banner */}
+                                        <div className="flex align-items-center gap-2 mb-3 p-2 border-round"
+                                            style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                                            <i className="pi pi-check-circle text-green-600" />
+                                            <span className="text-sm text-green-800">
+                                                Seuls les comptes avec statut <strong>ACTIF</strong> sont pris en compte —{' '}
+                                                {preview.totalActiveAccounts} compte(s) actif(s) trouvé(s) pour le type{' '}
+                                                <strong>{getAccountTypeLabel(preview.accountType)}</strong>
+                                                {preview.accountsToSkip > 0 && (
+                                                    <span className="ml-1 text-orange-700">
+                                                        ({preview.accountsToSkip} exempté(s) — compte bloqué)
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </div>
 
                                         <div className="grid">
                                             <div className="col-6 md:col-3">
@@ -634,9 +740,19 @@ export default function FraisTenueComptePage() {
                                                 </Card>
                                             </div>
                                             <div className="col-6 md:col-3">
-                                                <Card className="text-center">
-                                                    <div className="text-color-secondary text-sm mb-1">Comptes à débiter</div>
-                                                    <div className="font-bold text-lg">{preview.totalActiveAccounts}</div>
+                                                <Card className="text-center" style={{ background: '#eff6ff' }}>
+                                                    <div className="text-color-secondary text-sm mb-1">
+                                                        <i className="pi pi-users mr-1 text-blue-600" />
+                                                        Comptes Actifs à Débiter
+                                                    </div>
+                                                    <div className="font-bold text-lg text-blue-700">
+                                                        {preview.accountsToCharge ?? preview.totalActiveAccounts}
+                                                    </div>
+                                                    {preview.accountsToSkip > 0 && (
+                                                        <div className="text-xs text-orange-600 mt-1">
+                                                            {preview.accountsToSkip} exempté(s)
+                                                        </div>
+                                                    )}
                                                 </Card>
                                             </div>
                                             <div className="col-6 md:col-3">
@@ -648,16 +764,22 @@ export default function FraisTenueComptePage() {
                                         </div>
 
                                         <div className="grid mt-2">
-                                            <div className="col-6">
+                                            <div className="col-4">
                                                 <div className="flex align-items-center gap-2">
                                                     <Tag value={String(preview.withSufficientBalance)} severity="success" />
-                                                    <span>Comptes avec solde suffisant</span>
+                                                    <span className="text-sm">Solde suffisant</span>
                                                 </div>
                                             </div>
-                                            <div className="col-6">
+                                            <div className="col-4">
                                                 <div className="flex align-items-center gap-2">
                                                     <Tag value={String(preview.withInsufficientBalance)} severity="warning" />
-                                                    <span>Comptes qui passeront en négatif</span>
+                                                    <span className="text-sm">Passeront en négatif</span>
+                                                </div>
+                                            </div>
+                                            <div className="col-4">
+                                                <div className="flex align-items-center gap-2">
+                                                    <Tag value={String(preview.accountsToSkip ?? 0)} severity="danger" />
+                                                    <span className="text-sm">Exemptés (BLOQUÉ)</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -677,7 +799,7 @@ export default function FraisTenueComptePage() {
                                                 className="p-button-danger"
                                                 onClick={executeBatch}
                                                 loading={executing}
-                                                disabled={preview.alreadyExecuted || preview.totalActiveAccounts === 0}
+                                                disabled={preview.alreadyExecuted || (preview.accountsToCharge ?? preview.totalActiveAccounts) === 0}
                                             />
                                         </div>
                                     </div>
@@ -985,17 +1107,51 @@ export default function FraisTenueComptePage() {
                         globalFilterFields={['accountNumber', 'clientName', 'status']}
                     >
                         <Column field="accountNumber" header="N° Compte" sortable filter style={{ width: '12%' }} />
-                        <Column field="clientName" header="Nom Client" sortable filter style={{ width: '20%' }} />
-                        <Column field="amount" header="Montant Prélevé" body={(row) => formatCurrency(row.amount)} sortable style={{ width: '12%' }} />
+                        <Column field="clientName" header="Nom Client" sortable filter style={{ width: '18%' }} />
+                        <Column
+                            header="Type Compte"
+                            body={(row: FraisTenueCompteDetail) => {
+                                const type = row.execution?.accountType || '';
+                                const rule = ACCOUNT_TYPE_RULES[type];
+                                if (!rule) return <span className="text-500">-</span>;
+                                return (
+                                    <div className="flex align-items-center gap-2">
+                                        <i className={`pi ${rule.icon} text-sm`} style={{ color: rule.color }} />
+                                        <span style={{ color: rule.color, fontWeight: 500 }}>{rule.title}</span>
+                                    </div>
+                                );
+                            }}
+                            sortable
+                            style={{ width: '14%' }}
+                        />
+                        <Column
+                            field="amount"
+                            header="Montant Prélevé"
+                            body={(row: FraisTenueCompteDetail) =>
+                                row.status === 'SKIPPED'
+                                    ? <span className="text-400">—</span>
+                                    : formatCurrency(row.amount)
+                            }
+                            sortable
+                            style={{ width: '11%' }}
+                        />
                         <Column field="balanceBefore" header="Solde Avant" body={(row) => formatCurrency(row.balanceBefore)} sortable style={{ width: '12%' }} />
                         <Column field="balanceAfter" header="Solde Après" body={(row) => {
                             const val = row.balanceAfter;
                             const color = val < 0 ? 'text-red-600' : '';
                             return <span className={color}>{formatCurrency(val)}</span>;
                         }} sortable style={{ width: '12%' }} />
-                        <Column field="status" header="Statut" body={(row) => (
-                            <Tag value={row.status} severity={row.status === 'SUCCESS' ? 'success' : row.status === 'SKIPPED' ? 'warning' : 'danger'} />
-                        )} sortable style={{ width: '8%' }} />
+                        <Column field="status" header="Statut" body={(row: FraisTenueCompteDetail) => (
+                            <div className="flex flex-column gap-1">
+                                <Tag
+                                    value={row.status === 'SUCCESS' ? 'Prélevé' : row.status === 'SKIPPED' ? 'Exempté' : row.status}
+                                    severity={row.status === 'SUCCESS' ? 'success' : row.status === 'SKIPPED' ? 'warning' : 'danger'}
+                                />
+                                {row.skipReason && (
+                                    <span className="text-xs text-500" style={{ maxWidth: '140px', wordBreak: 'break-word' }}>{row.skipReason}</span>
+                                )}
+                            </div>
+                        )} sortable style={{ width: '12%' }} />
                         <Column field="pieceId" header="Pièce" sortable style={{ width: '12%' }} />
                         <Column field="createdAt" header="Date" body={(row) => formatDate(row.createdAt)} sortable style={{ width: '10%' }} />
                     </DataTable>
@@ -1025,10 +1181,28 @@ export default function FraisTenueComptePage() {
                 <DataTable value={details} paginator rows={15} emptyMessage="Aucun détail trouvé" stripedRows>
                     <Column field="accountNumber" header="N° Compte" sortable />
                     <Column field="clientName" header="Nom Client" sortable />
-                    <Column field="amount" header="Montant" body={(row) => formatCurrency(row.amount)} sortable />
+                    <Column
+                        field="amount"
+                        header="Montant"
+                        body={(row: FraisTenueCompteDetail) =>
+                            row.status === 'SKIPPED'
+                                ? <span className="text-400">—</span>
+                                : formatCurrency(row.amount)
+                        }
+                        sortable
+                    />
                     <Column field="balanceBefore" header="Solde Avant" body={(row) => formatCurrency(row.balanceBefore)} sortable />
                     <Column field="balanceAfter" header="Solde Après" body={detailBalanceAfterTemplate} sortable />
-                    <Column field="status" header="Statut" body={detailStatusTemplate} sortable />
+                    <Column field="status" header="Statut" body={(row: FraisTenueCompteDetail) => {
+                        if (row.status === 'SUCCESS') return <Tag value="Prélevé" severity="success" />;
+                        if (row.status === 'SKIPPED') return (
+                            <div className="flex flex-column gap-1">
+                                <Tag value="Exempté" severity="warning" />
+                                {row.skipReason && <span className="text-xs text-500">{row.skipReason}</span>}
+                            </div>
+                        );
+                        return <Tag value={row.status} />;
+                    }} sortable />
                 </DataTable>
             </Dialog>
         </div>

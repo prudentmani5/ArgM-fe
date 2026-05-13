@@ -844,7 +844,7 @@ function AttestationNonRedevabilitePage() {
                             unpaidSchedules={printUnpaid}
                             companyName="AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
-                            companyPhone="+257 22 XX XX XX"
+                            companyPhone="+257 22 69 21 01 93"
                         />
                     </div>
                 )}

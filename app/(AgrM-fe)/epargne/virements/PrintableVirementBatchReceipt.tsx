@@ -11,11 +11,12 @@ interface PrintableVirementBatchReceiptProps {
 }
 
 const PrintableVirementBatchReceipt = forwardRef<HTMLDivElement, PrintableVirementBatchReceiptProps>(
-    ({ batch, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ batch, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
+        const slipCurrencyCode = batch.sourceSavingsAccount?.currency?.code || 'FBU';
         const formatCurrency = (value: number | undefined) => {
-            if (value === undefined || value === null) return '0 FBU';
-            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+            if (value === undefined || value === null) return `0 ${slipCurrencyCode}`;
+            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + slipCurrencyCode;
         };
 
         const formatDate = (dateString: string | undefined) => {

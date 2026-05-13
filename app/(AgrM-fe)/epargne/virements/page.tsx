@@ -298,9 +298,9 @@ function VirementPage() {
                 <div>
                     <p><strong>Source:</strong> {sourceInfo}</p>
                     <p><strong>Nombre de bénéficiaires:</strong> {rowData.numberOfTransfers || rowData.details?.length || 0}</p>
-                    <p><strong>Total virements:</strong> {formatCurrency(rowData.totalAmount)}</p>
-                    <p><strong>Commission:</strong> {formatCurrency(rowData.commissionAmount)}</p>
-                    <p><strong>Total débité:</strong> {formatCurrency(rowData.totalDebitAmount)}</p>
+                    <p><strong>Total virements:</strong> {formatCurrency(rowData.totalAmount, rowData.sourceSavingsAccount?.currency?.code)}</p>
+                    <p><strong>Commission:</strong> {formatCurrency(rowData.commissionAmount, rowData.sourceSavingsAccount?.currency?.code)}</p>
+                    <p><strong>Total débité:</strong> {formatCurrency(rowData.totalDebitAmount, rowData.sourceSavingsAccount?.currency?.code)}</p>
                 </div>
             ) as any,
             header: 'Valider le Virement Multiple',
@@ -572,7 +572,7 @@ function VirementPage() {
             if (sourceAccount) {
                 const available = sourceAccount.availableBalance || sourceAccount.currentBalance || 0;
                 if (virement.totalDebitAmount > available) {
-                    showToast('warn', 'Attention', `Solde insuffisant. Disponible: ${formatCurrency(available)}, Requis: ${formatCurrency(virement.totalDebitAmount)}`);
+                    showToast('warn', 'Attention', `Solde insuffisant. Disponible: ${formatCurrency(available, sourceAccount.currency?.code)}, Requis: ${formatCurrency(virement.totalDebitAmount, sourceAccount.currency?.code)}`);
                     return false;
                 }
             }
@@ -620,9 +620,9 @@ function VirementPage() {
                 <div>
                     <p><strong>Source:</strong> {sourceInfo}</p>
                     <p><strong>Destination:</strong> {destInfo}</p>
-                    <p><strong>Montant:</strong> {formatCurrency(rowData.montant)}</p>
-                    <p><strong>Commission:</strong> {formatCurrency(rowData.commissionAmount)}</p>
-                    <p><strong>Total débité:</strong> {formatCurrency(rowData.totalDebitAmount)}</p>
+                    <p><strong>Montant:</strong> {formatCurrency(rowData.montant, rowData.sourceSavingsAccount?.currency?.code)}</p>
+                    <p><strong>Commission:</strong> {formatCurrency(rowData.commissionAmount, rowData.sourceSavingsAccount?.currency?.code)}</p>
+                    <p><strong>Total débité:</strong> {formatCurrency(rowData.totalDebitAmount, rowData.sourceSavingsAccount?.currency?.code)}</p>
                 </div>
             ) as any,
             header: 'Valider le Virement',
@@ -718,8 +718,8 @@ function VirementPage() {
         }
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+    const formatCurrency = (value: number, currencyCode?: string) => {
+        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + (currencyCode || 'FBU');
     };
 
     const statusBodyTemplate = (rowData: Virement) => {
@@ -916,9 +916,9 @@ function VirementPage() {
                         <Column field="transferType" header="Type" body={transferTypeTemplate} sortable />
                         <Column header="Source" body={sourceTemplate} />
                         <Column header="Destination" body={destinationTemplate} />
-                        <Column field="montant" header="Montant" body={(row) => formatCurrency(row.montant)} sortable />
-                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount)} />
-                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount)} />
+                        <Column field="montant" header="Montant" body={(row) => formatCurrency(row.montant, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} />
                         <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
                         <Column field="dateVirement" header="Date" sortable />
                         <Column field="userAction" header="Utilisateur" sortable />
@@ -985,9 +985,9 @@ function VirementPage() {
                         <Column field="dateVirement" header="Date" sortable />
                         <Column header="Source" body={batchSourceTemplate} />
                         <Column field="numberOfTransfers" header="Bénéficiaires" sortable style={{ textAlign: 'center' }} />
-                        <Column field="totalAmount" header="Total Virements" body={(row) => formatCurrency(row.totalAmount)} sortable />
-                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount)} />
-                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount)} sortable />
+                        <Column field="totalAmount" header="Total Virements" body={(row) => formatCurrency(row.totalAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
                         <Column field="status" header="Statut" body={batchStatusTemplate} sortable />
                         <Column field="userAction" header="Utilisateur" sortable />
                         <Column header="Actions" body={batchActionsTemplate} style={{ width: '220px' }} />
@@ -1017,7 +1017,7 @@ function VirementPage() {
                 <div className="p-fluid">
                     <p className="text-500 mb-3">
                         Virement: <strong>{selectedVirement?.reference}</strong><br />
-                        Montant: <strong>{formatCurrency(selectedVirement?.montant || 0)}</strong>
+                        Montant: <strong>{formatCurrency(selectedVirement?.montant || 0, selectedVirement?.sourceSavingsAccount?.currency?.code)}</strong>
                     </p>
                     <div className="field">
                         <label htmlFor="rejectionReason" className="font-medium">Motif du rejet *</label>
@@ -1110,7 +1110,7 @@ function VirementPage() {
                             virement={selectedVirement}
                             companyName="AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
-                            companyPhone="+257 22 XX XX XX"
+                            companyPhone="+257 22 69 21 01 93"
                         />
                     </div>
                 )}
@@ -1223,7 +1223,7 @@ function VirementPage() {
                             batch={selectedBatch}
                             companyName="AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
-                            companyPhone="+257 22 XX XX XX"
+                            companyPhone="+257 22 69 21 01 93"
                         />
                     </div>
                 )}

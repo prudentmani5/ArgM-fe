@@ -36,6 +36,7 @@ const SAVINGS_URL = `${API_BASE_URL}/api/savings-accounts`;
 const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currencies`;
 const AUTH_LEVELS_URL = `${API_BASE_URL}/api/epargne/withdrawal-authorization-levels`;
 const CAISSES_URL = `${API_BASE_URL}/api/comptability/caisses`;
+const INTERNAL_ACCOUNTS_URL = `${API_BASE_URL}/api/comptability/internal-accounts`;
 
 const DENOMINATIONS = [
     { field: 'bill10000', label: 'Billets 10 000 FBu', value: 10000 },
@@ -94,6 +95,12 @@ function WithdrawalRequestPage() {
     const [printDialog, setPrintDialog] = useState(false);
     const [viewClientDialog, setViewClientDialog] = useState(false);
     const [clientDetail, setClientDetail] = useState<any>(null);
+    const [deliveredCheckbooks, setDeliveredCheckbooks] = useState<any[]>([]);
+    const [chequierValidation, setChequierValidation] = useState<'valid' | 'invalid' | 'checking' | null>(null);
+    const [chequierValidationMessage, setChequierValidationMessage] = useState<string>('');
+    const [recuValidation, setRecuValidation] = useState<'valid' | 'invalid' | 'checking' | null>(null);
+    const [recuValidationMessage, setRecuValidationMessage] = useState<string>('');
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
     // Disburse billetage dialog
     const [disburseBilletageVisible, setDisburseBilletageVisible] = useState(false);
     const [disburseBilletage, setDisburseBilletage] = useState<Record<string, number>>({});
@@ -113,6 +120,9 @@ function WithdrawalRequestPage() {
     const caissesApi = useConsumApi('');
     const { markIfNeeded } = useMarkCancellationReplaced();
     const clientDetailApi = useConsumApi('');
+    const checkbookApi = useConsumApi('');
+    const internalAccountsApi = useConsumApi('');
+    const receiptSeriesApi = useConsumApi('');
 
     useEffect(() => {
         loadReferenceData();
@@ -152,11 +162,11 @@ function WithdrawalRequestPage() {
         }
     }, [currenciesApi.data, currenciesApi.error]);
 
-    // Handle savings accounts data (exclude TERM_DEPOSIT - retrait interdit)
+    // Handle savings accounts data (exclude BLOCKED - retrait interdit; TERM_DEPOSIT autorisé)
     useEffect(() => {
         if (savingsApi.data) {
             const data = Array.isArray(savingsApi.data) ? savingsApi.data : [];
-            setSavingsAccounts(data.filter((a: any) => a.accountType !== 'TERM_DEPOSIT'));
+            setSavingsAccounts(data.filter((a: any) => a.accountType !== 'BLOCKED'));
         }
         if (savingsApi.error) {
             showToast('error', 'Erreur', savingsApi.error.message || 'Erreur lors du chargement des comptes');
@@ -177,13 +187,17 @@ function WithdrawalRequestPage() {
         }
     }, [authLevelsApi.data, authLevelsApi.error]);
 
-    // Handle requests data — filter by caisse for caissiers, show all for chef d'agence
+    // Handle requests data — filter by userAction for caissiers, show all for chef d'agence/admin
     useEffect(() => {
         if (requestsApi.data) {
             let data: WithdrawalRequest[] = Array.isArray(requestsApi.data) ? requestsApi.data : requestsApi.data.content || [];
-            // Only filter by caisseId for caissiers (not for chef d'agence/admin who see all branch requests)
             if (selectedCaisseId && !isManager) {
-                data = data.filter((r: any) => r.caisseId === selectedCaisseId);
+                const currentUser = getCurrentUser();
+                if (currentUser && currentUser !== 'Unknown') {
+                    data = data.filter((r: any) => r.userAction === currentUser);
+                } else {
+                    data = data.filter((r: any) => r.caisseId === selectedCaisseId);
+                }
             }
             setRequests(data);
             setLoading(false);
@@ -327,6 +341,44 @@ function WithdrawalRequestPage() {
         }
     }, [clientDetailApi.data, clientDetailApi.callType]);
 
+    // Handle checkbook API responses (load + validate)
+    useEffect(() => {
+        if (checkbookApi.data && checkbookApi.callType === 'loadCheckbooks') {
+            const data = Array.isArray(checkbookApi.data) ? checkbookApi.data : [];
+            const delivered = data.filter((cb: any) => cb.status === 'DELIVERED');
+            setDeliveredCheckbooks(delivered);
+        }
+        if (checkbookApi.data && checkbookApi.callType === 'validateCheck') {
+            const result = checkbookApi.data as any;
+            setChequierValidation(result.valid ? 'valid' : 'invalid');
+            setChequierValidationMessage(result.reason || '');
+        }
+        if (checkbookApi.error && checkbookApi.callType === 'validateCheck') {
+            setChequierValidation('invalid');
+            setChequierValidationMessage('Erreur lors de la vérification du chèque');
+        }
+    }, [checkbookApi.data, checkbookApi.callType, checkbookApi.error]);
+
+    // Handle receipt series validation response
+    useEffect(() => {
+        if (receiptSeriesApi.data && receiptSeriesApi.callType === 'validateRecu') {
+            const result = receiptSeriesApi.data as any;
+            setRecuValidation(result.valid ? 'valid' : 'invalid');
+            setRecuValidationMessage(result.reason || '');
+        }
+        if (receiptSeriesApi.error && receiptSeriesApi.callType === 'validateRecu') {
+            setRecuValidation('invalid');
+            setRecuValidationMessage('Erreur lors de la vérification du reçu');
+        }
+    }, [receiptSeriesApi.data, receiptSeriesApi.callType, receiptSeriesApi.error]);
+
+    // Handle internal accounts data
+    useEffect(() => {
+        if (internalAccountsApi.data) {
+            setInternalAccounts(Array.isArray(internalAccountsApi.data) ? internalAccountsApi.data : []);
+        }
+    }, [internalAccountsApi.data]);
+
     const viewClientDetails = (clientId: number) => {
         if (clientId) {
             clientDetailApi.fetchData(null, 'GET', `${CLIENTS_URL}/findbyid/${clientId}`, 'viewClientById');
@@ -339,6 +391,7 @@ function WithdrawalRequestPage() {
         currenciesApi.fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
         authLevelsApi.fetchData(null, 'GET', `${AUTH_LEVELS_URL}/findall`, 'loadAuthLevels');
         savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/findallactive`, 'loadSavingsAccounts');
+        internalAccountsApi.fetchData(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findactive`, 'loadInternalAccounts');
         // Filter caisses by branch unless user has VIEW_ALL_BRANCHES or SUPER_ADMIN authority
         let userBranchId = null;
         let canViewAll = false;
@@ -364,14 +417,13 @@ function WithdrawalRequestPage() {
         requestsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadRequests');
     };
 
-    // When savings account is selected, auto-populate the client
+    // When savings account is selected, auto-populate the client and load checkbooks
     const handleSavingsAccountChange = (accountId: number) => {
         if (accountId) {
             const selectedAccount = savingsAccounts.find(acc => acc.id === accountId);
             if (selectedAccount) {
                 setAccountBalance(selectedAccount.currentBalance || 0);
                 if (selectedAccount.client) {
-                    // Auto-set the client from the selected savings account
                     setRequest(prev => ({
                         ...prev,
                         savingsAccountId: accountId,
@@ -379,7 +431,54 @@ function WithdrawalRequestPage() {
                     }));
                 }
             }
+            // Load checkbooks for this account to validate chequier number
+            setDeliveredCheckbooks([]);
+            setChequierValidation(null);
+            setChequierValidationMessage('');
+            checkbookApi.fetchData(null, 'GET', `${API_BASE_URL}/api/epargne/checkbook-orders/findbyaccount/${accountId}`, 'loadCheckbooks');
         }
+    };
+
+    const handleNumeroCHequierBlur = (numero: string) => {
+        if (!numero.trim()) {
+            setChequierValidation(null);
+            setChequierValidationMessage('');
+            return;
+        }
+        if (!request.savingsAccountId) {
+            setChequierValidation(null);
+            return;
+        }
+        setChequierValidation('checking');
+        setChequierValidationMessage('');
+        checkbookApi.fetchData(
+            null,
+            'GET',
+            `${API_BASE_URL}/api/epargne/checkbook-orders/validate-check?savingsAccountId=${request.savingsAccountId}&checkNumber=${encodeURIComponent(numero.trim())}`,
+            'validateCheck'
+        );
+    };
+
+    const handleNumeroRecuBlur = (numero: string) => {
+        if (!numero.trim()) {
+            setRecuValidation(null);
+            setRecuValidationMessage('');
+            return;
+        }
+        const branchId = request.branchId;
+        if (!branchId) {
+            setRecuValidation('invalid');
+            setRecuValidationMessage('Veuillez d\'abord sélectionner une agence');
+            return;
+        }
+        setRecuValidation('checking');
+        setRecuValidationMessage('');
+        receiptSeriesApi.fetchData(
+            null,
+            'GET',
+            `${API_BASE_URL}/api/epargne/receipt-series/validate?branchId=${branchId}&receiptNumber=${encodeURIComponent(numero.trim())}`,
+            'validateRecu'
+        );
     };
 
     const showToast = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -393,6 +492,12 @@ function WithdrawalRequestPage() {
 
     const handleDropdownChange = (name: string, value: any) => {
         setRequest(prev => ({ ...prev, [name]: value }));
+        if (name === 'moyenRetrait') {
+            setChequierValidation(null);
+            setChequierValidationMessage('');
+            setRecuValidation(null);
+            setRecuValidationMessage('');
+        }
     };
 
     const handleDateChange = (name: string, value: Date | null) => {
@@ -439,12 +544,21 @@ function WithdrawalRequestPage() {
             showToast('warn', 'Attention', 'Veuillez sélectionner une agence');
             return false;
         }
-        if (request.requestedAmount < 1000) {
-            showToast('warn', 'Attention', 'Le montant minimum de retrait est de 1 000 FBU');
+        const selectedAccForValidation = savingsAccounts.find((a: any) => a.id === request.savingsAccountId);
+        const validationCurrency = selectedAccForValidation?.currency?.code || 'FBU';
+        const isBIF = validationCurrency === 'FBU' || validationCurrency === 'BIF';
+        const minBalance = isBIF ? 2000 : 5;
+        const minWithdrawal = minBalance + 1;
+        if (request.requestedAmount <= minBalance) {
+            showToast('warn', 'Attention', `Le montant de retrait doit être supérieur à ${minBalance} ${validationCurrency}`);
             return false;
         }
-        if (request.requestedAmount > accountBalance - 1000) {
-            showToast('warn', 'Attention', 'Solde insuffisant (solde minimum: 1 000 FBU)');
+        const recuFee = request.moyenRetrait === 'RECU' ? (request.recuFeeAmount ?? 1000) : 0;
+        if (request.requestedAmount + recuFee > accountBalance - minBalance) {
+            const msg = request.moyenRetrait === 'RECU'
+                ? `Solde insuffisant. Montant (${request.requestedAmount} ${validationCurrency}) + commission (${recuFee} FBU) dépasse le solde disponible (solde minimum à conserver: ${minBalance} ${validationCurrency})`
+                : `Solde insuffisant (solde minimum à conserver: ${minBalance} ${validationCurrency})`;
+            showToast('warn', 'Attention', msg);
             return false;
         }
         if (!request.totalAmount || request.totalAmount <= 0) {
@@ -452,8 +566,32 @@ function WithdrawalRequestPage() {
             return false;
         }
         if (Math.abs((request.totalAmount || 0) - request.requestedAmount) > 0.01) {
-            showToast('warn', 'Attention', `Le total du billetage (${formatNumberFBu(request.totalAmount || 0)} FBu) ne correspond pas au montant demandé (${formatNumberFBu(request.requestedAmount)} FBu)`);
+            showToast('warn', 'Attention', `Le total du billetage (${formatNumberFBu(request.totalAmount || 0)} ${validationCurrency}) ne correspond pas au montant demandé (${formatNumberFBu(request.requestedAmount)} ${validationCurrency})`);
             return false;
+        }
+        if (request.moyenRetrait === 'CHEQUIER') {
+            if (!request.numeroChequier?.trim()) {
+                showToast('warn', 'Attention', 'Veuillez saisir le numéro de chéquier');
+                return false;
+            }
+            if (chequierValidation !== 'valid') {
+                showToast('warn', 'Attention', 'Le numéro de chéquier est invalide ou n\'a pas été vérifié');
+                return false;
+            }
+        }
+        if (request.moyenRetrait === 'RECU') {
+            if (!request.numeroRecu?.trim()) {
+                showToast('warn', 'Attention', 'Veuillez saisir le numéro de reçu');
+                return false;
+            }
+            if (recuValidation !== 'valid') {
+                showToast('warn', 'Attention', 'Le numéro de reçu est invalide ou n\'a pas été vérifié. Veuillez saisir un numéro appartenant à une série active de cette agence.');
+                return false;
+            }
+            if (!request.recuInternalAccountId) {
+                showToast('warn', 'Attention', 'Veuillez sélectionner le compte interne de règlement');
+                return false;
+            }
         }
         if (request.requestedAmount > 500000) {
             showToast('info', 'Information', 'Ce retrait nécessite l\'approbation du manager');
@@ -474,6 +612,11 @@ function WithdrawalRequestPage() {
     const resetForm = () => {
         setRequest(new WithdrawalRequestClass());
         setAccountBalance(0);
+        setDeliveredCheckbooks([]);
+        setChequierValidation(null);
+        setChequierValidationMessage('');
+        setRecuValidation(null);
+        setRecuValidationMessage('');
     };
 
     const viewRequest = (rowData: WithdrawalRequest) => {
@@ -495,7 +638,7 @@ function WithdrawalRequestPage() {
 
     const approveByManager = (rowData: WithdrawalRequest) => {
         confirmDialog({
-            message: `Approuver le retrait de ${formatCurrency(rowData.requestedAmount)} ?`,
+            message: `Approuver le retrait de ${formatCurrency(rowData.requestedAmount, rowData.currency?.code)} ?`,
             header: 'Approbation Manager',
             icon: 'pi pi-check-circle',
             acceptClassName: 'p-button-success',
@@ -620,8 +763,8 @@ function WithdrawalRequestPage() {
         });
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+    const formatCurrency = (value: number, currencyCode?: string) => {
+        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + (currencyCode || 'FBU');
     };
 
     const getStatusSeverity = (status: string): 'success' | 'info' | 'warning' | 'danger' => {
@@ -666,6 +809,29 @@ function WithdrawalRequestPage() {
                     <CancellationRefBadge text={(rowData as any).rejectionReason} />
                 )}
                 <CancellationRefBadge text={(rowData as any).notes} />
+            </span>
+        );
+    };
+
+    const numeroDocumentBodyTemplate = (rowData: WithdrawalRequest) => {
+        const moyen = (rowData as any).moyenRetrait || 'ESPECES';
+        if (moyen === 'CHEQUIER') return (rowData as any).numeroChequier || '-';
+        if (moyen === 'RECU') return (rowData as any).numeroRecu || '-';
+        return '-';
+    };
+
+    const moyenRetraitBodyTemplate = (rowData: WithdrawalRequest) => {
+        const labels: { [key: string]: { label: string; icon: string } } = {
+            CHEQUIER: { label: 'Chéquier', icon: 'pi pi-book' },
+            RECU: { label: 'Reçu', icon: 'pi pi-file' },
+            ESPECES: { label: 'Espèces', icon: 'pi pi-money-bill' }
+        };
+        const moyen = (rowData as any).moyenRetrait || 'ESPECES';
+        const info = labels[moyen] || labels['ESPECES'];
+        return (
+            <span className="flex align-items-center gap-1">
+                <i className={`${info.icon} text-xs`}></i>
+                <span>{info.label}</span>
             </span>
         );
     };
@@ -827,6 +993,14 @@ function WithdrawalRequestPage() {
                         branchLocked={!!selectedCaisseId}
                         onViewClientDetails={viewClientDetails}
                         onDenominationsChange={handleDenominationsChange}
+                        deliveredCheckbooks={deliveredCheckbooks}
+                        chequierValidation={chequierValidation}
+                        chequierValidationMessage={chequierValidationMessage}
+                        onNumeroCHequierBlur={handleNumeroCHequierBlur}
+                        recuValidation={recuValidation}
+                        recuValidationMessage={recuValidationMessage}
+                        onNumeroRecuBlur={handleNumeroRecuBlur}
+                        internalAccounts={internalAccounts}
                     />
                     {/* Agency closed banner */}
                     {!agencyOpen && (
@@ -879,7 +1053,7 @@ function WithdrawalRequestPage() {
                             icon="pi pi-send"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={request.requestedAmount < 1000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen}
+                            disabled={request.requestedAmount <= 2000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen}
                         />
                         <Button
                             label="Réinitialiser"
@@ -904,16 +1078,27 @@ function WithdrawalRequestPage() {
                         <Column field="requestNumber" header="N° Demande" sortable />
                         <Column
                             field="client"
-                            header="Client"
-                            body={(row) => getClientDisplayName(row.client)}
+                            header="Client / Groupe"
+                            body={(row) => row.solidarityGroup
+                                ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                : getClientDisplayName(row.client)}
+                        />
+                        <Column
+                            header="N° Compte"
+                            body={(row) => {
+                                const acc = savingsAccounts.find((a: any) => Number(a.id) === Number(row.savingsAccountId));
+                                return acc?.accountNumber || (row as any).savingsAccount?.accountNumber || '-';
+                            }}
                         />
                         <Column field="requestDate" header="Date" sortable />
                         <Column
                             field="requestedAmount"
                             header="Montant"
-                            body={(row) => formatCurrency(row.requestedAmount)}
+                            body={(row) => formatCurrency(row.requestedAmount, row.currency?.code)}
                             sortable
                         />
+                        <Column field="moyenRetrait" header="Moyen Utilisé" body={moyenRetraitBodyTemplate} />
+                        <Column header="N° Reçu/Chèque" body={numeroDocumentBodyTemplate} />
                         <Column field="status" header="Statut" body={statusBodyTemplate} />
                         <Column field="userAction" header="Utilisateur" sortable />
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
@@ -937,21 +1122,78 @@ function WithdrawalRequestPage() {
                         <Column field="requestNumber" header="N° Demande" sortable />
                         <Column
                             field="client"
-                            header="Client"
-                            body={(row) => getClientDisplayName(row.client)}
+                            header="Client / Groupe"
+                            body={(row) => row.solidarityGroup
+                                ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                : getClientDisplayName(row.client)}
+                        />
+                        <Column
+                            header="N° Compte"
+                            body={(row) => {
+                                const acc = savingsAccounts.find((a: any) => Number(a.id) === Number(row.savingsAccountId));
+                                return acc?.accountNumber || (row as any).savingsAccount?.accountNumber || '-';
+                            }}
                         />
                         <Column field="requestDate" header="Date" sortable />
                         <Column
                             field="requestedAmount"
                             header="Montant"
-                            body={(row) => formatCurrency(row.requestedAmount)}
+                            body={(row) => formatCurrency(row.requestedAmount, row.currency?.code)}
                             sortable
                         />
+                        <Column field="moyenRetrait" header="Moyen Utilisé" body={moyenRetraitBodyTemplate} sortable />
+                        <Column header="N° Reçu/Chèque" body={numeroDocumentBodyTemplate} />
                         <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
                         <Column field="userAction" header="Utilisateur" sortable />
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
                     </DataTable>
                 </TabPanel>
+
+                {can('EPARGNE_WITHDRAWAL_VIEW_TODAY') && <TabPanel header="Retraits du Jour" leftIcon="pi pi-calendar mr-2">
+                    <DataTable
+                        value={requests.filter(r => r.requestDate === new Date().toISOString().split('T')[0])}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        globalFilter={globalFilter}
+                        header={header}
+                        emptyMessage="Aucun retrait enregistré aujourd'hui"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="requestDate"
+                        sortOrder={-1}
+                    >
+                        <Column field="requestNumber" header="N° Demande" sortable />
+                        <Column
+                            field="client"
+                            header="Client / Groupe"
+                            body={(row) => row.solidarityGroup
+                                ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                : getClientDisplayName(row.client)}
+                        />
+                        <Column
+                            header="N° Compte"
+                            body={(row) => {
+                                const acc = savingsAccounts.find((a: any) => Number(a.id) === Number(row.savingsAccountId));
+                                return acc?.accountNumber || (row as any).savingsAccount?.accountNumber || '-';
+                            }}
+                        />
+                        <Column field="requestDate" header="Date" sortable />
+                        <Column
+                            field="requestedAmount"
+                            header="Montant"
+                            body={(row) => formatCurrency(row.requestedAmount, row.currency?.code)}
+                            sortable
+                        />
+                        <Column field="moyenRetrait" header="Moyen Utilisé" body={moyenRetraitBodyTemplate} sortable />
+                        <Column header="N° Reçu/Chèque" body={numeroDocumentBodyTemplate} />
+                        <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
+                    </DataTable>
+                </TabPanel>}
             </TabView>
 
             {/* Dialog pour rejeter */}
@@ -976,7 +1218,7 @@ function WithdrawalRequestPage() {
                 <div className="p-fluid">
                     <p className="text-500 mb-3">
                         Demande: <strong>{selectedRequest?.requestNumber}</strong><br />
-                        Montant: <strong>{formatCurrency(selectedRequest?.requestedAmount || 0)}</strong>
+                        Montant: <strong>{formatCurrency(selectedRequest?.requestedAmount || 0, selectedRequest?.currency?.code)}</strong>
                     </p>
                     <div className="field">
                         <label htmlFor="rejectionReason" className="font-medium">Motif du rejet *</label>
@@ -1014,6 +1256,7 @@ function WithdrawalRequestPage() {
                             authorizationLevels={authorizationLevels}
                             isViewMode={true}
                             onViewClientDetails={viewClientDetails}
+                            internalAccounts={internalAccounts}
                         />
                     </>
                 )}
@@ -1049,7 +1292,7 @@ function WithdrawalRequestPage() {
                             withdrawal={selectedRequest}
                             companyName=" AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
-                            companyPhone="+257 22 XX XX XX"
+                            companyPhone="+257 22 69 21 01 93"
                         />
                     </div>
                 )}
@@ -1077,7 +1320,7 @@ function WithdrawalRequestPage() {
                                     {clientDetail.photoPath ? (
                                         <Image
                                             src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(clientDetail.photoPath)}`)}
-                                            alt="Photo du client"
+                                            alt="Photo /Fiche du client"
                                             width="150"
                                             height="150"
                                             preview

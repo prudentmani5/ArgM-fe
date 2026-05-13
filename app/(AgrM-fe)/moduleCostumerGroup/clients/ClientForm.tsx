@@ -9,6 +9,7 @@ import { FileUpload, FileUploadHandlerEvent } from "primereact/fileupload";
 import { Image } from "primereact/image";
 import { Button } from "primereact/button";
 import { Client, ClientType, Gender, RiskRating, Province, Commune, Zone, Colline, Nationality, IdDocumentType, ActivitySector, MaritalStatus, EducationLevel, ClientCategory, HousingType, Branch, RelationshipType, EmergencyContact, EmergencyContactClass } from "./Client";
+import { parseLocalDate } from '../../../../utils/dateUtils';
 
 interface ClientFormProps {
     client: Client;
@@ -354,7 +355,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             <label htmlFor="dateOfBirth" className="font-bold">Date de Naissance <span className="text-red-500">*</span></label>
                             <Calendar
                                 id="dateOfBirth"
-                                value={client.dateOfBirth ? new Date(client.dateOfBirth) : null}
+                                value={client.dateOfBirth ? parseLocalDate(client.dateOfBirth) : null}
                                 onChange={(e) => handleDateChange('dateOfBirth', e.value as Date | null)}
                                 dateFormat="dd/mm/yy"
                                 showIcon
@@ -486,7 +487,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             <label htmlFor="dateOfIncorporation">Date de Création</label>
                             <Calendar
                                 id="dateOfIncorporation"
-                                value={client.dateOfIncorporation ? new Date(client.dateOfIncorporation) : null}
+                                value={client.dateOfIncorporation ? parseLocalDate(client.dateOfIncorporation) : null}
                                 onChange={(e) => handleDateChange('dateOfIncorporation', e.value as Date | null)}
                                 dateFormat="dd/mm/yy"
                                 showIcon
@@ -542,7 +543,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             <label htmlFor="secondDateOfBirth" className="font-bold">Date de Naissance <span className="text-red-500">*</span></label>
                             <Calendar
                                 id="secondDateOfBirth"
-                                value={client.secondDateOfBirth ? new Date(client.secondDateOfBirth) : null}
+                                value={client.secondDateOfBirth ? parseLocalDate(client.secondDateOfBirth) : null}
                                 onChange={(e) => handleDateChange('secondDateOfBirth', e.value as Date | null)}
                                 dateFormat="dd/mm/yy"
                                 showIcon
@@ -620,7 +621,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             <label htmlFor="secondIdIssueDate">Date de Délivrance</label>
                             <Calendar
                                 id="secondIdIssueDate"
-                                value={client.secondIdIssueDate ? new Date(client.secondIdIssueDate) : null}
+                                value={client.secondIdIssueDate ? parseLocalDate(client.secondIdIssueDate) : null}
                                 onChange={(e) => handleDateChange('secondIdIssueDate', e.value as Date | null)}
                                 dateFormat="dd/mm/yy"
                                 showIcon
@@ -633,7 +634,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             <label htmlFor="secondIdExpiryDate">Date d'Expiration</label>
                             <Calendar
                                 id="secondIdExpiryDate"
-                                value={client.secondIdExpiryDate ? new Date(client.secondIdExpiryDate) : null}
+                                value={client.secondIdExpiryDate ? parseLocalDate(client.secondIdExpiryDate) : null}
                                 onChange={(e) => handleDateChange('secondIdExpiryDate', e.value as Date | null)}
                                 dateFormat="dd/mm/yy"
                                 showIcon
@@ -851,7 +852,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                         <label htmlFor="idDocumentIssueDate">Date de Délivrance</label>
                         <Calendar
                             id="idDocumentIssueDate"
-                            value={(client.idDocumentIssueDate || client.idIssueDate) ? new Date(client.idDocumentIssueDate || client.idIssueDate!) : null}
+                            value={(client.idDocumentIssueDate || client.idIssueDate) ? parseLocalDate(client.idDocumentIssueDate || client.idIssueDate!) : null}
                             onChange={(e) => handleDateChange('idDocumentIssueDate', e.value as Date | null)}
                             dateFormat="dd/mm/yy"
                             showIcon
@@ -864,7 +865,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                         <label htmlFor="idDocumentExpiryDate">Date d'Expiration</label>
                         <Calendar
                             id="idDocumentExpiryDate"
-                            value={(client.idDocumentExpiryDate || client.idExpiryDate) ? new Date(client.idDocumentExpiryDate || client.idExpiryDate!) : null}
+                            value={(client.idDocumentExpiryDate || client.idExpiryDate) ? parseLocalDate(client.idDocumentExpiryDate || client.idExpiryDate!) : null}
                             onChange={(e) => handleDateChange('idDocumentExpiryDate', e.value as Date | null)}
                             dateFormat="dd/mm/yy"
                             showIcon
@@ -913,7 +914,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                         )}
                     </div>
                     <div className="field col-12 md:col-6">
-                        <label htmlFor="clientPhoto">Photo du Client</label>
+                        <label htmlFor="clientPhoto">Photo /Fiche du client</label>
                         <FileUpload
                             id="clientPhoto"
                             mode="basic"
@@ -933,7 +934,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             <div className="mt-2">
                                 <Image
                                     src={client.photoPath}
-                                    alt="Photo du client"
+                                    alt="Photo /Fiche du client"
                                     width="80"
                                     preview
                                     imageClassName="border-round"

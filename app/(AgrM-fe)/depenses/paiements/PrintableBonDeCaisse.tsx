@@ -8,7 +8,7 @@ interface PrintableBonDeCaisseProps {
 }
 
 const PrintableBonDeCaisse = forwardRef<HTMLDivElement, PrintableBonDeCaisseProps>(
-    ({ demande, companyName = 'AGRINOVA MICROFINANCE', companyAddress = 'Bujumbura, Burundi', companyPhone = '+257 22 XX XX XX' }, ref) => {
+    ({ demande, companyName = 'AGRINOVA MICROFINANCE', companyAddress = 'Bujumbura, Burundi', companyPhone = '+257 22 69 21 01 93' }, ref) => {
 
         const formatCurrency = (value: number | undefined) => {
             return value?.toLocaleString('fr-BI', { style: 'currency', currency: 'BIF' }) || '0 FBU';

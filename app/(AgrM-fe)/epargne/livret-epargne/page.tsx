@@ -467,9 +467,11 @@ function PassbookPage() {
                         <Column field="passbookNumber" header="N° Livret" sortable />
                         <Column
                             field="client"
-                            header="Client"
+                            header="Client / Groupe"
                             sortable
-                            body={(row) => getClientDisplayName(row.client)}
+                            body={(row) => row.solidarityGroup
+                                ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                : getClientDisplayName(row.client)}
                         />
                         <Column field="branch.name" header="Agence" sortable />
                         <Column field="issueDate" header="Date d'Émission" sortable />

@@ -216,7 +216,7 @@ function CreateUserPage() {
                                     name="phoneNumber"
                                     value={formData.phoneNumber}
                                     onChange={handleInputChange}
-                                    placeholder="+257 XX XX XX XX"
+                                    placeholder="+257 69 21 01 93 XX"
                                     className="w-full"
                                 />
                             </div>

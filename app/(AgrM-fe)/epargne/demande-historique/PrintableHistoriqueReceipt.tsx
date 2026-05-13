@@ -46,16 +46,17 @@ const operationTypeLabels: { [key: string]: string } = {
 };
 
 const PrintableHistoriqueReceipt = forwardRef<HTMLDivElement, PrintableHistoriqueReceiptProps>(
-    ({ request, operations, totals, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ request, operations, totals, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
+        const slipCurrencyCode = (request as any).currency?.code || (request as any).savingsAccount?.currency?.code || 'FBU';
         const formatCurrency = (value: number | undefined | null) => {
             if (value === undefined || value === null || value === 0) return '';
-            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + slipCurrencyCode;
         };
 
         const formatCurrencyAlways = (value: number | undefined | null) => {
-            if (value === undefined || value === null) return '0 FBU';
-            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+            if (value === undefined || value === null) return `0 ${slipCurrencyCode}`;
+            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + slipCurrencyCode;
         };
 
         const formatDate = (dateString: string | undefined) => {
@@ -69,11 +70,16 @@ const PrintableHistoriqueReceipt = forwardRef<HTMLDivElement, PrintableHistoriqu
             return dateString;
         };
 
+        const isGroup = !!(request as any).solidarityGroup;
         const getClientName = () => {
+            if (isGroup) return (request as any).solidarityGroup?.groupName || (request as any).solidarityGroup?.name || '-';
             return getClientDisplayName(request.client);
         };
 
-        const getClientNumber = () => request.client?.clientNumber || '-';
+        const getClientNumber = () => {
+            if (isGroup) return (request as any).solidarityGroup?.groupCode || '-';
+            return request.client?.clientNumber || '-';
+        };
         const getBranchName = () => request.branch?.name || '-';
 
         return (
@@ -128,8 +134,8 @@ const PrintableHistoriqueReceipt = forwardRef<HTMLDivElement, PrintableHistoriqu
                         <div style={{ padding: '8px 10px' }}>
                             <table style={{ width: '100%', fontSize: '10px' }}>
                                 <tbody>
-                                    <tr><td style={{ padding: '2px 0', color: '#666', width: '35%' }}>Client:</td><td style={{ fontWeight: 'bold' }}>{getClientName()}</td></tr>
-                                    <tr><td style={{ padding: '2px 0', color: '#666' }}>N° Client:</td><td style={{ fontWeight: 'bold' }}>{getClientNumber()}</td></tr>
+                                    <tr><td style={{ padding: '2px 0', color: '#666', width: '35%' }}>{isGroup ? 'Groupe:' : 'Client:'}</td><td style={{ fontWeight: 'bold' }}>{getClientName()}</td></tr>
+                                    <tr><td style={{ padding: '2px 0', color: '#666' }}>{isGroup ? 'Code Groupe:' : 'N° Client:'}</td><td style={{ fontWeight: 'bold' }}>{getClientNumber()}</td></tr>
                                     <tr><td style={{ padding: '2px 0', color: '#666' }}>Agence:</td><td style={{ fontWeight: 'bold' }}>{getBranchName()}</td></tr>
                                     {request.periodStart && request.periodEnd && (
                                         <tr><td style={{ padding: '2px 0', color: '#666' }}>Période:</td><td style={{ fontWeight: 'bold', color: '#1e3a8a' }}>{formatDate(request.periodStart)} — {formatDate(request.periodEnd)}</td></tr>

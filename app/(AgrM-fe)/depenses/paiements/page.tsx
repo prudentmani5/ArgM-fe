@@ -844,10 +844,10 @@ const PaiementsDepensePage = () => {
                         {selectedDemande.typeSource === 'COMPTE_INTERNE' ? (
                             <PrintablePreuvePaiement ref={printRef} demande={selectedDemande}
                                 internalAccounts={internalAccounts} savingsAccounts={savingsAccounts}
-                                companyName="AGRINOVA MICROFINANCE" companyAddress="Bujumbura, Burundi" companyPhone="+257 22 XX XX XX" />
+                                companyName="AGRINOVA MICROFINANCE" companyAddress="Bujumbura, Burundi" companyPhone="+257 22 69 21 01 93" />
                         ) : (
                             <PrintableBonDeCaisse ref={printRef} demande={selectedDemande}
-                                companyName="AGRINOVA MICROFINANCE" companyAddress="Bujumbura, Burundi" companyPhone="+257 22 XX XX XX" />
+                                companyName="AGRINOVA MICROFINANCE" companyAddress="Bujumbura, Burundi" companyPhone="+257 22 69 21 01 93" />
                         )}
                     </div>
                 )}

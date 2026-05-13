@@ -11,11 +11,12 @@ interface PrintableCheckbookReceiptProps {
 }
 
 const PrintableCheckbookReceipt = forwardRef<HTMLDivElement, PrintableCheckbookReceiptProps>(
-    ({ order, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ order, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
+        const slipCurrencyCode = (order as any).currency?.code || (order as any).savingsAccount?.currency?.code || 'FBU';
         const formatCurrency = (value: number | undefined) => {
-            if (value === undefined || value === null) return '0 FBU';
-            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+            if (value === undefined || value === null) return `0 ${slipCurrencyCode}`;
+            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + slipCurrencyCode;
         };
 
         const formatDate = (dateString: string | undefined) => {
@@ -24,11 +25,14 @@ const PrintableCheckbookReceipt = forwardRef<HTMLDivElement, PrintableCheckbookR
             return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
         };
 
+        const isGroup = !!(order as any).solidarityGroup;
         const getClientName = () => {
+            if (isGroup) return (order as any).solidarityGroup?.groupName || (order as any).solidarityGroup?.name || '-';
             return getClientDisplayName(order.client);
         };
 
         const getClientNumber = () => {
+            if (isGroup) return (order as any).solidarityGroup?.groupCode || '-';
             return order.client?.clientNumber || '-';
         };
 
@@ -97,11 +101,11 @@ const PrintableCheckbookReceipt = forwardRef<HTMLDivElement, PrintableCheckbookR
                         <table style={{ width: '100%', fontSize: '11px' }}>
                             <tbody>
                                 <tr>
-                                    <td style={{ padding: '3px 0', color: '#666', width: '40%' }}>Nom du Client:</td>
+                                    <td style={{ padding: '3px 0', color: '#666', width: '40%' }}>{isGroup ? 'Groupe:' : 'Nom du Client:'}</td>
                                     <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{getClientName()}</td>
                                 </tr>
                                 <tr>
-                                    <td style={{ padding: '3px 0', color: '#666' }}>N° Client:</td>
+                                    <td style={{ padding: '3px 0', color: '#666' }}>{isGroup ? 'Code Groupe:' : 'N° Client:'}</td>
                                     <td style={{ padding: '3px 0', fontWeight: 'bold' }}>{getClientNumber()}</td>
                                 </tr>
                                 <tr>

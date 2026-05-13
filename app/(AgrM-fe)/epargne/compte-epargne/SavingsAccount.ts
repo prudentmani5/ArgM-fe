@@ -2,6 +2,7 @@ export interface SavingsAccount {
     id?: number;
     accountNumber: string;
     clientId: number | null;
+    solidarityGroupId: number | null;
     branchId: number | null;
     currencyId: number | null;
     statusId: number | null;
@@ -31,6 +32,7 @@ export interface SavingsAccount {
     notes: string | null;
     userAction: string | null;
     client?: any;
+    solidarityGroup?: any;
     branch?: any;
     currency?: any;
     status?: any;
@@ -43,6 +45,7 @@ export class SavingsAccountClass implements SavingsAccount {
     id?: number;
     accountNumber: string = '';
     clientId: number | null = null;
+    solidarityGroupId: number | null = null;
     branchId: number | null = null;
     currencyId: number | null = null;
     statusId: number | null = null;

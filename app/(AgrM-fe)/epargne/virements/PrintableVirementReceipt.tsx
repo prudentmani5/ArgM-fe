@@ -11,11 +11,12 @@ interface PrintableVirementReceiptProps {
 }
 
 const PrintableVirementReceipt = forwardRef<HTMLDivElement, PrintableVirementReceiptProps>(
-    ({ virement, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ virement, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
+        const slipCurrencyCode = virement.sourceSavingsAccount?.currency?.code || 'FBU';
         const formatCurrency = (value: number | undefined) => {
-            if (value === undefined || value === null) return '0 FBU';
-            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+            if (value === undefined || value === null) return `0 ${slipCurrencyCode}`;
+            return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + slipCurrencyCode;
         };
 
         const formatDate = (dateString: string | undefined) => {
@@ -30,9 +31,9 @@ const PrintableVirementReceipt = forwardRef<HTMLDivElement, PrintableVirementRec
         };
 
         const getSourceName = () => {
-            if (virement.sourceClient) {
-                return getClientDisplayName(virement.sourceClient);
-            }
+            const srcGroup = virement.sourceSavingsAccount?.solidarityGroup;
+            if (srcGroup) return srcGroup.groupName || srcGroup.name || '-';
+            if (virement.sourceClient) return getClientDisplayName(virement.sourceClient);
             return virement.sourceAccountCode || '-';
         };
 
@@ -41,9 +42,9 @@ const PrintableVirementReceipt = forwardRef<HTMLDivElement, PrintableVirementRec
         };
 
         const getDestinationName = () => {
-            if (virement.destinationClient) {
-                return getClientDisplayName(virement.destinationClient);
-            }
+            const destGroup = virement.destinationSavingsAccount?.solidarityGroup;
+            if (destGroup) return destGroup.groupName || destGroup.name || '-';
+            if (virement.destinationClient) return getClientDisplayName(virement.destinationClient);
             return virement.destinationAccountCode || '-';
         };
 

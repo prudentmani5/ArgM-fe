@@ -254,6 +254,7 @@ export interface DailyClosing {
   statementRequestsCount: number;
   checkbookOrdersCount: number;
   fraisCompteCount: number;
+  ouvertureCompteCount: number;
   totalEntriesGenerated: number;
   totalDebit: number;
   totalCredit: number;
@@ -316,6 +317,7 @@ export interface DailyClosingPreview {
   statementRequestsCount: number;
   checkbookOrdersCount: number;
   fraisCompteCount: number;
+  ouvertureCompteCount: number;
 }
 
 // ============================================================================

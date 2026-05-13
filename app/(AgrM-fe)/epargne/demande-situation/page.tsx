@@ -435,7 +435,7 @@ function SituationRequestPage() {
                 footer={<div className="flex justify-content-end gap-2"><Button label="Fermer" icon="pi pi-times" onClick={() => setPrintDialog(false)} className="p-button-text" /><Button label="Imprimer" icon="pi pi-print" onClick={handlePrint} className="p-button-success" /></div>}>
                 {selectedRequest && (
                     <div className="overflow-auto" style={{ maxHeight: '70vh' }}>
-                        <PrintableStatementReceipt ref={printRef} request={selectedRequest} companyName=" AGRINOVA MICROFINANCE" companyAddress="Bujumbura, Burundi" companyPhone="+257 22 XX XX XX" />
+                        <PrintableStatementReceipt ref={printRef} request={selectedRequest} companyName=" AGRINOVA MICROFINANCE" companyAddress="Bujumbura, Burundi" companyPhone="+257 22 69 21 01 93" />
                     </div>
                 )}
             </Dialog>

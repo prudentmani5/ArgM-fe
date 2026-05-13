@@ -1,22 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Accordion, AccordionTab } from 'primereact/accordion';
 import { Card } from 'primereact/card';
 import { Divider } from 'primereact/divider';
 import { Tag } from 'primereact/tag';
+import { Button } from 'primereact/button';
+import PrintableUserManual from './PrintableUserManual';
 
 function UserManualComponent() {
     const [activeIndex, setActiveIndex] = useState<number | number[] | null>(0);
+    const printRef = useRef<HTMLDivElement>(null);
+
+    const handlePrint = () => {
+        if (printRef.current) {
+            const printContent = printRef.current.innerHTML.replace(
+                /src="\/layout\//g,
+                `src="${window.location.origin}/layout/`
+            );
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(`
+                    <!DOCTYPE html><html lang="fr"><head>
+                    <meta charset="UTF-8" />
+                    <title>Manuel d'Utilisation - Système AgrM</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { font-family: Arial, sans-serif; }
+                        @page { size: A4; margin: 0; }
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        }
+                    </style>
+                    </head><body>${printContent}</body></html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => { printWindow.print(); printWindow.close(); }, 600);
+            }
+        }
+    };
 
     return (
         <div className="card">
-            <div className="flex align-items-center gap-3 mb-4">
-                <i className="pi pi-book text-4xl text-primary"></i>
-                <div>
-                    <h2 className="m-0 text-primary">Manuel d'Utilisation</h2>
-                    <p className="m-0 text-500">Système AgrM - Gestion Clients, Groupes Solidaires et Produits Financiers</p>
+            <div className="flex align-items-center justify-content-between mb-4">
+                <div className="flex align-items-center gap-3">
+                    <i className="pi pi-book text-4xl text-primary"></i>
+                    <div>
+                        <h2 className="m-0 text-primary">Manuel d'Utilisation</h2>
+                        <p className="m-0 text-500">Système AgrM - Gestion Clients, Groupes Solidaires et Produits Financiers</p>
+                    </div>
                 </div>
+                <Button
+                    label="Imprimer le Manuel"
+                    icon="pi pi-print"
+                    className="p-button-outlined p-button-primary"
+                    onClick={handlePrint}
+                />
+            </div>
+
+            {/* Hidden printable version */}
+            <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+                <PrintableUserManual ref={printRef} />
             </div>
 
             <Divider />
@@ -40,6 +85,9 @@ function UserManualComponent() {
                     <li><strong>Le Module Crédit :</strong> Cycle complet de gestion des demandes de crédit avec analyse financière, visites terrain, comité et décaissement.</li>
                     <li><strong>Les Données de Référence :</strong> Configuration des listes de valeurs utilisées dans le système.</li>
                     <li><strong>Le Rapprochement Bancaire :</strong> Comparaison des relevés bancaires avec les écritures comptables, détection des écarts et validation.</li>
+                    <li><strong>Le Module GRH :</strong> Gestion des ressources humaines — fiches employés, paie, présences, déclarations sociales et fiscales.</li>
+                    <li><strong>Le Module Dépenses :</strong> Circuit de dépenses avec workflow d'approbation, paiements, petite caisse et suivi budgétaire.</li>
+                    <li><strong>Le Module Actionnaires :</strong> Gestion du capital social, registre des actionnaires, dividendes, assemblées générales et conformité BRB.</li>
                 </ul>
             </Card>
 
@@ -4221,6 +4269,644 @@ function UserManualComponent() {
                         </div>
                     </div>
                 </AccordionTab>
+                {/* Module GRH */}
+                <AccordionTab
+                    header={
+                        <span className="flex align-items-center gap-2">
+                            <i className="pi pi-id-card"></i>
+                            <span className="font-bold">13. Module GRH (Gestion des Ressources Humaines)</span>
+                        </span>
+                    }
+                >
+                    <div className="p-3">
+                        <h5 className="text-primary">13.1 Vue d'Ensemble</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le module GRH couvre l'ensemble de la gestion du personnel, depuis le recrutement jusqu'à la paie.
+                                Il est organisé en deux grandes parties :
+                            </p>
+                            <ul className="line-height-3">
+                                <li><strong>Fiche Employé :</strong> Dossier administratif complet (identité, diplômes, absences, sanctions, ayants droit, formations, évaluations)</li>
+                                <li><strong>Paie :</strong> Saisie, calcul et édition des bulletins de salaire, déclarations sociales et fiscales</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">13.2 Fiche Employé</h5>
+
+                        <h6 className="text-blue-600 mt-3">13.2.1 Identification</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>La page d'identification centralise toutes les informations personnelles et administratives de l'employé.</p>
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <strong>Informations personnelles :</strong>
+                                    <ul>
+                                        <li>Matricule (généré automatiquement)</li>
+                                        <li>Nom, Prénom, Genre, Date de naissance</li>
+                                        <li>Nationalité, État civil</li>
+                                        <li>Photo de l'employé</li>
+                                    </ul>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <strong>Informations professionnelles :</strong>
+                                    <ul>
+                                        <li>Département, Service, Fonction</li>
+                                        <li>Agence d'affectation</li>
+                                        <li>Date d'embauche, Type de contrat</li>
+                                        <li>Coordonnées bancaires (pour virement de salaire)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.2.2 Diplômes et Qualifications</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Gestion des titres académiques et formations reconnues de l'employé.</p>
+                            <ul className="line-height-3">
+                                <li><strong>Type de diplôme :</strong> Baccalauréat, Licence, Master, Doctorat, etc.</li>
+                                <li><strong>Établissement :</strong> Nom de l'école ou université</li>
+                                <li><strong>Pays :</strong> Pays où les études ont été effectuées</li>
+                                <li><strong>Année d'obtention :</strong> Date d'obtention du diplôme</li>
+                            </ul>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.2.3 Gestion des Absences</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Suivi des absences par employé avec filtrage par matricule.</p>
+                            <ul className="line-height-3">
+                                <li><strong>Type d'absence :</strong> Congé annuel, maladie, sans solde, maternité/paternité, etc.</li>
+                                <li><strong>Période :</strong> Date de début et fin</li>
+                                <li><strong>Motif :</strong> Justification de l'absence</li>
+                                <li><strong>Statut :</strong> En attente, Approuvée, Rejetée</li>
+                            </ul>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.2.4 Actions Disciplinaires</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Enregistrement des mesures disciplinaires prises à l'encontre d'un employé.</p>
+                            <ul className="line-height-3">
+                                <li><strong>Type de sanction :</strong> Avertissement, Blâme, Mise à pied, Licenciement</li>
+                                <li><strong>Date de la sanction :</strong> Date d'application</li>
+                                <li><strong>Motif :</strong> Raison de la sanction</li>
+                                <li><strong>Durée :</strong> Si applicable (mise à pied)</li>
+                            </ul>
+                            <div className="border-left-3 border-orange-500 pl-3 mt-2">
+                                <p className="text-orange-600"><i className="pi pi-exclamation-triangle mr-2"></i><strong>Important :</strong> Toute action disciplinaire doit être documentée et signée par le responsable hiérarchique avant enregistrement.</p>
+                            </div>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.2.5 Ayants Droit</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Gestion des bénéficiaires et membres de famille rattachés à l'employé (pour les avantages sociaux).</p>
+                            <ul className="line-height-3">
+                                <li><strong>Lien de parenté :</strong> Conjoint(e), Enfant, Parent, etc.</li>
+                                <li><strong>Nom et Prénom :</strong> Identité du bénéficiaire</li>
+                                <li><strong>Date de naissance :</strong> Pour le suivi des droits selon l'âge</li>
+                            </ul>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.2.6 Formations et Stages</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Suivi du développement professionnel de l'employé.</p>
+                            <ul className="line-height-3">
+                                <li><strong>Intitulé de la formation :</strong> Nom du programme ou stage</li>
+                                <li><strong>Domaine :</strong> Catégorie de compétences développées</li>
+                                <li><strong>Période :</strong> Dates de début et fin</li>
+                                <li><strong>Organisme :</strong> Prestataire de formation</li>
+                                <li><strong>Résultat :</strong> Attestation, Certificat obtenu</li>
+                            </ul>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.2.7 Cotation (Évaluation des Performances)</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Gestion du système d'évaluation annuelle et de la progression salariale.</p>
+                            <ol className="line-height-3">
+                                <li>Accéder à <Tag value="Fiche Employé" /> → <Tag value="Cotation" severity="info" /></li>
+                                <li>Sélectionner la période d'évaluation</li>
+                                <li>Saisir la note de cotation de l'employé</li>
+                                <li>Le système calcule automatiquement le nouvel échelon salarial</li>
+                                <li>Cliquer sur <Tag value="Appliquer la Cotation" severity="success" /> pour valider la progression</li>
+                            </ol>
+                            <div className="border-left-3 border-blue-500 pl-3 mt-2">
+                                <p className="text-blue-600"><i className="pi pi-info-circle mr-2"></i>La cotation impacte directement la grille salariale de l'employé. Les employés non encore cotés apparaissent dans un onglet dédié.</p>
+                            </div>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.2.8 Éditions de la Fiche Employé</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Génération des documents officiels :</p>
+                            <ul className="line-height-3">
+                                <li><strong>État pour l'Inspection du Travail :</strong> Rapport de conformité légale</li>
+                                <li><strong>Liste par Service :</strong> Annuaire du personnel par département/service</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary mt-4">13.3 Module Paie</h5>
+
+                        <h6 className="text-blue-600 mt-3">13.3.1 Paramètres de Paie</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Configuration des éléments de rémunération avant la saisie :</p>
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0"><i className="pi pi-list mr-2"></i>Rubriques de Paie</h6>
+                                        <ul className="text-sm">
+                                            <li>Salaire de base</li>
+                                            <li>Indemnités de logement, transport</li>
+                                            <li>Primes de performance</li>
+                                            <li>Cotisations INSS, IRE/BHP</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0"><i className="pi pi-cog mr-2"></i>Paramètres Fiscaux</h6>
+                                        <ul className="text-sm">
+                                            <li>Tranches d'impôt mensuel</li>
+                                            <li>Tranches d'impôt annuel</li>
+                                            <li>Taux INSS employeur/employé</li>
+                                            <li>Jours fériés</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.3.2 Saisie de la Paie</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Processus mensuel de saisie :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder à <Tag value="Paie" /> → <Tag value="Saisie" severity="info" /></li>
+                                <li>Sélectionner la période (mois/année)</li>
+                                <li>Choisir l'employé ou traiter en masse</li>
+                                <li>Saisir les éléments variables du mois (primes, retenues, heures supplémentaires)</li>
+                                <li>Valider le calcul de la paie</li>
+                                <li>Générer les bulletins de salaire</li>
+                            </ol>
+                            <p className="mt-2"><strong>Éléments calculés automatiquement :</strong></p>
+                            <ul>
+                                <li>Cotisations INSS (part employé et employeur)</li>
+                                <li>Impôt sur le revenu (IRE/BHP)</li>
+                                <li>Net à payer</li>
+                            </ul>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.3.3 Présences et Heures Supplémentaires</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Gestion des données de présence via intégration biométrique :</p>
+                            <ul className="line-height-3">
+                                <li><strong>Empreintes :</strong> Enregistrement des pointages d'entrée/sortie</li>
+                                <li><strong>Groupes de Shifts :</strong> Configuration des plages horaires</li>
+                                <li><strong>Heures Supplémentaires :</strong> Calcul et validation des heures au-delà du temps réglementaire</li>
+                                <li><strong>Mapping Présences/Employés :</strong> Association des données biométriques aux dossiers employés</li>
+                            </ul>
+                        </div>
+
+                        <h6 className="text-blue-600 mt-3">13.3.4 Éditions de Paie</h6>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Génération des états réglementaires et documents de paie :</p>
+                            <div className="grid">
+                                <div className="col-12 md:col-6 lg:col-4">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-blue-500"><i className="pi pi-file mr-2"></i>Déclarations Sociales</h6>
+                                        <ul className="text-sm">
+                                            <li><strong>Listing INSS :</strong> État des cotisations sociales mensuel</li>
+                                            <li><strong>Listing INSS Trimestriel :</strong> Récapitulatif trimestriel</li>
+                                            <li><strong>Listing Jubilé :</strong> État des retraités</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6 lg:col-4">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-green-500"><i className="pi pi-file mr-2"></i>Déclarations Fiscales</h6>
+                                        <ul className="text-sm">
+                                            <li><strong>Listing IRE :</strong> Impôt sur les revenus des employés</li>
+                                            <li><strong>Listing IRE Récapitulatif :</strong> Résumé annuel</li>
+                                            <li><strong>Listing Retenue BHB :</strong> Retenues spécifiques</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6 lg:col-4">
+                                    <Card className="h-full">
+                                        <h6 className="mt-0 text-purple-500"><i className="pi pi-file mr-2"></i>Récapitulatifs</h6>
+                                        <ul className="text-sm">
+                                            <li><strong>Journal de Paie :</strong> Écritures comptables de la paie</li>
+                                            <li><strong>Virement Bancaire :</strong> Ordres de virement groupés par banque</li>
+                                            <li><strong>Synthèse Consolidée :</strong> Vue globale de la masse salariale</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary mt-4">13.4 Bonnes Pratiques GRH</h5>
+                        <div className="surface-100 p-3 border-round">
+                            <h6 className="text-blue-600">Gestion des Dossiers</h6>
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Mettre à jour la fiche employé à chaque changement de situation (promotion, mutation, mariage)</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Numériser et attacher les documents justificatifs (diplômes, contrats)</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Effectuer les cotations annuellement avant le calcul de la paie de révision</li>
+                            </ul>
+                            <h6 className="text-blue-600 mt-3">Paie</h6>
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Vérifier les présences avant de lancer le calcul de la paie</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Générer et archiver les états INSS et IRE avant le délai légal</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Conserver le journal de paie pour la réconciliation comptable</li>
+                            </ul>
+                        </div>
+                    </div>
+                </AccordionTab>
+
+                {/* Module Dépenses */}
+                <AccordionTab
+                    header={
+                        <span className="flex align-items-center gap-2">
+                            <i className="pi pi-wallet"></i>
+                            <span className="font-bold">14. Module Dépenses</span>
+                        </span>
+                    }
+                >
+                    <div className="p-3">
+                        <h5 className="text-primary">14.1 Vue d'Ensemble</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le module Dépenses gère l'ensemble du cycle des charges de l'institution,
+                                depuis la demande jusqu'au paiement, avec un workflow d'approbation multi-niveaux.
+                            </p>
+                            <ul className="line-height-3">
+                                <li><strong>Demandes :</strong> Création et soumission des demandes de dépense</li>
+                                <li><strong>Approbations :</strong> Circuit de validation hiérarchique (N1, N2, DG)</li>
+                                <li><strong>Paiements :</strong> Exécution et traçabilité des paiements</li>
+                                <li><strong>Petite Caisse :</strong> Gestion des menues dépenses en espèces</li>
+                                <li><strong>Budgets :</strong> Contrôle budgétaire par catégorie de dépense</li>
+                                <li><strong>Rapports :</strong> Tableaux de bord et analyses des charges</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">14.2 Demandes de Dépenses</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Pour créer une demande de dépense :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder à <Tag value="Dépenses" /> → <Tag value="Demandes" severity="info" /></li>
+                                <li>Cliquer sur <Tag value="Nouvelle Demande" severity="info" /></li>
+                                <li>Remplir les champs obligatoires :
+                                    <ul>
+                                        <li><strong>Catégorie :</strong> Type de dépense (fournitures, transport, maintenance, etc.)</li>
+                                        <li><strong>Priorité :</strong> Normale, Urgente, Critique</li>
+                                        <li><strong>Fournisseur :</strong> Bénéficiaire du paiement</li>
+                                        <li><strong>Montant estimé :</strong> Montant prévu</li>
+                                        <li><strong>Description :</strong> Justification détaillée</li>
+                                    </ul>
+                                </li>
+                                <li>Joindre les pièces justificatives si disponibles</li>
+                                <li>Soumettre la demande pour approbation</li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Statuts des Demandes</h6>
+                            <div className="flex flex-wrap gap-2 align-items-center">
+                                <Tag value="EN ATTENTE" severity="secondary" />
+                                <i className="pi pi-arrow-right"></i>
+                                <Tag value="SOUMISE" severity="info" />
+                                <i className="pi pi-arrow-right"></i>
+                                <Tag value="VALIDÉE N1" severity="warning" />
+                                <i className="pi pi-arrow-right"></i>
+                                <Tag value="VALIDÉE N2" severity="warning" />
+                                <i className="pi pi-arrow-right"></i>
+                                <Tag value="APPROUVÉE" severity="success" />
+                            </div>
+                            <p className="mt-2 text-sm"><Tag value="REJETÉE" severity="danger" /> — La demande peut être rejetée à n'importe quelle étape du circuit.</p>
+                        </div>
+
+                        <h5 className="text-primary">14.3 Workflow d'Approbation</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le circuit d'approbation à 3 niveaux garantit le contrôle interne :</p>
+                            <div className="grid">
+                                <div className="col-12 md:col-4">
+                                    <Card className="h-full border-left-3 border-blue-500">
+                                        <h6 className="text-blue-500 mt-0">Niveau 1 — Responsable Direct</h6>
+                                        <p className="text-sm">Vérifie la pertinence et la conformité de la demande. Peut valider ou rejeter avec commentaire.</p>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <Card className="h-full border-left-3 border-orange-500">
+                                        <h6 className="text-orange-500 mt-0">Niveau 2 — Chef de Département</h6>
+                                        <p className="text-sm">Contrôle la disponibilité budgétaire. Valide les dépenses dans son périmètre de délégation.</p>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <Card className="h-full border-left-3 border-green-500">
+                                        <h6 className="text-green-500 mt-0">Approbation Finale — DG</h6>
+                                        <p className="text-sm">Approbation définitive pour les montants au-dessus du seuil. Autorise le paiement.</p>
+                                    </Card>
+                                </div>
+                            </div>
+                            <p className="mt-3 text-sm"><i className="pi pi-info-circle text-blue-500 mr-2"></i>Chaque approbateur peut ajouter un commentaire justificatif lors de sa décision.</p>
+                        </div>
+
+                        <h5 className="text-primary">14.4 Paiements</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Pour enregistrer un paiement sur une dépense approuvée :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder à <Tag value="Dépenses" /> → <Tag value="Paiements" severity="info" /></li>
+                                <li>Sélectionner la demande approuvée</li>
+                                <li>Saisir les informations de paiement :
+                                    <ul>
+                                        <li><strong>Mode de paiement :</strong> Espèces, Virement bancaire, Chèque</li>
+                                        <li><strong>Montant payé :</strong> Montant effectivement décaissé</li>
+                                        <li><strong>Date de paiement :</strong> Date d'exécution</li>
+                                        <li><strong>Compte source :</strong> Compte interne ou caisse utilisé</li>
+                                        <li><strong>Référence virement :</strong> Pour les virements bancaires</li>
+                                    </ul>
+                                </li>
+                                <li>Valider le paiement</li>
+                                <li>Imprimer le <strong>Bon de Caisse</strong> ou la <strong>Preuve de Paiement</strong></li>
+                            </ol>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                <Tag value="Bon de Caisse" severity="info" />
+                                <Tag value="Preuve de Paiement" severity="success" />
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">14.5 Petite Caisse</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>La petite caisse couvre les menues dépenses ne nécessitant pas de circuit complet.</p>
+                            <ul className="line-height-3">
+                                <li><strong>Création :</strong> Ouvrir une caisse avec un montant initial d'alimentation</li>
+                                <li><strong>Mouvements :</strong> Enregistrer les dépenses et réapprovisionnements</li>
+                                <li><strong>Statut :</strong> Ouverte, En cours de réapprovisionnement, Clôturée</li>
+                                <li><strong>Réconciliation :</strong> Rapprochement avec le compte comptable associé</li>
+                            </ul>
+                            <div className="border-left-3 border-orange-500 pl-3 mt-2">
+                                <p className="text-orange-600"><i className="pi pi-exclamation-triangle mr-2"></i>Le solde de la petite caisse ne doit jamais être négatif. Approvisionner avant d'enregistrer une dépense si le solde est insuffisant.</p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">14.6 Budgets</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Contrôle budgétaire par catégorie de dépense et par exercice.</p>
+                            <ul className="line-height-3">
+                                <li><strong>Création :</strong> Définir un budget par catégorie (montant alloué, exercice)</li>
+                                <li><strong>Suivi :</strong> Montant consommé vs montant alloué en temps réel</li>
+                                <li><strong>Activation :</strong> Un budget doit être activé pour être pris en compte</li>
+                                <li><strong>Alerte :</strong> Le système signale les dépassements budgétaires lors de l'approbation</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">14.7 Rapports Dépenses</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Tableau de bord analytique des dépenses :</p>
+                            <div className="grid">
+                                <div className="col-6 md:col-3">
+                                    <Card className="text-center">
+                                        <i className="pi pi-dollar text-blue-500 text-2xl"></i>
+                                        <p className="text-sm mt-1"><strong>Total Dépenses</strong></p>
+                                        <p className="text-xs text-500">Montant total payé sur la période</p>
+                                    </Card>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <Card className="text-center">
+                                        <i className="pi pi-file text-purple-500 text-2xl"></i>
+                                        <p className="text-sm mt-1"><strong>Nb Demandes</strong></p>
+                                        <p className="text-xs text-500">Nombre total de demandes soumises</p>
+                                    </Card>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <Card className="text-center">
+                                        <i className="pi pi-clock text-orange-500 text-2xl"></i>
+                                        <p className="text-sm mt-1"><strong>En Attente</strong></p>
+                                        <p className="text-xs text-500">Demandes en cours d'approbation</p>
+                                    </Card>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <Card className="text-center">
+                                        <i className="pi pi-times text-red-500 text-2xl"></i>
+                                        <p className="text-sm mt-1"><strong>Rejetées</strong></p>
+                                        <p className="text-xs text-500">Demandes rejetées sur la période</p>
+                                    </Card>
+                                </div>
+                            </div>
+                            <p className="mt-3"><strong>Graphiques disponibles :</strong></p>
+                            <ul>
+                                <li>Dépenses par catégorie (camembert)</li>
+                                <li>Budget vs Réalisé (histogramme)</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">14.8 Bonnes Pratiques Dépenses</h5>
+                        <div className="surface-100 p-3 border-round">
+                            <ul className="line-height-3">
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Soumettre toujours une demande <strong>avant</strong> d'engager la dépense</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Joindre systématiquement les factures ou devis lors de la demande</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Vérifier la disponibilité budgétaire avant soumission</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Clore les demandes partiellement payées dès que le solde est réglé</li>
+                                <li><i className="pi pi-check text-green-500 mr-2"></i>Conserver les preuves de paiement pour les audits</li>
+                            </ul>
+                        </div>
+                    </div>
+                </AccordionTab>
+
+                {/* Module Actionnaires */}
+                <AccordionTab
+                    header={
+                        <span className="flex align-items-center gap-2">
+                            <i className="pi pi-chart-pie"></i>
+                            <span className="font-bold">15. Module Actionnaires</span>
+                        </span>
+                    }
+                >
+                    <div className="p-3">
+                        <h5 className="text-primary">15.1 Vue d'Ensemble</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>
+                                Le module Actionnaires gère la structure du capital social de l'institution :
+                                registre des actionnaires, souscriptions, transferts, dividendes, assemblées générales
+                                et conformité réglementaire BRB (Banque de la République du Burundi).
+                            </p>
+                            <ul className="line-height-3">
+                                <li><strong>Tableau de Bord :</strong> Vue en temps réel du capital souscrit, libéré et des ratios prudentiels</li>
+                                <li><strong>Registre :</strong> Liste complète des actionnaires avec leur participation</li>
+                                <li><strong>Souscriptions :</strong> Enregistrement des achats de parts sociales</li>
+                                <li><strong>Transferts / Rachats :</strong> Cessions et rachats de parts entre actionnaires</li>
+                                <li><strong>Dividendes :</strong> Déclaration et distribution des bénéfices</li>
+                                <li><strong>Assemblées :</strong> Convocation, tenue et PV des assemblées générales</li>
+                                <li><strong>Comptabilisation :</strong> Schémas comptables des opérations sur capital</li>
+                                <li><strong>Rapports :</strong> États réglementaires et certificats d'actionnariat</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">15.2 Tableau de Bord</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Le tableau de bord affiche en temps réel :</p>
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-blue-500">
+                                        <h6 className="text-blue-500 mt-0"><i className="pi pi-dollar mr-2"></i>Capital</h6>
+                                        <ul className="text-sm">
+                                            <li><strong>Capital autorisé :</strong> Plafond statutaire</li>
+                                            <li><strong>Capital souscrit :</strong> Parts vendues aux actionnaires</li>
+                                            <li><strong>Capital libéré :</strong> Montants effectivement payés</li>
+                                            <li><strong>Taux de libération :</strong> % du capital souscrit libéré</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full border-left-3 border-green-500">
+                                        <h6 className="text-green-500 mt-0"><i className="pi pi-shield mr-2"></i>Conformité BRB</h6>
+                                        <ul className="text-sm">
+                                            <li><strong>Ratio de capital minimum :</strong> Exigence réglementaire</li>
+                                            <li><strong>Ratio de solvabilité :</strong> Fonds propres / Actifs pondérés</li>
+                                            <li><strong>Statut KYC :</strong> % d'actionnaires KYC complet</li>
+                                        </ul>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">15.3 Registre des Actionnaires</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Pour enregistrer un nouvel actionnaire :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Accéder à <Tag value="Actionnaires" /> → <Tag value="Registre" severity="info" /></li>
+                                <li>Cliquer sur <Tag value="Nouveau" severity="info" /></li>
+                                <li>Renseigner les informations :
+                                    <ul>
+                                        <li><strong>Type d'actionnaire :</strong> Fondateur, Ordinaire, Institutionnel, Employé, État</li>
+                                        <li><strong>NIF :</strong> Numéro d'identification fiscale</li>
+                                        <li><strong>Nombre de parts :</strong> Parts souscrites à l'entrée</li>
+                                        <li><strong>Date d'entrée :</strong> Date de souscription initiale</li>
+                                        <li><strong>Statut KYC :</strong> Documents d'identité vérifiés</li>
+                                    </ul>
+                                </li>
+                            </ol>
+
+                            <h6 className="text-blue-600 mt-3">Statuts des Actionnaires</h6>
+                            <div className="flex flex-wrap gap-2">
+                                <Tag value="Actif" severity="success" /> — Actionnaire en règle
+                                <Tag value="Suspendu" severity="warning" /> — Droits temporairement suspendus
+                                <Tag value="Sorti" severity="danger" /> — Actionnaire ayant cédé toutes ses parts
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">15.4 Souscriptions</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Enregistrement des achats de parts sociales :</p>
+                            <ul className="line-height-3">
+                                <li><strong>Actionnaire :</strong> Sélectionner l'actionnaire dans le registre</li>
+                                <li><strong>Quantité de parts :</strong> Nombre de parts acquises</li>
+                                <li><strong>Valeur unitaire :</strong> Prix nominal de la part</li>
+                                <li><strong>Mode de libération :</strong> Immédiat ou Échelonné</li>
+                                <li><strong>Mode de paiement :</strong> Espèces, Virement bancaire, Épargne</li>
+                            </ul>
+                            <div className="border-left-3 border-blue-500 pl-3 mt-2">
+                                <p className="text-blue-600"><i className="pi pi-info-circle mr-2"></i>La souscription génère automatiquement les écritures comptables au compte Capital Social.</p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">15.5 Transferts et Rachats</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="text-blue-500 mt-0"><i className="pi pi-arrows-h mr-2"></i>Transfert de Parts</h6>
+                                        <p className="text-sm">Cession de parts d'un actionnaire à un autre.</p>
+                                        <ol className="text-sm line-height-3">
+                                            <li>Sélectionner le cédant et le cessionnaire</li>
+                                            <li>Indiquer la quantité de parts transférées</li>
+                                            <li>Préciser le motif et le prix de cession</li>
+                                            <li>Le système vérifie les conditions légales</li>
+                                            <li>Valider après approbation du conseil</li>
+                                        </ol>
+                                    </Card>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <Card className="h-full">
+                                        <h6 className="text-orange-500 mt-0"><i className="pi pi-replay mr-2"></i>Rachat de Parts</h6>
+                                        <p className="text-sm">Rachat des parts par l'institution elle-même.</p>
+                                        <ol className="text-sm line-height-3">
+                                            <li>Soumettre la demande de rachat</li>
+                                            <li>Vérifier le respect du délai de préavis</li>
+                                            <li>Déclencher le workflow d'approbation</li>
+                                            <li>Procéder au remboursement après approbation</li>
+                                        </ol>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">15.6 Dividendes</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p><strong>Processus de déclaration et distribution :</strong></p>
+                            <ol className="line-height-3">
+                                <li>Sélectionner l'exercice fiscal concerné</li>
+                                <li>Saisir le montant total des dividendes déclarés (après approbation AG)</li>
+                                <li>Le système calcule la distribution par actionnaire au prorata des parts</li>
+                                <li>Appliquer le taux de retenue IRCM (15% par défaut)</li>
+                                <li>Valider la déclaration (nécessite approbation DG)</li>
+                                <li>Déclencher les paiements et les écritures comptables</li>
+                            </ol>
+                            <div className="border-left-3 border-orange-500 pl-3 mt-2">
+                                <p className="text-orange-600"><i className="pi pi-exclamation-triangle mr-2"></i>La retenue IRCM doit être déclarée à l'OBR dans les délais légaux.</p>
+                            </div>
+                        </div>
+
+                        <h5 className="text-primary">15.7 Assemblées Générales</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <div className="grid">
+                                <div className="col-12 md:col-6">
+                                    <h6 className="text-blue-600">Types d'Assemblées</h6>
+                                    <ul>
+                                        <li><strong>AGO :</strong> Assemblée Générale Ordinaire (annuelle)</li>
+                                        <li><strong>AGE :</strong> Assemblée Générale Extraordinaire (modifications statuts)</li>
+                                        <li><strong>AGM :</strong> Assemblée Générale Mixte</li>
+                                    </ul>
+                                </div>
+                                <div className="col-12 md:col-6">
+                                    <h6 className="text-blue-600">Cycle de Vie</h6>
+                                    <div className="flex flex-wrap gap-2 align-items-center">
+                                        <Tag value="Planifiée" severity="info" />
+                                        <i className="pi pi-arrow-right"></i>
+                                        <Tag value="En Cours" severity="warning" />
+                                        <i className="pi pi-arrow-right"></i>
+                                        <Tag value="Clôturée" severity="success" />
+                                    </div>
+                                    <Tag value="Annulée" severity="danger" className="mt-2" />
+                                </div>
+                            </div>
+                            <p className="mt-3"><strong>Pour chaque assemblée, le système permet de :</strong></p>
+                            <ul className="line-height-3">
+                                <li>Enregistrer la liste des participants et le quorum</li>
+                                <li>Documenter les résolutions votées</li>
+                                <li>Enregistrer les résultats des votes</li>
+                                <li>Générer le procès-verbal officiel</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">15.8 Rapports et Documents</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Rapports disponibles :</p>
+                            <ul className="line-height-3">
+                                <li><strong>Registre des Actionnaires :</strong> Liste officielle avec parts et %, export PDF/Excel</li>
+                                <li><strong>État de Paiement des Dividendes :</strong> Suivi des distributions par actionnaire</li>
+                                <li><strong>Évolution du Capital :</strong> Historique des variations de capital</li>
+                                <li><strong>PV des Assemblées :</strong> Procès-verbaux officiels</li>
+                                <li><strong>Certificat d'Actionnariat :</strong> Attestation individuelle pour chaque actionnaire</li>
+                                <li><strong>Ratio Prudentiel BRB :</strong> État de conformité réglementaire</li>
+                            </ul>
+                        </div>
+
+                        <h5 className="text-primary">15.9 Paramètres du Capital</h5>
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <p>Configuration accessible depuis <Tag value="Actionnaires" /> → <Tag value="Paramètres" severity="info" /> :</p>
+                            <ul className="line-height-3">
+                                <li><strong>Valeur nominale d'une part :</strong> Prix unitaire d'une part sociale</li>
+                                <li><strong>Capital autorisé :</strong> Plafond du capital social</li>
+                                <li><strong>Taux IRCM par défaut :</strong> Taux de retenue sur dividendes (ex: 15%)</li>
+                                <li><strong>Mode de vote en AG :</strong> Proportionnel, Plafonné, Égalitaire</li>
+                                <li><strong>Délai de préavis rachat :</strong> Nombre de jours requis avant rachat</li>
+                                <li><strong>Règles par type d'action :</strong> Quantité min/max, transférabilité</li>
+                            </ul>
+                        </div>
+                    </div>
+                </AccordionTab>
             </Accordion>
 
             {/* Footer */}
@@ -4230,7 +4916,7 @@ function UserManualComponent() {
                     <i className="pi pi-info-circle mr-2"></i>
                     Pour toute assistance supplémentaire, veuillez contacter l'administrateur système.
                 </p>
-                <p>Version 8.0 - Système AgrM - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Comptabilité, Traçabilité, Rapprochement Bancaire</p>
+                <p>Version 9.0 - Système AgrM - Modules: Gestion Clients, Groupes Solidaires, Produits Financiers, Épargne, Crédit, Remboursement, Comptabilité, Traçabilité, Rapprochement Bancaire, GRH, Dépenses, Actionnaires</p>
             </div>
         </div>
     );

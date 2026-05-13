@@ -29,6 +29,7 @@ const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const SAVINGS_URL = `${API_BASE_URL}/api/savings-accounts`;
 const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currencies`;
 const CAISSES_URL = `${API_BASE_URL}/api/comptability/caisses`;
+const INTERNAL_ACCOUNTS_URL = `${API_BASE_URL}/api/comptability/internal-accounts`;
 
 // Get current user from cookies
 const getCurrentUser = (): string => {
@@ -51,6 +52,7 @@ function DepositSlipPage() {
     const [clients, setClients] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [savingsAccounts, setSavingsAccounts] = useState<any[]>([]);
+    const [allSavingsAccounts, setAllSavingsAccounts] = useState<any[]>([]);
     const [currencies, setCurrencies] = useState<any[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -63,6 +65,10 @@ function DepositSlipPage() {
     const [caisses, setCaisses] = useState<any[]>([]);
     const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
     const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
+    const [selectedAccountGroup, setSelectedAccountGroup] = useState<any>(null);
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
+    const [ficheAccounts, setFicheAccounts] = useState<any[]>([]);
+    const [partSocialAccounts, setPartSocialAccounts] = useState<any[]>([]);
     const toast = useRef<Toast>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +80,7 @@ function DepositSlipPage() {
     const slipsApi = useConsumApi('');
     const actionsApi = useConsumApi('');
     const caissesApi = useConsumApi('');
+    const internalAccountsApi = useConsumApi('');
     const { markIfNeeded } = useMarkCancellationReplaced();
 
     useEffect(() => {
@@ -114,16 +121,22 @@ function DepositSlipPage() {
         }
     }, [currenciesApi.data, currenciesApi.error]);
 
-    // Handle savings accounts data (exclude TERM_DEPOSIT - dépôt interdit)
+    // Handle savings accounts data (exclude BLOCKED - dépôt interdit; TERM_DEPOSIT autorisé)
     useEffect(() => {
         if (savingsApi.data) {
             const data = Array.isArray(savingsApi.data) ? savingsApi.data : [];
-            setSavingsAccounts(data.filter((a: any) => a.accountType !== 'TERM_DEPOSIT'));
+            const filtered = data.filter((a: any) => a.accountType !== 'BLOCKED');
+            setSavingsAccounts(filtered);
+            // Keep the full list intact for DataTable account number lookup;
+            // only update it on the initial full load, not on client-specific loads.
+            if (savingsApi.callType === 'loadSavingsAccounts') {
+                setAllSavingsAccounts(filtered);
+            }
         }
         if (savingsApi.error) {
             showToast('error', 'Erreur', savingsApi.error.message || 'Erreur lors du chargement des comptes');
         }
-    }, [savingsApi.data, savingsApi.error]);
+    }, [savingsApi.data, savingsApi.error, savingsApi.callType]);
 
     // Handle deposit slips data — filter by caisse for caissiers
     useEffect(() => {
@@ -189,7 +202,7 @@ function DepositSlipPage() {
                     const canViewAll = auths.includes('VIEW_ALL_BRANCHES') || auths.includes('ROLE_VIEW_ALL_BRANCHES');
 
                     let filteredData = allData;
-                    let userCaisse = null;
+                    let userCaisse: any = null;
 
                     if (isCaissier && !isChefAgence && !isSuperAdmin && !canViewAll) {
                         // Caissier: only show their own GUICHET caisse (never AGENCE/CHEF_AGENCE/SIEGE)
@@ -251,11 +264,35 @@ function DepositSlipPage() {
         }
     }, [caissesApi.data, caissesApi.callType]);
 
+    // Handle internal accounts data — same auto-selection pattern as carnet-cheque
+    useEffect(() => {
+        if (internalAccountsApi.data) {
+            const data = Array.isArray(internalAccountsApi.data) ? internalAccountsApi.data : [];
+            setInternalAccounts(data);
+
+            const ficheList = data.filter((a: any) => a.actif !== false && a.libelle?.toLowerCase().includes('fiche'));
+            setFicheAccounts(ficheList);
+            if (ficheList.length > 0) {
+                setDepositSlip(prev => prev.ficheIdentificationAccountId ? prev : { ...prev, ficheIdentificationAccountId: ficheList[0].accountId });
+            }
+
+            const partList = data.filter((a: any) => a.actif !== false && (
+                a.libelle?.toLowerCase().includes('part social') ||
+                (a.libelle?.toLowerCase().includes('part') && a.libelle?.toLowerCase().includes('social'))
+            ));
+            setPartSocialAccounts(partList);
+            if (partList.length > 0) {
+                setDepositSlip(prev => prev.partSocialAccountId ? prev : { ...prev, partSocialAccountId: partList[0].accountId });
+            }
+        }
+    }, [internalAccountsApi.data]);
+
     const loadReferenceData = () => {
         clientsApi.fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
         currenciesApi.fetchData(null, 'GET', `${CURRENCIES_URL}/findall`, 'loadCurrencies');
         savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/findallactive`, 'loadSavingsAccounts');
+        internalAccountsApi.fetchData(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findactive`, 'loadInternalAccounts');
         // Filter caisses by branch unless user has VIEW_ALL_BRANCHES or SUPER_ADMIN authority
         let userBranchId = null;
         let canViewAll = false;
@@ -281,17 +318,24 @@ function DepositSlipPage() {
         slipsApi.fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadSlips');
     };
 
-    // When savings account is selected, auto-populate the client
+    // When savings account is selected, auto-populate the client or group
     const handleSavingsAccountChange = (accountId: number) => {
         if (accountId) {
             const selectedAccount = savingsAccounts.find(acc => acc.id === accountId);
             if (selectedAccount && selectedAccount.client) {
-                // Auto-set the client from the selected savings account
                 setDepositSlip(prev => ({
                     ...prev,
                     savingsAccountId: accountId,
                     clientId: selectedAccount.client.id
                 }));
+                setSelectedAccountGroup(null);
+            } else if (selectedAccount && selectedAccount.solidarityGroup) {
+                setDepositSlip(prev => ({
+                    ...prev,
+                    savingsAccountId: accountId,
+                    clientId: undefined
+                }));
+                setSelectedAccountGroup(selectedAccount.solidarityGroup);
             }
         }
     };
@@ -334,8 +378,8 @@ function DepositSlipPage() {
     };
 
     const validateForm = (): boolean => {
-        if (!depositSlip.clientId) {
-            showToast('warn', 'Attention', 'Veuillez sélectionner un client');
+        if (!depositSlip.clientId && !selectedAccountGroup) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner un compte (client ou groupe)');
             return false;
         }
         if (!depositSlip.savingsAccountId) {
@@ -354,6 +398,16 @@ function DepositSlipPage() {
             showToast('warn', 'Attention', 'Le montant minimum de dépôt est de 500 FBU');
             return false;
         }
+        if (depositSlip.depositType === 'OUVERTURE_COMPTE') {
+            if (!depositSlip.ficheIdentificationAccountId) {
+                showToast('warn', 'Attention', 'Veuillez sélectionner le compte pour la Fiche d\'Identification');
+                return false;
+            }
+            if (!depositSlip.partSocialAccountId) {
+                showToast('warn', 'Attention', 'Veuillez sélectionner le compte pour la Part Social');
+                return false;
+            }
+        }
         return true;
     };
 
@@ -368,8 +422,11 @@ function DepositSlipPage() {
     };
 
     const resetForm = () => {
-        setDepositSlip(new DepositSlipClass());
+        const autoFiche = ficheAccounts.length > 0 ? ficheAccounts[0].accountId : undefined;
+        const autoPartSocial = partSocialAccounts.length > 0 ? partSocialAccounts[0].accountId : undefined;
+        setDepositSlip({ ...new DepositSlipClass(), ficheIdentificationAccountId: autoFiche, partSocialAccountId: autoPartSocial });
         setSavingsAccounts([]);
+        setSelectedAccountGroup(null);
     };
 
     const viewSlip = (rowData: DepositSlip) => {
@@ -397,7 +454,7 @@ function DepositSlipPage() {
 
     const completeDeposit = (rowData: DepositSlip) => {
         confirmDialog({
-            message: `Confirmer le dépôt de ${formatCurrency(rowData.totalAmount)} sur le compte ?`,
+            message: `Confirmer le dépôt de ${formatCurrency(rowData.totalAmount, rowData.currency?.code)} sur le compte ?`,
             header: 'Valider le Dépôt',
             icon: 'pi pi-check-circle',
             acceptClassName: 'p-button-success',
@@ -440,8 +497,8 @@ function DepositSlipPage() {
         });
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+    const formatCurrency = (value: number, currencyCode?: string) => {
+        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + (currencyCode || 'FBU');
     };
 
     const statusBodyTemplate = (rowData: DepositSlip) => {
@@ -480,8 +537,8 @@ function DepositSlipPage() {
             showToast('warn', 'Attention', 'Seuls les dépôts validés peuvent être imprimés');
             return;
         }
-        // Resolve account number from savingsAccounts list
-        const account = savingsAccounts.find(a => a.id === rowData.savingsAccountId);
+        // Resolve account number from the full list (allSavingsAccounts is never replaced by client-specific loads)
+        const account = allSavingsAccounts.find((a: any) => Number(a.id) === Number(rowData.savingsAccountId));
         const enriched = { ...rowData, accountNumber: account?.accountNumber || rowData.savingsAccountId };
         setSelectedSlip(enriched);
         setPrintDialog(true);
@@ -631,6 +688,8 @@ function DepositSlipPage() {
                         currencies={currencies}
                         onSavingsAccountChange={handleSavingsAccountChange}
                         branchLocked={!!selectedCaisseId}
+                        selectedAccountGroup={selectedAccountGroup}
+                        internalAccounts={internalAccounts}
                     />
                     {/* Agency closed banner */}
                     {!agencyOpen && (
@@ -713,16 +772,25 @@ function DepositSlipPage() {
                         <Column field="slipNumber" header="N° Bordereau" sortable />
                         <Column
                             field="client"
-                            header="Client"
+                            header="Client / Groupe"
                             sortable
-                            body={(row) => getClientDisplayName(row.client)}
+                            body={(row) => row.solidarityGroup
+                                ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                : getClientDisplayName(row.client)}
+                        />
+                        <Column
+                            header="N° Compte"
+                            body={(row) => {
+                                const acc = allSavingsAccounts.find((a: any) => Number(a.id) === Number(row.savingsAccountId));
+                                return acc?.accountNumber || (row as any).savingsAccount?.accountNumber || (row as any).accountNumber || '-';
+                            }}
                         />
                         <Column field="depositDate" header="Date" sortable />
                         <Column
                             field="totalAmount"
                             header="Montant"
                             sortable
-                            body={(row) => formatCurrency(row.totalAmount)}
+                            body={(row) => formatCurrency(row.totalAmount, row.currency?.code)}
                         />
                         <Column field="depositorName" header="Déposant" />
                         <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
@@ -730,6 +798,52 @@ function DepositSlipPage() {
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
                     </DataTable>
                 </TabPanel>
+
+                {can('EPARGNE_DEPOSIT_VIEW_TODAY') && <TabPanel header="Dépôts du Jour" leftIcon="pi pi-calendar mr-2">
+                    <DataTable
+                        value={depositSlips.filter(s => s.depositDate === new Date().toISOString().split('T')[0])}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        globalFilter={globalFilter}
+                        header={header}
+                        emptyMessage="Aucun dépôt enregistré aujourd'hui"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="depositDate"
+                        sortOrder={-1}
+                    >
+                        <Column field="slipNumber" header="N° Bordereau" sortable />
+                        <Column
+                            field="client"
+                            header="Client / Groupe"
+                            sortable
+                            body={(row) => row.solidarityGroup
+                                ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                : getClientDisplayName(row.client)}
+                        />
+                        <Column
+                            header="N° Compte"
+                            body={(row) => {
+                                const acc = allSavingsAccounts.find((a: any) => Number(a.id) === Number(row.savingsAccountId));
+                                return acc?.accountNumber || (row as any).savingsAccount?.accountNumber || (row as any).accountNumber || '-';
+                            }}
+                        />
+                        <Column field="depositDate" header="Date" sortable />
+                        <Column
+                            field="totalAmount"
+                            header="Montant"
+                            sortable
+                            body={(row) => formatCurrency(row.totalAmount, row.currency?.code)}
+                        />
+                        <Column field="depositorName" header="Déposant" />
+                        <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
+                    </DataTable>
+                </TabPanel>}
             </TabView>
 
             {/* Dialog pour annuler */}
@@ -790,6 +904,7 @@ function DepositSlipPage() {
                         savingsAccounts={savingsAccounts}
                         currencies={currencies}
                         isViewMode={true}
+                        internalAccounts={internalAccounts}
                     />
                 )}
             </Dialog>
@@ -824,7 +939,7 @@ function DepositSlipPage() {
                             depositSlip={selectedSlip}
                             companyName=" AGRINOVA MICROFINANCE"
                             companyAddress="Bujumbura, Burundi"
-                            companyPhone="+257 22 XX XX XX"
+                            companyPhone="+257 22 69 21 01 93"
                         />
                     </div>
                 )}

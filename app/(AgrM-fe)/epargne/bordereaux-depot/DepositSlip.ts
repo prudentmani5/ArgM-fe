@@ -90,6 +90,9 @@ export interface DepositSlip {
     createdAt?: string;
     updatedAt?: string;
     userAction?: string;
+    depositType?: string; // 'NORMAL' | 'OUVERTURE_COMPTE'
+    ficheIdentificationAccountId?: number;
+    partSocialAccountId?: number;
 }
 
 export class DepositSlipClass implements DepositSlip {
@@ -139,6 +142,9 @@ export class DepositSlipClass implements DepositSlip {
     createdAt?: string;
     updatedAt?: string;
     userAction?: string;
+    depositType?: string = 'NORMAL';
+    ficheIdentificationAccountId?: number;
+    partSocialAccountId?: number;
 
     constructor(init?: Partial<DepositSlip>) {
         Object.assign(this, init);

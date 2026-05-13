@@ -23,6 +23,7 @@ import { Divider } from 'primereact/divider';
 import { Avatar } from 'primereact/avatar';
 import { Image } from 'primereact/image';
 import { buildApiUrl } from '../../../../utils/apiConfig';
+import { formatLocalDate, parseLocalDate } from '../../../../utils/dateUtils';
 
 function ClientComponent() {
     const [client, setClient] = useState<Client>(new Client());
@@ -334,7 +335,7 @@ function ClientComponent() {
     const handleDateChange = (name: string, value: Date | null) => {
         setClient(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : ''
+            [name]: value ? formatLocalDate(value) : ''
         }));
     };
 
@@ -353,7 +354,7 @@ function ClientComponent() {
     const handleDateChangeEdit = (name: string, value: Date | null) => {
         setClientEdit(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : ''
+            [name]: value ? formatLocalDate(value) : ''
         }));
     };
 
@@ -1060,7 +1061,7 @@ function ClientComponent() {
     const handleMemberDateChange = (name: string, value: Date | null) => {
         setSignatoryMember(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : ''
+            [name]: value ? formatLocalDate(value) : ''
         }));
     };
 
@@ -1089,7 +1090,7 @@ function ClientComponent() {
     const handleMemberDateChangeEdit = (name: string, value: Date | null) => {
         setSignatoryMemberEdit(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : ''
+            [name]: value ? formatLocalDate(value) : ''
         }));
     };
 
@@ -1774,7 +1775,7 @@ function ClientComponent() {
                                 {clientEdit.photoPath ? (
                                     <Image
                                         src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(clientEdit.photoPath)}`)}
-                                        alt="Photo du client"
+                                        alt="Photo /Fiche du client"
                                         width="150"
                                         height="150"
                                         preview
@@ -1875,7 +1876,7 @@ function ClientComponent() {
                                     </div>
                                     <div className="flex justify-content-between">
                                         <span className="text-500">Date de naissance</span>
-                                        <span className="font-semibold">{clientEdit.dateOfBirth ? new Date(clientEdit.dateOfBirth).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        <span className="font-semibold">{clientEdit.dateOfBirth ? parseLocalDate(clientEdit.dateOfBirth).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-content-between">
                                         <span className="text-500">Lieu de naissance</span>
@@ -1919,7 +1920,7 @@ function ClientComponent() {
                                     </div>
                                     <div className="flex justify-content-between">
                                         <span className="text-500">Date de naissance</span>
-                                        <span className="font-semibold">{clientEdit.secondDateOfBirth ? new Date(clientEdit.secondDateOfBirth).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        <span className="font-semibold">{clientEdit.secondDateOfBirth ? parseLocalDate(clientEdit.secondDateOfBirth).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-content-between">
                                         <span className="text-500">Lieu de naissance</span>
@@ -1945,11 +1946,11 @@ function ClientComponent() {
                                     </div>
                                     <div className="flex justify-content-between">
                                         <span className="text-500">Date de délivrance</span>
-                                        <span className="font-semibold">{clientEdit.secondIdIssueDate ? new Date(clientEdit.secondIdIssueDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        <span className="font-semibold">{clientEdit.secondIdIssueDate ? parseLocalDate(clientEdit.secondIdIssueDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-content-between">
                                         <span className="text-500">Date d'expiration</span>
-                                        <span className="font-semibold">{clientEdit.secondIdExpiryDate ? new Date(clientEdit.secondIdExpiryDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        <span className="font-semibold">{clientEdit.secondIdExpiryDate ? parseLocalDate(clientEdit.secondIdExpiryDate).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                     </div>
                                     {clientEdit.secondIdDocumentScanPath && (
                                         <div className="mt-2">
@@ -2041,7 +2042,7 @@ function ClientComponent() {
                                     </div>
                                     <div className="flex justify-content-between">
                                         <span className="text-500">Date de création</span>
-                                        <span className="font-semibold">{clientEdit.dateOfIncorporation ? new Date(clientEdit.dateOfIncorporation).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                        <span className="font-semibold">{clientEdit.dateOfIncorporation ? parseLocalDate(clientEdit.dateOfIncorporation).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                     </div>
                                 </div>
                             </Card>
@@ -2060,11 +2061,11 @@ function ClientComponent() {
                                 </div>
                                 <div className="flex justify-content-between">
                                     <span className="text-500">Date de délivrance</span>
-                                    <span className="font-semibold">{(clientEdit.idDocumentIssueDate || clientEdit.idIssueDate) ? new Date(clientEdit.idDocumentIssueDate || clientEdit.idIssueDate!).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                    <span className="font-semibold">{(clientEdit.idDocumentIssueDate || clientEdit.idIssueDate) ? parseLocalDate(clientEdit.idDocumentIssueDate || clientEdit.idIssueDate!).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                 </div>
                                 <div className="flex justify-content-between">
                                     <span className="text-500">Date d'expiration</span>
-                                    <span className="font-semibold">{(clientEdit.idDocumentExpiryDate || clientEdit.idExpiryDate) ? new Date(clientEdit.idDocumentExpiryDate || clientEdit.idExpiryDate!).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                    <span className="font-semibold">{(clientEdit.idDocumentExpiryDate || clientEdit.idExpiryDate) ? parseLocalDate(clientEdit.idDocumentExpiryDate || clientEdit.idExpiryDate!).toLocaleDateString('fr-FR') : 'N/A'}</span>
                                 </div>
                                 <div className="flex justify-content-between">
                                     <span className="text-500">Délivré par</span>

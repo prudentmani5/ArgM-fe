@@ -10,7 +10,7 @@ interface PrintablePaymentReceiptProps {
 }
 
 const PrintablePaymentReceipt = forwardRef<HTMLDivElement, PrintablePaymentReceiptProps>(
-    ({ payment, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 XX XX XX" }, ref) => {
+    ({ payment, companyName = "MICROFINANCE", companyAddress = "Bujumbura, Burundi", companyPhone = "+257 22 69 21 01 93" }, ref) => {
 
         const formatCurrency = (value: number | undefined) => {
             if (value === undefined || value === null) return '0 FBU';

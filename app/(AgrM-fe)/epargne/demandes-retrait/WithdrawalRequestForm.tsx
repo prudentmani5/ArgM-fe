@@ -8,7 +8,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
-import { WithdrawalRequest, WithdrawalStatus, CashDenomination } from './WithdrawalRequest';
+import { WithdrawalRequest, CashDenomination } from './WithdrawalRequest';
 import { getClientDisplayName } from '@/utils/clientUtils';
 import CancellationRefDropdown from '@/components/CancellationRefDropdown';
 
@@ -32,6 +32,14 @@ interface WithdrawalRequestFormProps {
     isViewMode?: boolean;
     branchLocked?: boolean;
     onViewClientDetails?: (clientId: number) => void;
+    deliveredCheckbooks?: any[];
+    chequierValidation?: 'valid' | 'invalid' | 'checking' | null;
+    chequierValidationMessage?: string;
+    onNumeroCHequierBlur?: (numero: string) => void;
+    recuValidation?: 'valid' | 'invalid' | 'checking' | null;
+    recuValidationMessage?: string;
+    onNumeroRecuBlur?: (numero: string) => void;
+    internalAccounts?: any[];
 }
 
 const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
@@ -43,15 +51,23 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
     clients,
     branches,
     savingsAccounts,
-    currencies,
-    authorizationLevels,
+    currencies: _currencies,
+    authorizationLevels: _authorizationLevels,
     onSavingsAccountChange,
     onAmountChange,
     onDenominationsChange,
     accountBalance = 0,
     isViewMode = false,
     branchLocked = false,
-    onViewClientDetails
+    onViewClientDetails,
+    deliveredCheckbooks = [],
+    chequierValidation = null,
+    chequierValidationMessage = '',
+    onNumeroCHequierBlur,
+    recuValidation = null,
+    recuValidationMessage = '',
+    onNumeroRecuBlur,
+    internalAccounts = []
 }) => {
     const [denominations, setDenominations] = React.useState<{ [key: number]: number }>({});
 
@@ -88,8 +104,13 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
     };
 
     const billetageTotal = FBU_DENOMINATIONS.reduce((sum, d) => sum + (denominations[d] || 0) * d, 0);
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+    const selectedSavingsAccount = savingsAccounts.find((a: any) => a.id === request.savingsAccountId);
+    const accountCurrency = selectedSavingsAccount?.currency?.code || 'FBU';
+    const isBIF = accountCurrency === 'FBU' || accountCurrency === 'BIF';
+    const minBalance = isBIF ? 2000 : 5;
+    const minWithdrawal = minBalance + 1;
+    const formatCurrency = (value: number, currencyCode?: string) => {
+        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + (currencyCode || accountCurrency);
     };
 
     const getStatusSeverity = (status: string): 'success' | 'info' | 'warning' | 'danger' => {
@@ -193,7 +214,7 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                 filterPlaceholder="Rechercher par numéro de compte"
                                 className="w-full"
                                 itemTemplate={(item: any) => (
-                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.currentBalance || 0)})</span>
+                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.currentBalance || 0, item.currency?.code)})</span>
                                 )}
                                 valueTemplate={(item: any, props: any) => {
                                     if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
@@ -256,15 +277,23 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                     <div className="mt-3 p-3 surface-50 border-round">
                         <div className="flex justify-content-between align-items-center">
                             <span className="font-medium">Solde disponible:</span>
-                            <span className="text-xl font-bold text-green-600">{formatCurrency(accountBalance)}</span>
+                            <span className="text-xl font-bold text-green-600">{formatCurrency(accountBalance, accountCurrency)}</span>
                         </div>
                         <div className="flex justify-content-between align-items-center mt-2">
                             <span className="text-500">Solde minimum à conserver:</span>
-                            <span className="text-orange-500 font-medium">1 000 FBU</span>
+                            <span className="text-orange-500 font-medium">{formatCurrency(minBalance)}</span>
                         </div>
+                        {request.moyenRetrait === 'RECU' && (
+                            <div className="flex justify-content-between align-items-center mt-2">
+                                <span className="text-500">Commission Reçu:</span>
+                                <span className="text-orange-500 font-medium">{formatCurrency(request.recuFeeAmount ?? 1000)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-content-between align-items-center mt-2">
                             <span className="text-500">Montant maximum retirable:</span>
-                            <span className="text-primary font-bold">{formatCurrency(Math.max(0, accountBalance - 1000))}</span>
+                            <span className="text-primary font-bold">
+                                {formatCurrency(Math.max(0, accountBalance - minBalance - (request.moyenRetrait === 'RECU' ? (request.recuFeeAmount ?? 1000) : 0)), accountCurrency)}
+                            </span>
                         </div>
                     </div>
                 )}
@@ -272,12 +301,12 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                     <div className="mt-3 p-3 surface-50 border-round">
                         <div className="flex justify-content-between align-items-center">
                             <span className="font-medium">Solde au moment de la demande:</span>
-                            <span className="text-xl font-bold text-blue-600">{formatCurrency(request.balanceAtRequest || 0)}</span>
+                            <span className="text-xl font-bold text-blue-600">{formatCurrency(request.balanceAtRequest || 0, accountCurrency)}</span>
                         </div>
                         {request.balanceAfterWithdrawal !== undefined && request.balanceAfterWithdrawal !== null && (
                             <div className="flex justify-content-between align-items-center mt-2">
                                 <span className="font-medium">Solde après retrait:</span>
-                                <span className="text-xl font-bold text-green-600">{formatCurrency(request.balanceAfterWithdrawal)}</span>
+                                <span className="text-xl font-bold text-green-600">{formatCurrency(request.balanceAfterWithdrawal, accountCurrency)}</span>
                             </div>
                         )}
                         {request.clientId && onViewClientDetails && (
@@ -367,7 +396,7 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                 </h5>
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-6">
-                        <label htmlFor="requestedAmount" className="font-medium">Montant Demandé (FBU) *</label>
+                        <label htmlFor="requestedAmount" className="font-medium">Montant Demandé ({accountCurrency}) *</label>
                         <InputNumber
                             id="requestedAmount"
                             value={request.requestedAmount}
@@ -376,13 +405,13 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                 if (onAmountChange && e.value) onAmountChange(e.value);
                             }}
                             mode="decimal"
-                            suffix=" FBU"
-                            min={1000}
-                            max={accountBalance > 1000 ? accountBalance - 1000 : 0}
+                            suffix={` ${accountCurrency}`}
+                            min={minWithdrawal}
+                            max={Math.max(0, accountBalance - minBalance - (request.moyenRetrait === 'RECU' ? (request.recuFeeAmount ?? 1000) : 0))}
                             disabled={isViewMode}
                             className="w-full"
                         />
-                        <small className="text-500">Minimum: 1 000 FBU</small>
+                        <small className="text-500">Minimum: {formatCurrency(minWithdrawal)} (montant doit être &gt; {formatCurrency(minBalance)})</small>
                     </div>
                     <div className="field col-12 md:col-6">
                         <label htmlFor="withdrawalPurpose" className="font-medium">Motif du Retrait</label>
@@ -440,6 +469,232 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* Moyen de Retrait */}
+            <div className="surface-100 p-3 border-round mb-4">
+                <h5 className="m-0 mb-3 text-primary">
+                    <i className="pi pi-credit-card mr-2"></i>
+                    Moyen Utilisé pour Retirer
+                </h5>
+                <div className="formgrid grid">
+                    <div className="field col-12 md:col-6">
+                        <label htmlFor="moyenRetrait" className="font-medium">Moyen de Retrait *</label>
+                        {isViewMode ? (
+                            <InputText
+                                value={
+                                    request.moyenRetrait === 'CHEQUIER' ? 'Chéquier' :
+                                    request.moyenRetrait === 'RECU' ? 'Reçu' : 'Espèces'
+                                }
+                                disabled
+                                className="w-full"
+                            />
+                        ) : (
+                            <Dropdown
+                                id="moyenRetrait"
+                                value={request.moyenRetrait || 'ESPECES'}
+                                options={[
+                                    { label: 'Chéquier', value: 'CHEQUIER' },
+                                    { label: 'Reçu', value: 'RECU' },
+                                    { label: 'Espèces', value: 'ESPECES' }
+                                ]}
+                                onChange={(e) => handleDropdownChange('moyenRetrait', e.value)}
+                                className="w-full"
+                            />
+                        )}
+                    </div>
+                    {(request.moyenRetrait === 'CHEQUIER') && (
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="numeroChequier" className="font-medium">
+                                Numéro de Chéquier *
+                            </label>
+                            <div className="p-inputgroup">
+                                <InputText
+                                    id="numeroChequier"
+                                    name="numeroChequier"
+                                    value={request.numeroChequier || ''}
+                                    onChange={handleChange}
+                                    onBlur={() => onNumeroCHequierBlur && onNumeroCHequierBlur(request.numeroChequier || '')}
+                                    placeholder="Ex: CHK-20240101-001"
+                                    disabled={isViewMode}
+                                    className={`w-full ${
+                                        chequierValidation === 'valid' ? 'p-invalid-success' :
+                                        chequierValidation === 'invalid' ? 'p-invalid' : ''
+                                    }`}
+                                />
+                                {!isViewMode && chequierValidation === 'checking' && (
+                                    <span className="p-inputgroup-addon">
+                                        <i className="pi pi-spin pi-spinner"></i>
+                                    </span>
+                                )}
+                                {!isViewMode && chequierValidation === 'valid' && (
+                                    <span className="p-inputgroup-addon" style={{ background: '#e6f4ea', color: '#1a7f37' }}>
+                                        <i className="pi pi-check-circle"></i>
+                                    </span>
+                                )}
+                                {!isViewMode && chequierValidation === 'invalid' && (
+                                    <span className="p-inputgroup-addon" style={{ background: '#fde8e8', color: '#c0392b' }}>
+                                        <i className="pi pi-times-circle"></i>
+                                    </span>
+                                )}
+                            </div>
+                            {!isViewMode && chequierValidation === 'valid' && (
+                                <small className="text-green-600">
+                                    <i className="pi pi-check mr-1"></i>
+                                    {chequierValidationMessage || 'Chèque valide'}
+                                </small>
+                            )}
+                            {!isViewMode && chequierValidation === 'invalid' && (
+                                <small className="text-red-600">
+                                    <i className="pi pi-times mr-1"></i>
+                                    {chequierValidationMessage || 'Numéro de chèque invalide'}
+                                </small>
+                            )}
+                            {!isViewMode && chequierValidation === 'checking' && (
+                                <small className="text-blue-500">
+                                    <i className="pi pi-spin pi-spinner mr-1"></i>
+                                    Vérification en cours...
+                                </small>
+                            )}
+                            {!isViewMode && !chequierValidation && deliveredCheckbooks.length === 0 && (
+                                <small className="text-orange-500">
+                                    <i className="pi pi-exclamation-triangle mr-1"></i>
+                                    Aucun carnet de chèques distribué pour ce compte
+                                </small>
+                            )}
+                        </div>
+                    )}
+                </div>
+                {isViewMode && request.moyenRetrait === 'CHEQUIER' && request.numeroChequier && (
+                    <div className="mt-2 p-2 surface-50 border-round">
+                        <span className="text-500 mr-2">N° Chéquier:</span>
+                        <span className="font-bold">{request.numeroChequier}</span>
+                    </div>
+                )}
+
+                {/* RECU fields */}
+                {(request.moyenRetrait === 'RECU') && (
+                    <div className="formgrid grid mt-2">
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="numeroRecu" className="font-medium">Numéro de Reçu *</label>
+                            <div className="p-inputgroup">
+                                <InputText
+                                    id="numeroRecu"
+                                    name="numeroRecu"
+                                    value={request.numeroRecu || ''}
+                                    onChange={handleChange}
+                                    onBlur={() => onNumeroRecuBlur && onNumeroRecuBlur(request.numeroRecu || '')}
+                                    placeholder="Ex: REC001, 1001, A001"
+                                    disabled={isViewMode}
+                                    className={`w-full ${
+                                        recuValidation === 'valid' ? 'p-invalid-success' :
+                                        recuValidation === 'invalid' ? 'p-invalid' : ''
+                                    }`}
+                                />
+                                {!isViewMode && recuValidation === 'checking' && (
+                                    <span className="p-inputgroup-addon">
+                                        <i className="pi pi-spin pi-spinner"></i>
+                                    </span>
+                                )}
+                                {!isViewMode && recuValidation === 'valid' && (
+                                    <span className="p-inputgroup-addon" style={{ background: '#e6f4ea', color: '#1a7f37' }}>
+                                        <i className="pi pi-check-circle"></i>
+                                    </span>
+                                )}
+                                {!isViewMode && recuValidation === 'invalid' && (
+                                    <span className="p-inputgroup-addon" style={{ background: '#fde8e8', color: '#c0392b' }}>
+                                        <i className="pi pi-times-circle"></i>
+                                    </span>
+                                )}
+                            </div>
+                            {!isViewMode && recuValidation === 'valid' && (
+                                <small className="text-green-600">
+                                    <i className="pi pi-check mr-1"></i>
+                                    {recuValidationMessage || 'Reçu valide'}
+                                </small>
+                            )}
+                            {!isViewMode && recuValidation === 'invalid' && (
+                                <small className="text-red-600">
+                                    <i className="pi pi-times mr-1"></i>
+                                    {recuValidationMessage || 'Numéro de reçu invalide'}
+                                </small>
+                            )}
+                            {!isViewMode && recuValidation === 'checking' && (
+                                <small className="text-blue-500">
+                                    <i className="pi pi-spin pi-spinner mr-1"></i>
+                                    Vérification en cours...
+                                </small>
+                            )}
+                        </div>
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="recuFeeAmount" className="font-medium">Commission Reçu (FBU)</label>
+                            <InputNumber
+                                id="recuFeeAmount"
+                                value={(request as any).recuFeeAmount ?? 1000}
+                                onValueChange={(e) => handleNumberChange('recuFeeAmount', e.value ?? 1000)}
+                                suffix=" FBU"
+                                min={0}
+                                disabled={isViewMode}
+                                className="w-full"
+                            />
+                            <small className="text-500">Frais de service pour utilisation du reçu (défaut: 1 000 FBU)</small>
+                        </div>
+                        <div className="field col-12 md:col-6">
+                            <label htmlFor="recuInternalAccountId" className="font-medium">
+                                Compte Interne de Commission *
+                            </label>
+                            {isViewMode ? (
+                                <InputText
+                                    value={
+                                        internalAccounts.find(a => a.accountId === request.recuInternalAccountId)?.codeCompte
+                                        || (request.recuInternalAccountId ? String(request.recuInternalAccountId) : '-')
+                                    }
+                                    disabled
+                                    className="w-full"
+                                />
+                            ) : (
+                                <Dropdown
+                                    id="recuInternalAccountId"
+                                    value={request.recuInternalAccountId}
+                                    options={internalAccounts}
+                                    onChange={(e) => handleDropdownChange('recuInternalAccountId', e.value)}
+                                    optionLabel="codeCompte"
+                                    optionValue="accountId"
+                                    placeholder="Sélectionner le compte interne..."
+                                    filter
+                                    filterBy="codeCompte,libelle"
+                                    className="w-full"
+                                    itemTemplate={(item: any) => (
+                                        <span>{item.codeCompte} — {item.libelle}</span>
+                                    )}
+                                    valueTemplate={(item: any, props: any) => {
+                                        if (item) return <span>{item.codeCompte} — {item.libelle}</span>;
+                                        return <span>{props?.placeholder}</span>;
+                                    }}
+                                />
+                            )}
+                            <small className="text-500">
+                                <i className="pi pi-info-circle mr-1"></i>
+                                Le montant sera transféré du compte client vers ce compte interne
+                            </small>
+                        </div>
+                    </div>
+                )}
+                {isViewMode && request.moyenRetrait === 'RECU' && (
+                    <div className="mt-2 p-2 surface-50 border-round flex gap-4">
+                        {request.numeroRecu && (
+                            <span><span className="text-500 mr-1">N° Reçu:</span><span className="font-bold">{request.numeroRecu}</span></span>
+                        )}
+                        {request.recuInternalAccountId && (
+                            <span>
+                                <span className="text-500 mr-1">Compte Interne:</span>
+                                <span className="font-bold">
+                                    {internalAccounts.find(a => a.accountId === request.recuInternalAccountId)?.codeCompte || request.recuInternalAccountId}
+                                </span>
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Décompte des Billets */}
@@ -599,7 +854,7 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                     <div className="grid">
                         <div className="col-12 md:col-4">
                             <span className="text-500">Montant décaissé:</span>
-                            <div className="font-bold text-green-600">{formatCurrency(request.disbursedAmount || 0)}</div>
+                            <div className="font-bold text-green-600">{formatCurrency(request.disbursedAmount || 0, accountCurrency)}</div>
                         </div>
                         <div className="col-12 md:col-4">
                             <span className="text-500">Date de décaissement:</span>

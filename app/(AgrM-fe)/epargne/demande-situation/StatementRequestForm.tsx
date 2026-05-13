@@ -16,6 +16,8 @@ interface StatementRequestFormProps {
     onSavingsAccountChange?: (accountId: number) => void;
     isViewMode?: boolean;
     fixedRequestType?: 'SITUATION' | 'HISTORIQUE';
+    pagePreview?: { operationCount: number; pageCount: number; loading: boolean };
+    rowsPerPage?: number;
 }
 
 const requestTypeOptions = [
@@ -31,7 +33,9 @@ const StatementRequestForm: React.FC<StatementRequestFormProps> = ({
     comptesComptables,
     onSavingsAccountChange,
     isViewMode = false,
-    fixedRequestType
+    fixedRequestType,
+    pagePreview,
+    rowsPerPage = 20
 }) => {
 
     // Parse "YYYY-MM-DD" as local date (not UTC)
@@ -199,11 +203,60 @@ const StatementRequestForm: React.FC<StatementRequestFormProps> = ({
                         </div>
                     </div>
                     {request.periodStart && request.periodEnd && (
-                        <div className="surface-0 p-2 border-round border-1 border-indigo-200 text-center">
+                        <div className="surface-0 p-2 border-round border-1 border-indigo-200 text-center mb-2">
                             <small className="text-500">Période sélectionnée: </small>
                             <strong>
                                 {parseLocalDate(request.periodStart).toLocaleDateString('fr-FR')} — {parseLocalDate(request.periodEnd).toLocaleDateString('fr-FR')}
                             </strong>
+                        </div>
+                    )}
+
+                    {/* Page preview panel — shown when period + account are set */}
+                    {!isViewMode && (fixedRequestType === 'HISTORIQUE' || request.requestType === 'HISTORIQUE') && request.periodStart && request.periodEnd && request.savingsAccountId && (
+                        <div className="mt-2">
+                            {pagePreview?.loading ? (
+                                <div className="surface-0 p-3 border-round border-1 border-blue-200 flex align-items-center gap-2 text-blue-500">
+                                    <i className="pi pi-spin pi-spinner"></i>
+                                    <span>Calcul du nombre de pages en cours...</span>
+                                </div>
+                            ) : pagePreview && !pagePreview.loading ? (
+                                <div className="surface-0 p-3 border-round border-1 border-green-300">
+                                    <h6 className="m-0 mb-3 text-primary">
+                                        <i className="pi pi-file-pdf mr-2"></i>
+                                        Aperçu des Frais par Pages
+                                    </h6>
+                                    <div className="grid text-center">
+                                        <div className="col-12 md:col-4">
+                                            <div className="p-2 surface-100 border-round">
+                                                <div className="text-500 text-sm mb-1">Opérations trouvées</div>
+                                                <div className="text-2xl font-bold text-blue-600">{pagePreview.operationCount}</div>
+                                            </div>
+                                        </div>
+                                        <div className="col-12 md:col-4">
+                                            <div className="p-2 surface-100 border-round">
+                                                <div className="text-500 text-sm mb-1">Nombre de pages</div>
+                                                <div className="text-2xl font-bold text-indigo-600">{pagePreview.pageCount}</div>
+                                                <div className="text-xs text-500">({rowsPerPage} opér./page)</div>
+                                            </div>
+                                        </div>
+                                        <div className="col-12 md:col-4">
+                                            <div className="p-2 border-round" style={{ background: '#e6f4ea', border: '1px solid #a8d5b5' }}>
+                                                <div className="text-500 text-sm mb-1">Frais calculés</div>
+                                                <div className="text-2xl font-bold text-green-700">
+                                                    {new Intl.NumberFormat('fr-BI').format(pagePreview.pageCount * 1000)} FBU
+                                                </div>
+                                                <div className="text-xs text-500">{pagePreview.pageCount} page(s) × 1 000 FBU</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {pagePreview.operationCount === 0 && (
+                                        <div className="mt-2 p-2 border-round bg-orange-50 text-orange-700 text-sm" style={{ border: '1px solid var(--orange-200)' }}>
+                                            <i className="pi pi-exclamation-triangle mr-1"></i>
+                                            Aucune opération trouvée sur cette période. Les frais minimaux d'1 page (1 000 FBU) seront appliqués.
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
                         </div>
                     )}
                 </div>

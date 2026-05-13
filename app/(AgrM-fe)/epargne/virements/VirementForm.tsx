@@ -41,8 +41,8 @@ const VirementForm: React.FC<VirementFormProps> = ({
     branchLocked = false
 }) => {
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
+    const formatCurrency = (value: number, currencyCode?: string) => {
+        return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' ' + (currencyCode || 'FBU');
     };
 
     const isClientSource = virement.transferType === 'CLIENT_TO_CLIENT' || virement.transferType === 'CLIENT_TO_ACCOUNT';
@@ -53,6 +53,7 @@ const VirementForm: React.FC<VirementFormProps> = ({
     // Get source account balance for display
     const sourceAccount = savingsAccounts.find(a => a.id === virement.sourceSavingsAccountId);
     const sourceBalance = sourceAccount?.availableBalance || sourceAccount?.currentBalance || 0;
+    const sourceCurrency = sourceAccount?.currency?.code || 'FBU';
 
     return (
         <div className="card p-fluid">
@@ -145,7 +146,7 @@ const VirementForm: React.FC<VirementFormProps> = ({
                                 filterPlaceholder="Rechercher par numéro de compte"
                                 className="w-full"
                                 itemTemplate={(item: any) => (
-                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.availableBalance || item.currentBalance || 0)})</span>
+                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.availableBalance || item.currentBalance || 0, item.currency?.code)})</span>
                                 )}
                                 valueTemplate={(item: any, props: any) => {
                                     if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
@@ -184,7 +185,7 @@ const VirementForm: React.FC<VirementFormProps> = ({
                             <div className="mt-4 p-2 surface-50 border-round">
                                 <div className="flex align-items-center gap-2">
                                     <i className="pi pi-wallet text-blue-500"></i>
-                                    <span className="text-600">Solde disponible: <strong className="text-primary">{formatCurrency(sourceBalance)}</strong></span>
+                                    <span className="text-600">Solde disponible: <strong className="text-primary">{formatCurrency(sourceBalance, sourceCurrency)}</strong></span>
                                 </div>
                             </div>
                         </div>
@@ -219,7 +220,7 @@ const VirementForm: React.FC<VirementFormProps> = ({
                                 filterPlaceholder="Rechercher par numéro de compte"
                                 className="w-full"
                                 itemTemplate={(item: any) => (
-                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.availableBalance || item.currentBalance || 0)})</span>
+                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.availableBalance || item.currentBalance || 0, item.currency?.code)})</span>
                                 )}
                                 valueTemplate={(item: any, props: any) => {
                                     if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
@@ -304,7 +305,7 @@ const VirementForm: React.FC<VirementFormProps> = ({
                             minFractionDigits={0}
                             maxFractionDigits={2}
                             className="w-full"
-                            suffix=" FBU"
+                            suffix={` ${sourceCurrency}`}
                         />
                     </div>
                     <div className="field col-12 md:col-3">
@@ -317,7 +318,7 @@ const VirementForm: React.FC<VirementFormProps> = ({
                             minFractionDigits={0}
                             maxFractionDigits={2}
                             className="w-full font-bold"
-                            suffix=" FBU"
+                            suffix={` ${sourceCurrency}`}
                         />
                     </div>
                 </div>
@@ -325,7 +326,7 @@ const VirementForm: React.FC<VirementFormProps> = ({
                     <div className="mt-2 p-2 border-round bg-red-50" style={{ border: '1px solid #ef4444' }}>
                         <div className="flex align-items-center gap-2">
                             <i className="pi pi-exclamation-triangle text-red-500"></i>
-                            <span className="text-red-700 font-medium">Solde insuffisant! Disponible: {formatCurrency(sourceBalance)}, Requis: {formatCurrency(virement.totalDebitAmount)}</span>
+                            <span className="text-red-700 font-medium">Solde insuffisant! Disponible: {formatCurrency(sourceBalance, sourceCurrency)}, Requis: {formatCurrency(virement.totalDebitAmount, sourceCurrency)}</span>
                         </div>
                     </div>
                 )}

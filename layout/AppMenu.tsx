@@ -392,6 +392,11 @@ const AppMenu = () => {
                             label: 'Niveaux d\'Autorisation',
                             icon: 'pi pi-shield',
                             to: '/epargne/reference-data/niveaux-autorisation'
+                        },
+                        {
+                            label: 'Séries de Reçus',
+                            icon: 'pi pi-file',
+                            to: '/epargne/reference-data/series-recu'
                         }
                     ]
                 },
@@ -438,6 +443,15 @@ const AppMenu = () => {
                             label: 'Demande d\'Historique',
                             icon: 'pi pi-history',
                             to: '/epargne/demande-historique'
+                        },
+                        {
+                            label: 'Découvert (Avance sur Épargne)',
+                            icon: 'pi pi-arrow-circle-down',
+                            to: '/epargne/decouvert',
+                            visible: appUser ? hasAnyAuthority(appUser, [
+                                'EPARGNE_DECOUVERT_CREATE', 'EPARGNE_DECOUVERT_VERIFY',
+                                'EPARGNE_DECOUVERT_APPROVE', 'EPARGNE_DECOUVERT_DISBURSE'
+                            ]) : false,
                         }
                     ]
                 },
@@ -1191,6 +1205,71 @@ const AppMenu = () => {
 
 
         
+
+        {
+            label: 'MODULE ACTIONNAIRES',
+            icon: 'pi pi-star',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW',
+                'SHAREHOLDER_REPORT', 'SHAREHOLDER_SETTINGS'
+            ]) : false,
+            items: [
+                {
+                    label: 'Tableau de Bord',
+                    icon: 'pi pi-th-large',
+                    to: '/actionnaire/tableau-de-bord',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW']) : false
+                },
+                {
+                    label: 'Registre des Actionnaires',
+                    icon: 'pi pi-users',
+                    to: '/actionnaire/registre',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW']) : false
+                },
+                {
+                    label: 'Souscription de Parts',
+                    icon: 'pi pi-plus-circle',
+                    to: '/actionnaire/souscription',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN']) : false
+                },
+                {
+                    label: 'Transfert et Rachat',
+                    icon: 'pi pi-arrow-right-arrow-left',
+                    to: '/actionnaire/transfert-rachat',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN']) : false
+                },
+                {
+                    label: 'Dividendes',
+                    icon: 'pi pi-percentage',
+                    to: '/actionnaire/dividendes',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW']) : false
+                },
+                {
+                    label: 'Assemblées Générales',
+                    icon: 'pi pi-calendar',
+                    to: '/actionnaire/assemblees',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW']) : false
+                },
+                {
+                    label: 'Comptabilisation (1011)',
+                    icon: 'pi pi-book',
+                    to: '/actionnaire/comptabilisation',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW']) : false
+                },
+                {
+                    label: 'Rapports',
+                    icon: 'pi pi-chart-bar',
+                    to: '/actionnaire/rapports',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_VIEW', 'SHAREHOLDER_REPORT']) : false
+                },
+                {
+                    label: 'Paramètres',
+                    icon: 'pi pi-cog',
+                    to: '/actionnaire/parametres',
+                    visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN', 'SHAREHOLDER_SETTINGS']) : false
+                },
+            ]
+        },
 
         {
             label: 'ADMINISTRATION',
