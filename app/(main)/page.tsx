@@ -7,7 +7,7 @@ import Cookies from 'js-cookie';
 /**
  * Root Page - Automatic Redirect Handler
  * ========================================
- * When users visit http://10.50.60.25:3000/ or http://10.50.60.25:3000
+ * When users visit http://localhost:3000/ or http://localhost:3000
  * This page automatically redirects them to:
  * - /auth/login2 if they're not authenticated
  * - /settings/bienvenue if they're already logged in

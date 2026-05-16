@@ -172,7 +172,9 @@ const AppNavBar = () => {
                             { label: 'Demande de Situation', icon: 'pi pi-file', to: '/epargne/demande-situation', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']) : false },
                             { label: 'Demande d\'Historique', icon: 'pi pi-history', to: '/epargne/demande-historique', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_STATEMENT_CREATE', 'EPARGNE_STATEMENT_VALIDATE', 'EPARGNE_STATEMENT_DELIVER']) : false },
                             { label: 'Attestation Non Redevabilité', icon: 'pi pi-verified', to: '/epargne/attestation-non-redevabilite', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIEW']) : false },
-                            { label: 'Attestation d\'Engagement', icon: 'pi pi-shield', to: '/epargne/attestation-engagement', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIEW']) : false }
+                            { label: 'Attestation d\'Engagement', icon: 'pi pi-shield', to: '/epargne/attestation-engagement', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIEW']) : false },
+                            { label: 'Attestation de Solde', icon: 'pi pi-wallet', to: '/epargne/attestation-solde', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIEW']) : false },
+                            { label: 'Capacité Financière', icon: 'pi pi-chart-line', to: '/epargne/capacite-financiere', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_VIEW']) : false }
                         ]
                     },
                     { label: 'Clôture Journalière', icon: 'pi pi-lock', to: '/epargne/cloture-journaliere', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_DAILY_CLOSING', 'ACCOUNTING_CASH_MANAGEMENT']) : false },

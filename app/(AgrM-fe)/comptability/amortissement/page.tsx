@@ -21,13 +21,13 @@ import { buildApiUrl } from '../../../../utils/apiConfig';
 import { printReport } from '../../../../utils/pdfExport';
 import {
     Immobilisation, PlanAmortissementLigne, ImmoSynthese,
-    CATEGORIES_IMMO, METHODES_AMORT, ETATS_IMMO, TYPES_FINANCEMENT, CptExercice, CptCompte
+    CATEGORIES_IMMO, METHODES_AMORT, ETATS_IMMO, TYPES_FINANCEMENT, CptExercice
 } from '../types';
 import Cookies from 'js-cookie';
 import { ProtectedPage } from '@/components/ProtectedPage';
 
 const BASE_URL  = buildApiUrl('/api/comptability/immobilisations');
-const COMPTES_URL = buildApiUrl('/api/comptability/ecritures/findListCompte');
+const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts/findactive');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (v: number | null | undefined) =>
@@ -90,7 +90,7 @@ const AmortissementComponent: React.FC = () => {
     const [motifRebut, setMotifRebut] = useState('');
 
     // ── Comptes state ──
-    const [comptes, setComptes] = useState<CptCompte[]>([]);
+    const [comptes, setComptes] = useState<any[]>([]);
 
     // ── API hooks ──
     const immoApi    = useConsumApi('');
@@ -113,11 +113,21 @@ const AmortissementComponent: React.FC = () => {
         loadAll();
         loadSynthese();
         loadAlertes();
-        comptesApi.fetchData(null, 'GET', COMPTES_URL, 'loadComptes');
+        comptesApi.fetchData(null, 'GET', INTERNAL_ACCOUNTS_URL, 'loadComptes');
     }, []);
 
     useEffect(() => {
-        if (comptesApi.data) setComptes(Array.isArray(comptesApi.data) ? comptesApi.data : []);
+        if (comptesApi.data) {
+            const data = Array.isArray(comptesApi.data) ? comptesApi.data : [];
+            const mapped = data
+                .filter((a: any) => a.actif !== false)
+                .map((a: any) => ({
+                    compteId: a.compteComptableId,
+                    codeCompte: a.codeCompte,
+                    libelle: `${a.accountNumber} - ${a.libelle} (${a.codeCompte})`
+                }));
+            setComptes(mapped);
+        }
     }, [comptesApi.data]);
 
     // ── API responses ──
@@ -210,8 +220,7 @@ const AmortissementComponent: React.FC = () => {
         if (cat) setImmo(p => ({
             ...p, categorie: catCode,
             methodeAmortissement: cat.methode, dureeVieUtile: cat.duree,
-            tauxAmortissement: Math.round((100 / cat.duree) * 100) / 100,
-            compteImmoCode: cat.compteImmo, compteAmortCode: cat.compteAmort
+            tauxAmortissement: Math.round((100 / cat.duree) * 100) / 100
         }));
         else setImmo(p => ({ ...p, categorie: catCode }));
     };
@@ -820,8 +829,8 @@ const AmortissementComponent: React.FC = () => {
                                     filter
                                     showClear
                                     className="w-full"
-                                    itemTemplate={(opt: CptCompte) => <span>{opt.codeCompte} – {opt.libelle}</span>}
-                                    valueTemplate={(opt: CptCompte | null) => opt ? <span>{opt.codeCompte} – {opt.libelle}</span> : <span className="text-500">Sélectionner un compte</span>}
+                                    itemTemplate={(opt: any) => <span>{opt.codeCompte} – {opt.libelle}</span>}
+                                    valueTemplate={(opt: any) => opt ? <span>{opt.codeCompte} – {opt.libelle}</span> : <span className="text-500">Sélectionner un compte</span>}
                                 />
                                 <small className="text-500">Débité lors de l'acquisition</small>
                             </div>
@@ -840,8 +849,8 @@ const AmortissementComponent: React.FC = () => {
                                     filter
                                     showClear
                                     className="w-full"
-                                    itemTemplate={(opt: CptCompte) => <span>{opt.codeCompte} – {opt.libelle}</span>}
-                                    valueTemplate={(opt: CptCompte | null) => opt ? <span>{opt.codeCompte} – {opt.libelle}</span> : <span className="text-500">Sélectionner un compte</span>}
+                                    itemTemplate={(opt: any) => <span>{opt.codeCompte} – {opt.libelle}</span>}
+                                    valueTemplate={(opt: any) => opt ? <span>{opt.codeCompte} – {opt.libelle}</span> : <span className="text-500">Sélectionner un compte</span>}
                                 />
                                 <small className="text-500">Crédité par les dotations 6811 → 28xxx</small>
                             </div>

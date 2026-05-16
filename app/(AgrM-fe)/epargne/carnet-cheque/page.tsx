@@ -11,8 +11,10 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dialog } from 'primereact/dialog';
+import { Calendar } from 'primereact/calendar';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
 import { CheckbookOrder, CheckbookOrderClass, CheckbookOrderStatus } from './CheckbookOrder';
 import CheckbookOrderForm from './CheckbookOrderForm';
 import PrintableCheckbookReceipt from './PrintableCheckbookReceipt';
@@ -51,6 +53,8 @@ function CheckbookOrderPage() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
     const [loading, setLoading] = useState(false);
+    const [periodStart, setPeriodStart] = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
     const [viewDialog, setViewDialog] = useState(false);
     const [rejectDialog, setRejectDialog] = useState(false);
     const [deliverDialog, setDeliverDialog] = useState(false);
@@ -102,18 +106,9 @@ function CheckbookOrderPage() {
                 codeCompte: a.codeCompte,
                 libelle: `${a.accountNumber} - ${a.libelle} (${a.codeCompte})`
             });
-            // Compte coût du carnet: 603
-            const costAccounts = data.filter((a: any) => a.actif !== false && a.codeCompte === '603').map(mapAccount);
-            setComptesComptables(costAccounts);
-            if (costAccounts.length > 0) {
-                setOrder(prev => prev.accountingAccountId ? prev : { ...prev, accountingAccountId: costAccounts[0].compteId });
-            }
-            // Compte commission / revenus: 706
-            const feeAccounts = data.filter((a: any) => a.actif !== false && a.codeCompte === '706').map(mapAccount);
-            setComptesCommission(feeAccounts);
-            if (feeAccounts.length > 0) {
-                setOrder(prev => prev.feeAccountId ? prev : { ...prev, feeAccountId: feeAccounts[0].compteId });
-            }
+            const allAccounts = data.filter((a: any) => a.actif !== false).map(mapAccount);
+            setComptesComptables(allAccounts);
+            setComptesCommission(allAccounts);
         }
         if (comptesApi.error) {
             showToast('error', 'Erreur', comptesApi.error.message || 'Erreur lors du chargement des comptes internes');
@@ -252,8 +247,8 @@ function CheckbookOrderPage() {
     };
 
     const resetForm = () => {
-        const autoCost = comptesComptables.find((c: any) => c.codeCompte === '603');
-        const autoFee = comptesCommission.find((c: any) => c.codeCompte === '706');
+        const autoCost = comptesComptables.find((c: any) => c.codeCompte?.startsWith('603'));
+        const autoFee = comptesCommission.find((c: any) => c.codeCompte?.startsWith('706'));
         setOrder({ ...new CheckbookOrderClass(), accountingAccountId: autoCost?.compteId, feeAccountId: autoFee?.compteId });
     };
 
@@ -517,7 +512,7 @@ function CheckbookOrderPage() {
                     <div className="col-12 md:col-4">
                         <div className="flex align-items-center gap-2">
                             <i className="pi pi-info-circle text-orange-500"></i>
-                            <span><strong>Commission:</strong> Configurable (compte 706)</span>
+                            <span><strong>Commission:</strong> Configurable</span>
                         </div>
                     </div>
                     <div className="col-12 md:col-4">
@@ -600,6 +595,122 @@ function CheckbookOrderPage() {
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
                     </DataTable>
                 </TabPanel>
+
+                {/* Tab: Commandes du Jour */}
+                {can('EPARGNE_CHECKBOOK_VIEW_TODAY') && <TabPanel header="Commandes du Jour" leftIcon="pi pi-calendar mr-2">
+                    <DataTable
+                        value={orders.filter(o => o.orderDate === formatLocalDate(new Date()))}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        globalFilter={globalFilter}
+                        header={
+                            <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                <h5 className="m-0">Commandes du Jour</h5>
+                                <span className="p-input-icon-left">
+                                    <i className="pi pi-search" />
+                                    <InputText
+                                        value={globalFilter}
+                                        onChange={(e) => setGlobalFilter(e.target.value)}
+                                        placeholder="Rechercher..."
+                                    />
+                                </span>
+                            </div>
+                        }
+                        emptyMessage="Aucune commande pour aujourd'hui"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="orderDate"
+                        sortOrder={-1}
+                    >
+                        <Column field="orderNumber" header="N° Commande" sortable />
+                        <Column field="client" header="Client" body={clientBodyTemplate} sortable />
+                        <Column field="orderDate" header="Date" sortable />
+                        <Column field="numberOfLeaves" header="Feuilles" sortable />
+                        <Column field="unitPrice" header="Prix Carnet" sortable body={(row) => formatCurrency(row.unitPrice)} />
+                        <Column field="feeAmount" header="Commission" sortable body={(row) => row.feeAmount > 0 ? formatCurrency(row.feeAmount) : '-'} />
+                        <Column field="totalAmount" header="Total" sortable body={(row) => <span className="font-bold">{formatCurrency(row.totalAmount)}</span>} />
+                        <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
+                    </DataTable>
+                </TabPanel>}
+
+                {/* Tab: Mes Commandes par Période */}
+                {can('EPARGNE_CHECKBOOK_VIEW_PERIOD') && <TabPanel header="Mes Commandes par Période" leftIcon="pi pi-filter mr-2">
+                    {(() => {
+                        const currentUser = getCurrentUser();
+                        const filtered = orders.filter(o => {
+                            if (o.userAction !== currentUser) return false;
+                            if (periodStart && o.orderDate && o.orderDate < formatLocalDate(periodStart)) return false;
+                            if (periodEnd && o.orderDate && o.orderDate > formatLocalDate(periodEnd)) return false;
+                            return true;
+                        });
+                        return (
+                            <DataTable
+                                value={filtered}
+                                paginator
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading}
+                                header={
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                            <div>
+                                                <h5 className="m-0">Mes Commandes par Période</h5>
+                                                <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} commande(s)</small>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 align-items-center">
+                                            <label className="font-medium">Du:</label>
+                                            <Calendar
+                                                value={periodStart}
+                                                onChange={(e) => setPeriodStart(e.value as Date | null)}
+                                                dateFormat="dd/mm/yy"
+                                                placeholder="Date début"
+                                                showIcon
+                                            />
+                                            <label className="font-medium">Au:</label>
+                                            <Calendar
+                                                value={periodEnd}
+                                                onChange={(e) => setPeriodEnd(e.value as Date | null)}
+                                                dateFormat="dd/mm/yy"
+                                                placeholder="Date fin"
+                                                showIcon
+                                                minDate={periodStart || undefined}
+                                            />
+                                            <Button
+                                                label="Réinitialiser"
+                                                icon="pi pi-refresh"
+                                                onClick={() => { setPeriodStart(null); setPeriodEnd(null); }}
+                                                className="p-button-secondary p-button-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                }
+                                emptyMessage="Aucune commande trouvée pour cette période"
+                                stripedRows
+                                showGridlines
+                                size="small"
+                                sortField="orderDate"
+                                sortOrder={-1}
+                            >
+                                <Column field="orderNumber" header="N° Commande" sortable />
+                                <Column field="client" header="Client" body={clientBodyTemplate} sortable />
+                                <Column field="orderDate" header="Date" sortable />
+                                <Column field="numberOfLeaves" header="Feuilles" sortable />
+                                <Column field="unitPrice" header="Prix Carnet" sortable body={(row) => formatCurrency(row.unitPrice)} />
+                                <Column field="feeAmount" header="Commission" sortable body={(row) => row.feeAmount > 0 ? formatCurrency(row.feeAmount) : '-'} />
+                                <Column field="totalAmount" header="Total" sortable body={(row) => <span className="font-bold">{formatCurrency(row.totalAmount)}</span>} />
+                                <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                                <Column field="userAction" header="Utilisateur" sortable />
+                                <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
+                            </DataTable>
+                        );
+                    })()}
+                </TabPanel>}
             </TabView>
 
             {/* View Dialog */}

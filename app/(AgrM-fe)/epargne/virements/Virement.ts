@@ -46,6 +46,7 @@ export interface Virement {
     commissionRate: number;
     commissionAmount: number;
     totalDebitAmount: number;
+    commissionInternalAccountId?: number;
     // Operation
     libelle?: string;
     motif: string;
@@ -94,6 +95,7 @@ export class VirementClass implements Virement {
     commissionRate: number = DEFAULT_COMMISSION_RATE;
     commissionAmount: number = 0;
     totalDebitAmount: number = 0;
+    commissionInternalAccountId?: number;
     libelle?: string = '';
     motif: string = '';
     dateVirement: string = new Date().toISOString().split('T')[0];

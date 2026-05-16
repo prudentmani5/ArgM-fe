@@ -12,7 +12,9 @@ import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { formatLocalDate } from '@/utils/dateUtils';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { useMarkCancellationReplaced } from '@/hooks/useMarkCancellationReplaced';
 import { DepositSlip, DepositSlipClass, DepositSlipStatus, CashDenomination } from './DepositSlip';
@@ -61,6 +63,8 @@ function DepositSlipPage() {
     const [cancelDialog, setCancelDialog] = useState(false);
     const [printDialog, setPrintDialog] = useState(false);
     const [selectedSlip, setSelectedSlip] = useState<DepositSlip | null>(null);
+    const [periodStart, setPeriodStart] = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
     const [cancellationReason, setCancellationReason] = useState('');
     const [caisses, setCaisses] = useState<any[]>([]);
     const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
@@ -801,7 +805,7 @@ function DepositSlipPage() {
 
                 {can('EPARGNE_DEPOSIT_VIEW_TODAY') && <TabPanel header="Dépôts du Jour" leftIcon="pi pi-calendar mr-2">
                     <DataTable
-                        value={depositSlips.filter(s => s.depositDate === new Date().toISOString().split('T')[0])}
+                        value={depositSlips.filter(s => s.depositDate === formatLocalDate(new Date()))}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25, 50]}
@@ -843,6 +847,106 @@ function DepositSlipPage() {
                         <Column field="userAction" header="Utilisateur" sortable />
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
                     </DataTable>
+                </TabPanel>}
+
+                {can('EPARGNE_DEPOSIT_VIEW_PERIOD') && <TabPanel header="Mes Dépôts par Période" leftIcon="pi pi-filter mr-2">
+                    {(() => {
+                        const currentUser = getCurrentUser();
+                        const filtered = depositSlips.filter(s => {
+                            if ((s as any).userAction !== currentUser) return false;
+                            if (periodStart && s.depositDate && s.depositDate < formatLocalDate(periodStart)) return false;
+                            if (periodEnd && s.depositDate && s.depositDate > formatLocalDate(periodEnd)) return false;
+                            return true;
+                        });
+                        return (
+                            <DataTable
+                                value={filtered}
+                                paginator
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading}
+                                globalFilter={globalFilter}
+                                globalFilterFields={['slipNumber', 'client.firstName', 'client.lastName', 'client.businessName', 'depositorName']}
+                                emptyMessage="Aucun dépôt trouvé pour cette période"
+                                stripedRows
+                                showGridlines
+                                size="small"
+                                sortField="depositDate"
+                                sortOrder={-1}
+                                header={
+                                    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                        <div>
+                                            <h5 className="m-0">Mes Dépôts</h5>
+                                            <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} bordereau(x)</small>
+                                        </div>
+                                        <div className="flex gap-2 align-items-center flex-wrap">
+                                            <div className="flex align-items-center gap-1">
+                                                <label className="text-sm font-medium">Du:</label>
+                                                <Calendar
+                                                    value={periodStart}
+                                                    onChange={(e) => setPeriodStart(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date début"
+                                                    showButtonBar
+                                                    style={{ width: '150px' }}
+                                                />
+                                            </div>
+                                            <div className="flex align-items-center gap-1">
+                                                <label className="text-sm font-medium">Au:</label>
+                                                <Calendar
+                                                    value={periodEnd}
+                                                    onChange={(e) => setPeriodEnd(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date fin"
+                                                    showButtonBar
+                                                    minDate={periodStart || undefined}
+                                                    style={{ width: '150px' }}
+                                                />
+                                            </div>
+                                            <Button
+                                                icon="pi pi-times"
+                                                className="p-button-secondary p-button-sm p-button-outlined"
+                                                onClick={() => { setPeriodStart(null); setPeriodEnd(null); }}
+                                                tooltip="Réinitialiser la période"
+                                            />
+                                            <span className="p-input-icon-left">
+                                                <i className="pi pi-search" />
+                                                <InputText
+                                                    value={globalFilter}
+                                                    onChange={(e) => setGlobalFilter(e.target.value)}
+                                                    placeholder="Rechercher..."
+                                                />
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            >
+                                <Column field="slipNumber" header="N° Bordereau" sortable />
+                                <Column
+                                    header="Client / Groupe"
+                                    body={(row) => row.solidarityGroup
+                                        ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                        : getClientDisplayName(row.client)}
+                                />
+                                <Column
+                                    header="N° Compte"
+                                    body={(row) => {
+                                        const acc = allSavingsAccounts.find((a: any) => Number(a.id) === Number(row.savingsAccountId));
+                                        return acc?.accountNumber || (row as any).savingsAccount?.accountNumber || (row as any).accountNumber || '-';
+                                    }}
+                                />
+                                <Column field="depositDate" header="Date" sortable />
+                                <Column
+                                    header="Montant"
+                                    sortable sortField="totalAmount"
+                                    body={(row) => formatCurrency(row.totalAmount, row.currency?.code)}
+                                />
+                                <Column field="depositorName" header="Déposant" />
+                                <Column header="Statut" body={statusBodyTemplate} sortable sortField="status" />
+                                <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
+                            </DataTable>
+                        );
+                    })()}
                 </TabPanel>}
             </TabView>
 

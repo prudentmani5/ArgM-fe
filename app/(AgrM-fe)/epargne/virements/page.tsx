@@ -12,7 +12,9 @@ import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { formatLocalDate } from '@/utils/dateUtils';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { useMarkCancellationReplaced } from '@/hooks/useMarkCancellationReplaced';
 import { Virement, VirementClass, VirementStatus, TRANSFER_TYPE_OPTIONS, DEFAULT_COMMISSION_RATE, VirementBatch, VirementBatchClass, VirementBatchDetail } from './Virement';
@@ -72,6 +74,8 @@ function VirementPage() {
     const [batchRejectionReason, setBatchRejectionReason] = useState('');
     const [batchGlobalFilter, setBatchGlobalFilter] = useState('');
     const [batchLoading, setBatchLoading] = useState(false);
+    const [periodStart, setPeriodStart] = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
 
     const toast = useRef<Toast>(null);
     const printRef = useRef<HTMLDivElement>(null);
@@ -562,6 +566,10 @@ function VirementPage() {
             showToast('warn', 'Attention', 'Le montant doit être supérieur à 0');
             return false;
         }
+        if (virement.commissionRate > 0 && !virement.commissionInternalAccountId) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner le compte interne pour la commission');
+            return false;
+        }
         if (!virement.motif || !virement.motif.trim()) {
             showToast('warn', 'Attention', 'Le motif du virement est obligatoire');
             return false;
@@ -926,6 +934,125 @@ function VirementPage() {
                     </DataTable>
                 </TabPanel>
 
+                {/* Tab: Virements du Jour */}
+                {can('EPARGNE_VIREMENT_VIEW_TODAY') && <TabPanel header="Virements du Jour" leftIcon="pi pi-calendar mr-2">
+                    <DataTable
+                        value={virements.filter(v => v.dateVirement === formatLocalDate(new Date()))}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        globalFilter={globalFilter}
+                        header={header}
+                        emptyMessage="Aucun virement enregistré aujourd'hui"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="dateVirement"
+                        sortOrder={-1}
+                    >
+                        <Column field="reference" header="N° Virement" sortable />
+                        <Column field="transferType" header="Type" body={transferTypeTemplate} sortable />
+                        <Column header="Source" body={sourceTemplate} />
+                        <Column header="Destination" body={destinationTemplate} />
+                        <Column field="montant" header="Montant" body={(row) => formatCurrency(row.montant, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                        <Column field="dateVirement" header="Date" sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '220px' }} />
+                    </DataTable>
+                </TabPanel>}
+
+                {/* Tab: Mes Virements par Période */}
+                {can('EPARGNE_VIREMENT_VIEW_PERIOD') && <TabPanel header="Mes Virements par Période" leftIcon="pi pi-filter mr-2">
+                    {(() => {
+                        const currentUser = getCurrentUser();
+                        const filtered = virements.filter(v => {
+                            if ((v as any).userAction !== currentUser) return false;
+                            if (periodStart && v.dateVirement && v.dateVirement < formatLocalDate(periodStart)) return false;
+                            if (periodEnd && v.dateVirement && v.dateVirement > formatLocalDate(periodEnd)) return false;
+                            return true;
+                        });
+                        return (
+                            <DataTable
+                                value={filtered}
+                                paginator
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading}
+                                globalFilter={globalFilter}
+                                globalFilterFields={['reference', 'userAction']}
+                                emptyMessage="Aucun virement trouvé pour cette période"
+                                stripedRows
+                                showGridlines
+                                size="small"
+                                sortField="dateVirement"
+                                sortOrder={-1}
+                                header={
+                                    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                        <div>
+                                            <h5 className="m-0">Mes Virements</h5>
+                                            <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} virement(s)</small>
+                                        </div>
+                                        <div className="flex gap-2 align-items-center flex-wrap">
+                                            <div className="flex align-items-center gap-1">
+                                                <label className="text-sm font-medium">Du:</label>
+                                                <Calendar
+                                                    value={periodStart}
+                                                    onChange={(e) => setPeriodStart(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date début"
+                                                    showButtonBar
+                                                    style={{ width: '150px' }}
+                                                />
+                                            </div>
+                                            <div className="flex align-items-center gap-1">
+                                                <label className="text-sm font-medium">Au:</label>
+                                                <Calendar
+                                                    value={periodEnd}
+                                                    onChange={(e) => setPeriodEnd(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date fin"
+                                                    showButtonBar
+                                                    minDate={periodStart || undefined}
+                                                    style={{ width: '150px' }}
+                                                />
+                                            </div>
+                                            <Button
+                                                icon="pi pi-times"
+                                                className="p-button-secondary p-button-sm p-button-outlined"
+                                                onClick={() => { setPeriodStart(null); setPeriodEnd(null); }}
+                                                tooltip="Réinitialiser la période"
+                                            />
+                                            <span className="p-input-icon-left">
+                                                <i className="pi pi-search" />
+                                                <InputText
+                                                    value={globalFilter}
+                                                    onChange={(e) => setGlobalFilter(e.target.value)}
+                                                    placeholder="Rechercher..."
+                                                />
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            >
+                                <Column field="reference" header="N° Virement" sortable />
+                                <Column field="transferType" header="Type" body={transferTypeTemplate} sortable />
+                                <Column header="Source" body={sourceTemplate} />
+                                <Column header="Destination" body={destinationTemplate} />
+                                <Column field="montant" header="Montant" body={(row) => formatCurrency(row.montant, row.sourceSavingsAccount?.currency?.code)} sortable />
+                                <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                                <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} />
+                                <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                                <Column field="dateVirement" header="Date" sortable />
+                                <Column header="Actions" body={actionsBodyTemplate} style={{ width: '220px' }} />
+                            </DataTable>
+                        );
+                    })()}
+                </TabPanel>}
+
                 {/* Tab 2: Virement Multiple Form */}
                 <TabPanel header="Virement Multiple" leftIcon="pi pi-users mr-2">
                     <VirementBatchForm
@@ -993,6 +1120,122 @@ function VirementPage() {
                         <Column header="Actions" body={batchActionsTemplate} style={{ width: '220px' }} />
                     </DataTable>
                 </TabPanel>
+
+                {/* Tab 4: Batches du Jour */}
+                {can('EPARGNE_VIREMENT_BATCH_VIEW_TODAY') && <TabPanel header="Batches du Jour" leftIcon="pi pi-calendar mr-2">
+                    <DataTable
+                        value={batches.filter(b => b.dateVirement === formatLocalDate(new Date()))}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={batchLoading}
+                        globalFilter={batchGlobalFilter}
+                        header={
+                            <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                <h5 className="m-0">Batches du Jour</h5>
+                                <span className="p-input-icon-left">
+                                    <i className="pi pi-search" />
+                                    <InputText
+                                        value={batchGlobalFilter}
+                                        onChange={(e) => setBatchGlobalFilter(e.target.value)}
+                                        placeholder="Rechercher..."
+                                    />
+                                </span>
+                            </div>
+                        }
+                        emptyMessage="Aucun batch trouvé pour aujourd'hui"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="dateVirement"
+                        sortOrder={-1}
+                    >
+                        <Column field="batchNumber" header="N° Batch" sortable />
+                        <Column field="dateVirement" header="Date" sortable />
+                        <Column header="Source" body={batchSourceTemplate} />
+                        <Column field="numberOfTransfers" header="Bénéficiaires" sortable style={{ textAlign: 'center' }} />
+                        <Column field="totalAmount" header="Total Virements" body={(row) => formatCurrency(row.totalAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="status" header="Statut" body={batchStatusTemplate} sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={batchActionsTemplate} style={{ width: '220px' }} />
+                    </DataTable>
+                </TabPanel>}
+
+                {/* Tab 5: Mes Batches par Période */}
+                {can('EPARGNE_VIREMENT_BATCH_VIEW_PERIOD') && <TabPanel header="Mes Batches par Période" leftIcon="pi pi-filter mr-2">
+                    {(() => {
+                        const currentUser = getCurrentUser();
+                        const filtered = batches.filter(b => {
+                            if ((b as any).userAction !== currentUser) return false;
+                            if (periodStart && b.dateVirement && b.dateVirement < formatLocalDate(periodStart)) return false;
+                            if (periodEnd && b.dateVirement && b.dateVirement > formatLocalDate(periodEnd)) return false;
+                            return true;
+                        });
+                        return (
+                            <DataTable
+                                value={filtered}
+                                paginator
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={batchLoading}
+                                header={
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                            <div>
+                                                <h5 className="m-0">Mes Batches par Période</h5>
+                                                <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} batch(s)</small>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 align-items-center">
+                                            <label className="font-medium">Du:</label>
+                                            <Calendar
+                                                value={periodStart}
+                                                onChange={(e) => setPeriodStart(e.value as Date | null)}
+                                                dateFormat="dd/mm/yy"
+                                                placeholder="Date début"
+                                                showIcon
+                                            />
+                                            <label className="font-medium">Au:</label>
+                                            <Calendar
+                                                value={periodEnd}
+                                                onChange={(e) => setPeriodEnd(e.value as Date | null)}
+                                                dateFormat="dd/mm/yy"
+                                                placeholder="Date fin"
+                                                showIcon
+                                                minDate={periodStart || undefined}
+                                            />
+                                            <Button
+                                                label="Réinitialiser"
+                                                icon="pi pi-refresh"
+                                                onClick={() => { setPeriodStart(null); setPeriodEnd(null); }}
+                                                className="p-button-secondary p-button-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                }
+                                emptyMessage="Aucun batch trouvé pour cette période"
+                                stripedRows
+                                showGridlines
+                                size="small"
+                                sortField="dateVirement"
+                                sortOrder={-1}
+                            >
+                                <Column field="batchNumber" header="N° Batch" sortable />
+                                <Column field="dateVirement" header="Date" sortable />
+                                <Column header="Source" body={batchSourceTemplate} />
+                                <Column field="numberOfTransfers" header="Bénéficiaires" sortable style={{ textAlign: 'center' }} />
+                                <Column field="totalAmount" header="Total Virements" body={(row) => formatCurrency(row.totalAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
+                                <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                                <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
+                                <Column field="status" header="Statut" body={batchStatusTemplate} sortable />
+                                <Column field="userAction" header="Utilisateur" sortable />
+                                <Column header="Actions" body={batchActionsTemplate} style={{ width: '220px' }} />
+                            </DataTable>
+                        );
+                    })()}
+                </TabPanel>}
             </TabView>
 
             {/* Reject Dialog */}

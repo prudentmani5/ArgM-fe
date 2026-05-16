@@ -10,6 +10,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { TabPanel, TabView } from 'primereact/tabview';
+import { Calendar } from 'primereact/calendar';
 import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 import { ProtectedPage } from '@/components/ProtectedPage';
@@ -18,6 +19,7 @@ import { filterOwnRecordsForCaissier } from '@/utils/userUtils';
 import Cookies from 'js-cookie';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
 import {
     DecouvertRequest,
     DecouvertRequestClass,
@@ -67,6 +69,8 @@ function DecouvertPage() {
     const [activeIndex, setActiveIndex]         = useState(0);
     const [globalFilter, setGlobalFilter]       = useState('');
     const [loading, setLoading]                 = useState(false);
+    const [periodStart, setPeriodStart]         = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd]             = useState<Date | null>(null);
     const [viewDialog, setViewDialog]           = useState(false);
     const [rejectDialog, setRejectDialog]       = useState(false);
     const [printDialog, setPrintDialog]         = useState(false);
@@ -516,6 +520,17 @@ function DecouvertPage() {
         toast.current?.show({ severity, summary, detail, life: 4000 });
     };
 
+    const getCurrentUser = (): string => {
+        try {
+            const appUserCookie = Cookies.get('appUser');
+            if (appUserCookie) {
+                const appUser = JSON.parse(appUserCookie);
+                return `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || appUser.email || 'Unknown';
+            }
+        } catch (e) {}
+        return 'Unknown';
+    };
+
     const fmt = (v?: number | null) =>
         v != null ? new Intl.NumberFormat('fr-BI').format(v) + ' FBU' : '–';
 
@@ -674,6 +689,124 @@ function DecouvertPage() {
                             <Column header="Actions" body={actionsBody} style={{ minWidth: '240px' }} />
                         </DataTable>
                     </TabPanel>
+
+                    {/* Tab: Découverts du Jour */}
+                    {can('EPARGNE_DECOUVERT_VIEW_TODAY') && <TabPanel header="Découverts du Jour" leftIcon="pi pi-calendar mr-2">
+                        <DataTable
+                            value={decouvertList.filter(d => d.requestDate === formatLocalDate(new Date()))}
+                            loading={loading}
+                            paginator rows={10}
+                            rowsPerPageOptions={[5, 10, 25, 50]}
+                            globalFilter={globalFilter}
+                            header={
+                                <div className="flex justify-content-between align-items-center">
+                                    <h5 className="m-0">Découverts du Jour</h5>
+                                    <span className="p-input-icon-left">
+                                        <i className="pi pi-search" />
+                                        <InputText
+                                            value={globalFilter}
+                                            onChange={(e) => setGlobalFilter(e.target.value)}
+                                            placeholder="Rechercher..."
+                                        />
+                                    </span>
+                                </div>
+                            }
+                            emptyMessage="Aucune demande de découvert pour aujourd'hui"
+                            stripedRows
+                            showGridlines
+                            size="small"
+                            sortField="requestDate"
+                            sortOrder={-1}
+                            rowHover
+                        >
+                            <Column field="requestNumber" header="N° Demande" sortable />
+                            <Column header="Client / Groupe" body={clientBody} />
+                            <Column header="Montant Demandé" body={amountBody} sortable field="requestedAmount" />
+                            <Column header="Intérêts (5%)" body={(r: DecouvertRequest) =>
+                                <span style={{ color: '#e74c3c' }}>{fmt(r.interestAmount)}</span>} />
+                            <Column header="Total Débité" body={totalBody} />
+                            <Column header="Solde Après" body={balanceAfterBody} />
+                            <Column header="Statut" body={statusTag} sortable field="status" />
+                            <Column field="requestDate" header="Date" sortable />
+                            <Column field="userAction" header="Utilisateur" sortable />
+                            <Column header="Actions" body={actionsBody} style={{ minWidth: '240px' }} />
+                        </DataTable>
+                    </TabPanel>}
+
+                    {/* Tab: Mes Découverts par Période */}
+                    {can('EPARGNE_DECOUVERT_VIEW_PERIOD') && <TabPanel header="Mes Découverts par Période" leftIcon="pi pi-filter mr-2">
+                        {(() => {
+                            const currentUser = getCurrentUser();
+                            const filtered = decouvertList.filter(d => {
+                                if (d.userAction !== currentUser) return false;
+                                if (periodStart && d.requestDate && d.requestDate < formatLocalDate(periodStart)) return false;
+                                if (periodEnd && d.requestDate && d.requestDate > formatLocalDate(periodEnd)) return false;
+                                return true;
+                            });
+                            return (
+                                <DataTable
+                                    value={filtered}
+                                    loading={loading}
+                                    paginator rows={10}
+                                    rowsPerPageOptions={[5, 10, 25, 50]}
+                                    header={
+                                        <div className="flex flex-column gap-2">
+                                            <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                                <div>
+                                                    <h5 className="m-0">Mes Découverts par Période</h5>
+                                                    <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} demande(s)</small>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 align-items-center">
+                                                <label className="font-medium">Du:</label>
+                                                <Calendar
+                                                    value={periodStart}
+                                                    onChange={(e) => setPeriodStart(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date début"
+                                                    showIcon
+                                                />
+                                                <label className="font-medium">Au:</label>
+                                                <Calendar
+                                                    value={periodEnd}
+                                                    onChange={(e) => setPeriodEnd(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date fin"
+                                                    showIcon
+                                                    minDate={periodStart || undefined}
+                                                />
+                                                <Button
+                                                    label="Réinitialiser"
+                                                    icon="pi pi-refresh"
+                                                    onClick={() => { setPeriodStart(null); setPeriodEnd(null); }}
+                                                    className="p-button-secondary p-button-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    }
+                                    emptyMessage="Aucune demande trouvée pour cette période"
+                                    stripedRows
+                                    showGridlines
+                                    size="small"
+                                    sortField="requestDate"
+                                    sortOrder={-1}
+                                    rowHover
+                                >
+                                    <Column field="requestNumber" header="N° Demande" sortable />
+                                    <Column header="Client / Groupe" body={clientBody} />
+                                    <Column header="Montant Demandé" body={amountBody} sortable field="requestedAmount" />
+                                    <Column header="Intérêts (5%)" body={(r: DecouvertRequest) =>
+                                        <span style={{ color: '#e74c3c' }}>{fmt(r.interestAmount)}</span>} />
+                                    <Column header="Total Débité" body={totalBody} />
+                                    <Column header="Solde Après" body={balanceAfterBody} />
+                                    <Column header="Statut" body={statusTag} sortable field="status" />
+                                    <Column field="requestDate" header="Date" sortable />
+                                    <Column field="userAction" header="Utilisateur" sortable />
+                                    <Column header="Actions" body={actionsBody} style={{ minWidth: '240px' }} />
+                                </DataTable>
+                            );
+                        })()}
+                    </TabPanel>}
                 </TabView>
             </div>
 

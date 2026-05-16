@@ -311,8 +311,8 @@ const useConsumApi = (initialUrl: string) => {
     // Optional: Add a function to initialize CSRF token
     //   const initializeCsrfToken = async () => {
     //     try {
-    //       await authFetch('http://10.50.60.25:8080/api/csrf-token', {
-    //         method: 'GET'10.50.60.25
+    //       await authFetch('http://localhost:8080/api/csrf-token', {
+    //         method: 'GET'localhost
     //       }, true);
     //     } catch (err) {
     //       console.error('Failed to initialize CSRF token:', err);

@@ -10,8 +10,10 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dialog } from 'primereact/dialog';
+import { Calendar } from 'primereact/calendar';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
 import { StatementRequest, StatementRequestClass, StatementRequestStatus } from './StatementRequest';
 import StatementRequestForm from './StatementRequestForm';
 import PrintableStatementReceipt from './PrintableStatementReceipt';
@@ -51,6 +53,8 @@ function SituationRequestPage() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
     const [loading, setLoading] = useState(false);
+    const [periodStart, setPeriodStart] = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
     const [viewDialog, setViewDialog] = useState(false);
     const [rejectDialog, setRejectDialog] = useState(false);
     const [deliverDialog, setDeliverDialog] = useState(false);
@@ -86,7 +90,7 @@ function SituationRequestPage() {
         if (comptesApi.data) {
             const data = Array.isArray(comptesApi.data) ? comptesApi.data : [];
             const mapped = data
-                .filter((a: any) => a.actif !== false && a.codeCompte === '707')
+                .filter((a: any) => a.actif !== false)
                 .map((a: any) => ({
                     compteId: a.compteComptableId,
                     codeCompte: a.codeCompte,
@@ -94,8 +98,9 @@ function SituationRequestPage() {
                 }));
             setComptesComptables(mapped);
             // Auto-select 707 for SITUATION
-            if (mapped.length > 0) {
-                setRequest(prev => prev.feeAccountId ? prev : { ...prev, feeAccountId: mapped[0].compteId });
+            const autoSelect707 = mapped.find((c: any) => c.codeCompte?.startsWith('707'));
+            if (autoSelect707) {
+                setRequest(prev => prev.feeAccountId ? prev : { ...prev, feeAccountId: autoSelect707.compteId });
             }
         }
         if (comptesApi.error) showToast('error', 'Erreur', comptesApi.error.message || 'Erreur lors du chargement des comptes internes');
@@ -212,7 +217,7 @@ function SituationRequestPage() {
     };
 
     const resetForm = () => {
-        const autoSelect = comptesComptables.find((c: any) => c.codeCompte === '707');
+        const autoSelect = comptesComptables.find((c: any) => c.codeCompte?.startsWith('707'));
         setRequest({ ...new StatementRequestClass(), requestType: REQUEST_TYPE, feeAccountId: autoSelect?.compteId });
     };
 
@@ -397,6 +402,77 @@ function SituationRequestPage() {
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '220px' }} />
                     </DataTable>
                 </TabPanel>
+
+                {can('EPARGNE_SITUATION_VIEW_TODAY') && <TabPanel header="Demandes du Jour" leftIcon="pi pi-calendar mr-2">
+                    <DataTable
+                        value={requests.filter(r => r.requestDate === formatLocalDate(new Date()))}
+                        paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading} globalFilter={globalFilter}
+                        header={
+                            <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                <h5 className="m-0">Demandes de Situation du Jour</h5>
+                                <span className="p-input-icon-left">
+                                    <i className="pi pi-search" />
+                                    <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Rechercher..." />
+                                </span>
+                            </div>
+                        }
+                        emptyMessage="Aucune demande de situation pour aujourd'hui"
+                        stripedRows showGridlines size="small" sortField="requestDate" sortOrder={-1}
+                    >
+                        <Column field="requestNumber" header="N° Demande" sortable />
+                        <Column field="client" header="Client" body={clientBodyTemplate} sortable />
+                        <Column field="requestDate" header="Date" sortable />
+                        <Column field="feeAmount" header="Frais" sortable body={(row) => formatCurrency(row.feeAmount)} />
+                        <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '220px' }} />
+                    </DataTable>
+                </TabPanel>}
+
+                {can('EPARGNE_SITUATION_VIEW_PERIOD') && <TabPanel header="Mes Demandes par Période" leftIcon="pi pi-filter mr-2">
+                    {(() => {
+                        const currentUser = getCurrentUser();
+                        const filtered = requests.filter(r => {
+                            if (r.userAction !== currentUser) return false;
+                            if (periodStart && r.requestDate && r.requestDate < formatLocalDate(periodStart)) return false;
+                            if (periodEnd && r.requestDate && r.requestDate > formatLocalDate(periodEnd)) return false;
+                            return true;
+                        });
+                        return (
+                            <DataTable
+                                value={filtered}
+                                paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading}
+                                header={
+                                    <div className="flex flex-column gap-2">
+                                        <div>
+                                            <h5 className="m-0">Mes Demandes de Situation par Période</h5>
+                                            <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} demande(s)</small>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 align-items-center">
+                                            <label className="font-medium">Du:</label>
+                                            <Calendar value={periodStart} onChange={(e) => setPeriodStart(e.value as Date | null)} dateFormat="dd/mm/yy" placeholder="Date début" showIcon />
+                                            <label className="font-medium">Au:</label>
+                                            <Calendar value={periodEnd} onChange={(e) => setPeriodEnd(e.value as Date | null)} dateFormat="dd/mm/yy" placeholder="Date fin" showIcon minDate={periodStart || undefined} />
+                                            <Button label="Réinitialiser" icon="pi pi-refresh" onClick={() => { setPeriodStart(null); setPeriodEnd(null); }} className="p-button-secondary p-button-sm" />
+                                        </div>
+                                    </div>
+                                }
+                                emptyMessage="Aucune demande trouvée pour cette période"
+                                stripedRows showGridlines size="small" sortField="requestDate" sortOrder={-1}
+                            >
+                                <Column field="requestNumber" header="N° Demande" sortable />
+                                <Column field="client" header="Client" body={clientBodyTemplate} sortable />
+                                <Column field="requestDate" header="Date" sortable />
+                                <Column field="feeAmount" header="Frais" sortable body={(row) => formatCurrency(row.feeAmount)} />
+                                <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                                <Column field="userAction" header="Utilisateur" sortable />
+                                <Column header="Actions" body={actionsBodyTemplate} style={{ width: '220px' }} />
+                            </DataTable>
+                        );
+                    })()}
+                </TabPanel>}
             </TabView>
 
             {/* View Dialog */}

@@ -13,11 +13,13 @@ import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
 import { Card } from 'primereact/card';
 import { Image } from 'primereact/image';
 import { Avatar } from 'primereact/avatar';
 import { Divider } from 'primereact/divider';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
+import { formatLocalDate } from '@/utils/dateUtils';
 import { API_BASE_URL, buildApiUrl } from '@/utils/apiConfig';
 import { useMarkCancellationReplaced } from '@/hooks/useMarkCancellationReplaced';
 import { WithdrawalRequest, WithdrawalRequestClass, WithdrawalStatus } from './WithdrawalRequest';
@@ -93,6 +95,8 @@ function WithdrawalRequestPage() {
     const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
     const [isManager, setIsManager] = useState<boolean>(false);
     const [printDialog, setPrintDialog] = useState(false);
+    const [periodStart, setPeriodStart] = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
     const [viewClientDialog, setViewClientDialog] = useState(false);
     const [clientDetail, setClientDetail] = useState<any>(null);
     const [deliveredCheckbooks, setDeliveredCheckbooks] = useState<any[]>([]);
@@ -1151,7 +1155,7 @@ function WithdrawalRequestPage() {
 
                 {can('EPARGNE_WITHDRAWAL_VIEW_TODAY') && <TabPanel header="Retraits du Jour" leftIcon="pi pi-calendar mr-2">
                     <DataTable
-                        value={requests.filter(r => r.requestDate === new Date().toISOString().split('T')[0])}
+                        value={requests.filter(r => r.requestDate === formatLocalDate(new Date()))}
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25, 50]}
@@ -1193,6 +1197,107 @@ function WithdrawalRequestPage() {
                         <Column field="userAction" header="Utilisateur" sortable />
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
                     </DataTable>
+                </TabPanel>}
+
+                {can('EPARGNE_WITHDRAWAL_VIEW_PERIOD') && <TabPanel header="Mes Retraits par Période" leftIcon="pi pi-filter mr-2">
+                    {(() => {
+                        const currentUser = getCurrentUser();
+                        const filtered = requests.filter(r => {
+                            if ((r as any).userAction !== currentUser) return false;
+                            if (periodStart && r.requestDate && r.requestDate < formatLocalDate(periodStart)) return false;
+                            if (periodEnd && r.requestDate && r.requestDate > formatLocalDate(periodEnd)) return false;
+                            return true;
+                        });
+                        return (
+                            <DataTable
+                                value={filtered}
+                                paginator
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading}
+                                globalFilter={globalFilter}
+                                globalFilterFields={['requestNumber', 'client.firstName', 'client.lastName', 'client.businessName', 'depositorName']}
+                                emptyMessage="Aucun retrait trouvé pour cette période"
+                                stripedRows
+                                showGridlines
+                                size="small"
+                                sortField="requestDate"
+                                sortOrder={-1}
+                                header={
+                                    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                        <div>
+                                            <h5 className="m-0">Mes Retraits</h5>
+                                            <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} demande(s)</small>
+                                        </div>
+                                        <div className="flex gap-2 align-items-center flex-wrap">
+                                            <div className="flex align-items-center gap-1">
+                                                <label className="text-sm font-medium">Du:</label>
+                                                <Calendar
+                                                    value={periodStart}
+                                                    onChange={(e) => setPeriodStart(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date début"
+                                                    showButtonBar
+                                                    style={{ width: '150px' }}
+                                                />
+                                            </div>
+                                            <div className="flex align-items-center gap-1">
+                                                <label className="text-sm font-medium">Au:</label>
+                                                <Calendar
+                                                    value={periodEnd}
+                                                    onChange={(e) => setPeriodEnd(e.value as Date | null)}
+                                                    dateFormat="dd/mm/yy"
+                                                    placeholder="Date fin"
+                                                    showButtonBar
+                                                    minDate={periodStart || undefined}
+                                                    style={{ width: '150px' }}
+                                                />
+                                            </div>
+                                            <Button
+                                                icon="pi pi-times"
+                                                className="p-button-secondary p-button-sm p-button-outlined"
+                                                onClick={() => { setPeriodStart(null); setPeriodEnd(null); }}
+                                                tooltip="Réinitialiser la période"
+                                            />
+                                            <span className="p-input-icon-left">
+                                                <i className="pi pi-search" />
+                                                <InputText
+                                                    value={globalFilter}
+                                                    onChange={(e) => setGlobalFilter(e.target.value)}
+                                                    placeholder="Rechercher..."
+                                                />
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            >
+                                <Column field="requestNumber" header="N° Demande" sortable />
+                                <Column
+                                    header="Client / Groupe"
+                                    body={(row) => row.solidarityGroup
+                                        ? (row.solidarityGroup.groupName || row.solidarityGroup.name || '—')
+                                        : getClientDisplayName(row.client)}
+                                />
+                                <Column
+                                    header="N° Compte"
+                                    body={(row) => {
+                                        const acc = savingsAccounts.find((a: any) => Number(a.id) === Number(row.savingsAccountId));
+                                        return acc?.accountNumber || (row as any).savingsAccount?.accountNumber || '-';
+                                    }}
+                                />
+                                <Column field="requestDate" header="Date" sortable />
+                                <Column
+                                    header="Montant"
+                                    sortable sortField="requestedAmount"
+                                    body={(row) => formatCurrency(row.requestedAmount, row.currency?.code)}
+                                />
+                                <Column field="moyenRetrait" header="Moyen Utilisé" body={moyenRetraitBodyTemplate} sortable />
+                                <Column header="N° Reçu/Chèque" body={numeroDocumentBodyTemplate} />
+                                <Column header="Statut" body={statusBodyTemplate} sortable sortField="status" />
+                                <Column header="Actions" body={actionsBodyTemplate} style={{ width: '250px' }} />
+                            </DataTable>
+                        );
+                    })()}
                 </TabPanel>}
             </TabView>
 

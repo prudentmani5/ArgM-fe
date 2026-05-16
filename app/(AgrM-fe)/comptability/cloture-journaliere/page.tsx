@@ -538,12 +538,12 @@ function ClotureJournalierePage() {
                                 <div className="text-2xl font-bold" style={{ color: '#0D47A1' }}>{preview.virementsCount || 0}</div>
                             </div>
                         </div>
-                        {((preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0) + (preview.ouvertureCompteCount || 0)) > 0 && (
+                        {((preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0) + (preview.ouvertureCompteCount || 0) + (preview.commissionVirementsCount || 0)) > 0 && (
                             <div className="col-6 md:col-2">
                                 <div className="surface-card shadow-1 p-3 border-round" style={{ borderLeft: '3px solid #E91E63' }}>
                                     <div className="text-500 font-medium mb-1"><i className="pi pi-money-bill mr-1" />Frais Operations</div>
                                     <div className="text-2xl font-bold" style={{ color: '#E91E63' }}>
-                                        {(preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0) + (preview.ouvertureCompteCount || 0)}
+                                        {(preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0) + (preview.ouvertureCompteCount || 0) + (preview.commissionVirementsCount || 0)}
                                     </div>
                                 </div>
                             </div>
@@ -621,8 +621,8 @@ function ClotureJournalierePage() {
                         <TabPanel header={`Frais Operations (${(preview.fraisEpargneEntries || []).length})`} leftIcon="pi pi-money-bill mr-2">
                             {previewEntryTable(preview.fraisEpargneEntries || [], 'Aucune operation de frais operations pour cette date (situations, carnets, tenue de compte)')}
                             {previewTotalsForTab(preview.fraisEpargneEntries || [])}
-                            {((preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0) + (preview.ouvertureCompteCount || 0)) > 0 && (
-                                <div className="flex gap-3 mt-2">
+                            {((preview.statementRequestsCount || 0) + (preview.checkbookOrdersCount || 0) + (preview.fraisCompteCount || 0) + (preview.ouvertureCompteCount || 0) + (preview.commissionVirementsCount || 0)) > 0 && (
+                                <div className="flex gap-3 mt-2 flex-wrap">
                                     {(preview.statementRequestsCount || 0) > 0 && (
                                         <Tag value={`Demandes Situation: ${preview.statementRequestsCount}`} severity="info" />
                                     )}
@@ -634,6 +634,9 @@ function ClotureJournalierePage() {
                                     )}
                                     {(preview.ouvertureCompteCount || 0) > 0 && (
                                         <Tag value={`Ouverture Compte: ${preview.ouvertureCompteCount}`} severity="danger" />
+                                    )}
+                                    {(preview.commissionVirementsCount || 0) > 0 && (
+                                        <Tag value={`Commissions Virement: ${preview.commissionVirementsCount}`} severity="secondary" />
                                     )}
                                 </div>
                             )}

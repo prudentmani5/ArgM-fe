@@ -54,6 +54,8 @@ function SavingsAccountPage() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
     const [loading, setLoading] = useState(false);
+    const [periodStart, setPeriodStart] = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
     const [viewDialog, setViewDialog] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<SavingsAccount | null>(null);
     const [statusDialog, setStatusDialog] = useState(false);
@@ -1671,6 +1673,131 @@ function SavingsAccountPage() {
                         <Column header="Actions" body={termDepositActionsTemplate} style={{ width: '250px' }} />
                     </DataTable>
                 </TabPanel>
+
+                {/* Tab: Comptes du Jour */}
+                {can('EPARGNE_SAVINGS_ACCOUNT_VIEW_TODAY') && <TabPanel header="Comptes du Jour" leftIcon="pi pi-calendar mr-2">
+                    <DataTable
+                        value={savingsAccounts.filter(a => a.openingDate === formatLocalDate(new Date()))}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        globalFilter={globalFilter}
+                        globalFilterFields={['accountNumber', 'client.firstName', 'client.lastName', 'client.businessName', 'branch.name', 'userAction']}
+                        header={
+                            <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                <h5 className="m-0">Comptes Ouverts Aujourd'hui</h5>
+                                <span className="p-input-icon-left">
+                                    <i className="pi pi-search" />
+                                    <InputText
+                                        value={globalFilter}
+                                        onChange={(e) => setGlobalFilter(e.target.value)}
+                                        placeholder="Rechercher..."
+                                    />
+                                </span>
+                            </div>
+                        }
+                        emptyMessage="Aucun compte ouvert aujourd'hui"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="openingDate"
+                        sortOrder={-1}
+                    >
+                        <Column field="accountNumber" header="N° Compte" sortable />
+                        <Column
+                            field="client"
+                            header="Client"
+                            sortable
+                            body={(row) => row.client ? (row.client.businessName || `${row.client.firstName || ''} ${row.client.lastName || ''}`.trim() || '-') : (row.solidarityGroup?.groupName || '-')}
+                        />
+                        <Column field="branch.name" header="Agence" sortable />
+                        <Column header="Type" body={accountTypeBodyTemplate} />
+                        <Column header="Solde" body={balanceBodyTemplate} sortable sortField="currentBalance" />
+                        <Column field="openingDate" header="Date d'Ouverture" sortable />
+                        <Column header="Statut" body={statusBodyTemplate} />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
+                    </DataTable>
+                </TabPanel>}
+
+                {/* Tab: Mes Comptes par Période */}
+                {can('EPARGNE_SAVINGS_ACCOUNT_VIEW_PERIOD') && <TabPanel header="Mes Comptes par Période" leftIcon="pi pi-filter mr-2">
+                    {(() => {
+                        const currentUser = getCurrentUser();
+                        const filtered = savingsAccounts.filter(a => {
+                            if ((a as any).userAction !== currentUser) return false;
+                            if (periodStart && a.openingDate && a.openingDate < formatLocalDate(periodStart)) return false;
+                            if (periodEnd && a.openingDate && a.openingDate > formatLocalDate(periodEnd)) return false;
+                            return true;
+                        });
+                        return (
+                            <DataTable
+                                value={filtered}
+                                paginator
+                                rows={10}
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                loading={loading}
+                                header={
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+                                            <div>
+                                                <h5 className="m-0">Mes Comptes par Période</h5>
+                                                <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} compte(s)</small>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 align-items-center">
+                                            <label className="font-medium">Du:</label>
+                                            <Calendar
+                                                value={periodStart}
+                                                onChange={(e) => setPeriodStart(e.value as Date | null)}
+                                                dateFormat="dd/mm/yy"
+                                                placeholder="Date début"
+                                                showIcon
+                                            />
+                                            <label className="font-medium">Au:</label>
+                                            <Calendar
+                                                value={periodEnd}
+                                                onChange={(e) => setPeriodEnd(e.value as Date | null)}
+                                                dateFormat="dd/mm/yy"
+                                                placeholder="Date fin"
+                                                showIcon
+                                                minDate={periodStart || undefined}
+                                            />
+                                            <Button
+                                                label="Réinitialiser"
+                                                icon="pi pi-refresh"
+                                                onClick={() => { setPeriodStart(null); setPeriodEnd(null); }}
+                                                className="p-button-secondary p-button-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                }
+                                emptyMessage="Aucun compte trouvé pour cette période"
+                                stripedRows
+                                showGridlines
+                                size="small"
+                                sortField="openingDate"
+                                sortOrder={-1}
+                            >
+                                <Column field="accountNumber" header="N° Compte" sortable />
+                                <Column
+                                    field="client"
+                                    header="Client"
+                                    sortable
+                                    body={(row) => row.client ? (row.client.businessName || `${row.client.firstName || ''} ${row.client.lastName || ''}`.trim() || '-') : (row.solidarityGroup?.groupName || '-')}
+                                />
+                                <Column field="branch.name" header="Agence" sortable />
+                                <Column header="Type" body={accountTypeBodyTemplate} />
+                                <Column header="Solde" body={balanceBodyTemplate} sortable sortField="currentBalance" />
+                                <Column field="openingDate" header="Date d'Ouverture" sortable />
+                                <Column header="Statut" body={statusBodyTemplate} />
+                                <Column field="userAction" header="Utilisateur" sortable />
+                                <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
+                            </DataTable>
+                        );
+                    })()}
+                </TabPanel>}
             </TabView>
 
             {/* Dialog Intérêts Mensuels DAT */}

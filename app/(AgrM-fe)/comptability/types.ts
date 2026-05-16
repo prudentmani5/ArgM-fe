@@ -318,6 +318,7 @@ export interface DailyClosingPreview {
   checkbookOrdersCount: number;
   fraisCompteCount: number;
   ouvertureCompteCount: number;
+  commissionVirementsCount?: number;
 }
 
 // ============================================================================
@@ -687,16 +688,16 @@ export interface InternalAccountOperation {
 // ============================================================================
 
 export const CATEGORIES_IMMO = [
-    { code: 'INFORMATIQUE',      label: 'Équipements informatiques',      compteImmo: '2183', compteAmort: '28183', methode: 'DEGRESSIF', duree: 3 },
-    { code: 'MOBILIER',          label: 'Mobilier de bureau',             compteImmo: '244',  compteAmort: '2844',  methode: 'LINEAIRE',  duree: 10 },
-    { code: 'MATERIEL_ROULANT',  label: 'Matériel roulant',               compteImmo: '241',  compteAmort: '2841',  methode: 'LINEAIRE',  duree: 5 },
-    { code: 'SECURITE',          label: 'Matériel de sécurité',           compteImmo: '2188', compteAmort: '28188', methode: 'LINEAIRE',  duree: 7 },
-    { code: 'COMMUNICATION',     label: 'Équipements de communication',   compteImmo: '2184', compteAmort: '28184', methode: 'DEGRESSIF', duree: 5 },
-    { code: 'ELECTRIQUE',        label: 'Équipements électriques',        compteImmo: '2185', compteAmort: '28185', methode: 'LINEAIRE',  duree: 7 },
-    { code: 'OUTILLAGE_CAISSE',  label: 'Outillage de caisse',            compteImmo: '2186', compteAmort: '28186', methode: 'DEGRESSIF', duree: 5 },
-    { code: 'MATERIEL_TERRAIN',  label: 'Matériel de terrain',            compteImmo: '2187', compteAmort: '28187', methode: 'DEGRESSIF', duree: 3 },
-    { code: 'LOGICIELS',         label: 'Logiciels & licences',           compteImmo: '212',  compteAmort: '2812',  methode: 'LINEAIRE',  duree: 3 },
-    { code: 'AUTRE',             label: 'Autre immobilisation',           compteImmo: '21',   compteAmort: '281',   methode: 'LINEAIRE',  duree: 5 },
+    { code: 'INFORMATIQUE',      label: 'Équipements informatiques',      methode: 'DEGRESSIF', duree: 3 },
+    { code: 'MOBILIER',          label: 'Mobilier de bureau',             methode: 'LINEAIRE',  duree: 10 },
+    { code: 'MATERIEL_ROULANT',  label: 'Matériel roulant',               methode: 'LINEAIRE',  duree: 5 },
+    { code: 'SECURITE',          label: 'Matériel de sécurité',           methode: 'LINEAIRE',  duree: 7 },
+    { code: 'COMMUNICATION',     label: 'Équipements de communication',   methode: 'DEGRESSIF', duree: 5 },
+    { code: 'ELECTRIQUE',        label: 'Équipements électriques',        methode: 'LINEAIRE',  duree: 7 },
+    { code: 'OUTILLAGE_CAISSE',  label: 'Outillage de caisse',            methode: 'DEGRESSIF', duree: 5 },
+    { code: 'MATERIEL_TERRAIN',  label: 'Matériel de terrain',            methode: 'DEGRESSIF', duree: 3 },
+    { code: 'LOGICIELS',         label: 'Logiciels & licences',           methode: 'LINEAIRE',  duree: 3 },
+    { code: 'AUTRE',             label: 'Autre immobilisation',           methode: 'LINEAIRE',  duree: 5 },
 ];
 
 export const METHODES_AMORT = [

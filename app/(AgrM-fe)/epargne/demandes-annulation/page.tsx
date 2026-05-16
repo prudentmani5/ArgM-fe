@@ -11,8 +11,11 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Dialog } from 'primereact/dialog';
+import { Calendar } from 'primereact/calendar';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
+import Cookies from 'js-cookie';
 import { filterOwnRecordsForCaissier } from '@/utils/userUtils';
 import {
     CancellationRequest,
@@ -55,6 +58,17 @@ const statusLabel = (status?: string) => {
     }
 };
 
+const getCurrentUser = (): string => {
+    try {
+        const appUserCookie = Cookies.get('appUser');
+        if (appUserCookie) {
+            const appUser = JSON.parse(appUserCookie);
+            return `${appUser.firstname || ''} ${appUser.lastname || ''}`.trim() || appUser.email || 'Unknown';
+        }
+    } catch (e) {}
+    return 'Unknown';
+};
+
 function DemandesAnnulationPage() {
     const { can } = useAuthorizedAction();
     const [form, setForm] = useState<CancellationRequest>(new CancellationRequestClass());
@@ -63,6 +77,8 @@ function DemandesAnnulationPage() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
     const [loading, setLoading] = useState(false);
+    const [periodStart, setPeriodStart] = useState<Date | null>(null);
+    const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
     const [viewDialog, setViewDialog] = useState(false);
     const [rejectDialog, setRejectDialog] = useState(false);
     const [approveDialog, setApproveDialog] = useState(false);
@@ -369,6 +385,89 @@ function DemandesAnnulationPage() {
                             <Column header="Actions" body={actionBodyTemplate} />
                         </DataTable>
                     </TabPanel>
+
+                    {can('EPARGNE_ANNULATION_VIEW_TODAY') && <TabPanel header="Annulations du Jour" leftIcon="pi pi-calendar mr-2">
+                        <DataTable
+                            value={requests.filter(r => r.createdAt && formatLocalDate(new Date(r.createdAt)) === formatLocalDate(new Date()))}
+                            paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]}
+                            loading={loading}
+                            globalFilter={globalFilter}
+                            globalFilterFields={['requestNumber', 'sourceReference', 'clientName', 'accountNumber', 'reason', 'requestedBy', 'status', 'sourceType']}
+                            header={
+                                <div className="flex justify-content-between align-items-center">
+                                    <h5 className="m-0">Annulations du Jour</h5>
+                                    <span className="p-input-icon-left">
+                                        <i className="pi pi-search" />
+                                        <InputText value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Recherche..." />
+                                    </span>
+                                </div>
+                            }
+                            emptyMessage="Aucune annulation pour aujourd'hui"
+                            stripedRows showGridlines size="small" sortField="createdAt" sortOrder={-1}
+                        >
+                            <Column field="requestNumber" header="N° Demande" sortable />
+                            <Column field="sourceType" header="Type" body={sourceTypeBody} sortable />
+                            <Column field="sourceReference" header="Opération source" sortable />
+                            <Column field="clientName" header="Client" sortable />
+                            <Column field="accountNumber" header="N° Compte" sortable />
+                            <Column field="amount" header="Montant" body={(r) => formatCurrency(r.amount)} sortable />
+                            <Column field="reason" header="Motif" />
+                            <Column field="status" header="Statut" body={statusBody} sortable />
+                            <Column field="requestedBy" header="Demandé par" sortable />
+                            <Column field="createdAt" header="Date" body={(r) => r.createdAt ? new Date(r.createdAt).toLocaleString('fr-FR') : '-'} sortable />
+                            <Column header="Actions" body={actionBodyTemplate} />
+                        </DataTable>
+                    </TabPanel>}
+
+                    {can('EPARGNE_ANNULATION_VIEW_PERIOD') && <TabPanel header="Mes Annulations par Période" leftIcon="pi pi-filter mr-2">
+                        {(() => {
+                            const currentUser = getCurrentUser();
+                            const filtered = requests.filter(r => {
+                                if (r.requestedBy !== currentUser) return false;
+                                if (!r.createdAt) return false;
+                                const d = formatLocalDate(new Date(r.createdAt));
+                                if (periodStart && d < formatLocalDate(periodStart)) return false;
+                                if (periodEnd && d > formatLocalDate(periodEnd)) return false;
+                                return true;
+                            });
+                            return (
+                                <DataTable
+                                    value={filtered}
+                                    paginator rows={10} rowsPerPageOptions={[5, 10, 25, 50]}
+                                    loading={loading}
+                                    header={
+                                        <div className="flex flex-column gap-2">
+                                            <div>
+                                                <h5 className="m-0">Mes Annulations par Période</h5>
+                                                <small className="text-500">Utilisateur: <strong>{currentUser}</strong> — {filtered.length} demande(s)</small>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 align-items-center">
+                                                <label className="font-medium">Du:</label>
+                                                <Calendar value={periodStart} onChange={(e) => setPeriodStart(e.value as Date | null)} dateFormat="dd/mm/yy" placeholder="Date début" showIcon />
+                                                <label className="font-medium">Au:</label>
+                                                <Calendar value={periodEnd} onChange={(e) => setPeriodEnd(e.value as Date | null)} dateFormat="dd/mm/yy" placeholder="Date fin" showIcon minDate={periodStart || undefined} />
+                                                <Button label="Réinitialiser" icon="pi pi-refresh" onClick={() => { setPeriodStart(null); setPeriodEnd(null); }} className="p-button-secondary p-button-sm" />
+                                            </div>
+                                        </div>
+                                    }
+                                    emptyMessage="Aucune annulation trouvée pour cette période"
+                                    stripedRows showGridlines size="small" sortField="createdAt" sortOrder={-1}
+                                >
+                                    <Column field="requestNumber" header="N° Demande" sortable />
+                                    <Column field="sourceType" header="Type" body={sourceTypeBody} sortable />
+                                    <Column field="sourceReference" header="Opération source" sortable />
+                                    <Column field="clientName" header="Client" sortable />
+                                    <Column field="accountNumber" header="N° Compte" sortable />
+                                    <Column field="amount" header="Montant" body={(r) => formatCurrency(r.amount)} sortable />
+                                    <Column field="reason" header="Motif" />
+                                    <Column field="status" header="Statut" body={statusBody} sortable />
+                                    <Column field="requestedBy" header="Demandé par" sortable />
+                                    <Column field="createdAt" header="Date" body={(r) => r.createdAt ? new Date(r.createdAt).toLocaleString('fr-FR') : '-'} sortable />
+                                    <Column header="Actions" body={actionBodyTemplate} />
+                                </DataTable>
+                            );
+                        })()}
+                    </TabPanel>}
                 </TabView>
 
                 {/* View Dialog */}
