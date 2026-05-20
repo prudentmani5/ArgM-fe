@@ -514,7 +514,7 @@ function VirementPage() {
     const handleDateChange = (name: string, value: Date | null) => {
         setVirement(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : null
+            [name]: value ? formatLocalDate(value) : null
         }));
     };
 

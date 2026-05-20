@@ -10,6 +10,7 @@ import { Column } from 'primereact/column';
 import { Calendar } from 'primereact/calendar';
 import { VirementBatch, VirementBatchDetail, DEFAULT_COMMISSION_RATE, BatchSourceType, BATCH_SOURCE_TYPE_OPTIONS } from './Virement';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 interface VirementBatchFormProps {
     batch: VirementBatch;
@@ -282,7 +283,7 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                         <Calendar
                             id="batchDate"
                             value={batch.dateVirement ? new Date(batch.dateVirement) : null}
-                            onChange={(e) => setBatch({ ...batch, dateVirement: e.value ? (e.value as Date).toISOString().split('T')[0] : '' })}
+                            onChange={(e) => setBatch({ ...batch, dateVirement: e.value ? formatLocalDate(e.value as Date) : '' })}
                             dateFormat="dd/mm/yy"
                             disabled={isViewMode}
                             showIcon

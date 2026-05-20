@@ -680,7 +680,7 @@ const AmortissementComponent: React.FC = () => {
                             <div className="field col-12 md:col-3">
                                 <label className="font-semibold block mb-1">Code immobilisation</label>
                                 <InputText value={immo.codeImmo} onChange={e => setImmo({ ...immo, codeImmo: e.target.value })}
-                                    placeholder="Auto-généré si vide" className="w-full" />
+                                    placeholder="Auto-généré si vide" className="w-full"  readOnly/>
                             </div>
                             <div className="field col-12 md:col-3">
                                 <label className="font-semibold block mb-1">N° Inventaire (étiquette)</label>

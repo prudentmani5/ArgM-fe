@@ -69,6 +69,8 @@ function DepositSlipPage() {
     const [caisses, setCaisses] = useState<any[]>([]);
     const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
     const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
+    const [isCaissierWithoutCaisse, setIsCaissierWithoutCaisse] = useState(false);
+    const [isNotCaissierRole, setIsNotCaissierRole] = useState(false);
     const [selectedAccountGroup, setSelectedAccountGroup] = useState<any>(null);
     const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
     const [ficheAccounts, setFicheAccounts] = useState<any[]>([]);
@@ -90,6 +92,12 @@ function DepositSlipPage() {
     useEffect(() => {
         loadReferenceData();
         loadDepositSlips();
+        // Block non-caissier roles from creating deposits
+        try {
+            const appUser = JSON.parse(Cookies.get('appUser') || '{}');
+            const roleName = (appUser.roleName || '').toLowerCase();
+            setIsNotCaissierRole(!roleName.includes('caiss'));
+        } catch (e) {}
     }, []);
 
     // Handle clients data
@@ -228,6 +236,18 @@ function DepositSlipPage() {
                             userCaisse = allData.find((c: any) =>
                                 c.compteComptable === appUser.compteComptable && isGuichet(c));
                         }
+                        // Priority 4: Match by codeCaisse (user management stores caisse code in compteComptable)
+                        if (!userCaisse && appUser.compteComptable) {
+                            userCaisse = allData.find((c: any) =>
+                                c.codeCaisse === appUser.compteComptable && isGuichet(c));
+                        }
+                        // Priority 5: If only one GUICHET caisse in branch, auto-assign (handles stale cookie)
+                        if (!userCaisse) {
+                            const guichetCaisses = allData.filter(isGuichet);
+                            if (guichetCaisses.length === 1) {
+                                userCaisse = guichetCaisses[0];
+                            }
+                        }
                         filteredData = userCaisse ? [userCaisse] : [];
                     } else {
                         // Chef d'Agence / Admin / VIEW_ALL_BRANCHES: show all loaded caisses
@@ -245,6 +265,7 @@ function DepositSlipPage() {
                     }
 
                     setCaisses(filteredData);
+                    setIsCaissierWithoutCaisse(isCaissier && !isChefAgence && !isSuperAdmin && !canViewAll && !userCaisse);
 
                     if (userCaisse) {
                         setSelectedCaisseId(userCaisse.caisseId);
@@ -365,7 +386,7 @@ function DepositSlipPage() {
     const handleDateChange = (name: string, value: Date | null) => {
         setDepositSlip(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : null
+            [name]: value ? formatLocalDate(value) : null
         }));
     };
 
@@ -710,6 +731,34 @@ function DepositSlipPage() {
                         </div>
                     )}
 
+                    {isNotCaissierRole && (
+                        <div className="p-3 mt-3 border-round bg-red-50 border-red-300" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-lock text-red-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-red-700">Opération non autorisée</div>
+                                    <div className="text-red-600 text-sm">
+                                        Seuls les utilisateurs ayant le rôle Caissier avec une caisse assignée peuvent enregistrer des dépôts.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isCaissierWithoutCaisse && (
+                        <div className="p-3 mt-3 border-round bg-orange-50 border-orange-300" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-exclamation-triangle text-orange-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-orange-700">Aucune caisse assignée</div>
+                                    <div className="text-orange-600 text-sm">
+                                        Votre compte n'est associé à aucune caisse guichetier. Contactez l'administrateur pour assigner votre caisse avant d'enregistrer des dépôts.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Caisse selection */}
                     <div className="grid mt-3">
                         <div className="col-12 md:col-6">
@@ -746,7 +795,7 @@ function DepositSlipPage() {
                             icon="pi pi-save"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={depositSlip.totalAmount < 500 || !can('EPARGNE_DEPOSIT_CREATE') || !agencyOpen}
+                            disabled={depositSlip.totalAmount < 500 || !can('EPARGNE_DEPOSIT_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole}
                         />
                         <Button
                             label="Réinitialiser"

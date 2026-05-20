@@ -23,9 +23,10 @@ const UsersPage = () => {
     const [filteredUsers, setFilteredUsers] = useState<AppUserResponse[]>([]);
     const [selectedUser, setSelectedUser] = useState<AppUserResponse | null>(null);
 
-    // State for roles and branches (for edit form)
+    // State for roles, branches, and caisses (for edit form)
     const [roles, setRoles] = useState<AppUserRoleResponse[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
+    const [caisses, setCaisses] = useState<any[]>([]);
 
     // State for lazy loading
     const [first, setFirst] = useState(0);
@@ -41,6 +42,8 @@ const UsersPage = () => {
     const [editDialog, setEditDialog] = useState(false);
     const [toggleEnabledDialog, setToggleEnabledDialog] = useState(false);
     const [detailsDialog, setDetailsDialog] = useState(false);
+    const [caisseDialog, setCaisseDialog] = useState(false);
+    const [selectedCaisseValue, setSelectedCaisseValue] = useState<string | null>(null);
     const [btnLoading, setBtnLoading] = useState(false);
 
     // State for edit form
@@ -50,12 +53,15 @@ const UsersPage = () => {
         email: '',
         phoneNumber: '',
         roleId: null as number | null,
-        branchId: null as number | null
+        branchId: null as number | null,
+        compteComptable: null as string | null
     });
 
     const { data, loading, error, fetchData, callType } = useConsumApi('');
     const rolesApi = useConsumApi('');
     const branchesApi = useConsumApi('');
+    const caissesApi = useConsumApi('');
+    const caisseAssignApi = useConsumApi('');
     const toast = useRef<Toast>(null);
 
     const showMessage = (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => {
@@ -94,6 +100,14 @@ const UsersPage = () => {
             setBranches(data.filter((b: any) => b.isActive));
         }
     }, [branchesApi.data]);
+
+    // Handle caisses data
+    useEffect(() => {
+        if (caissesApi.data) {
+            const data = Array.isArray(caissesApi.data) ? caissesApi.data : [];
+            setCaisses(data.filter((c: any) => c.actif));
+        }
+    }, [caissesApi.data]);
 
     // Handle API responses
     useEffect(() => {
@@ -174,8 +188,12 @@ const UsersPage = () => {
             email: user.email || '',
             phoneNumber: user.phoneNumber || '',
             roleId: user.roleId || null,
-            branchId: user.branchId || null
+            branchId: user.branchId || null,
+            compteComptable: user.compteComptable || null
         });
+        if (user.roleName?.toLowerCase().includes('caissier')) {
+            caissesApi.fetchData(null, 'GET', `${baseUrl}/api/comptability/caisses/findall`, 'loadCaisses');
+        }
         setEditDialog(true);
     };
 
@@ -208,10 +226,43 @@ const UsersPage = () => {
             phoneNumber: editFormData.phoneNumber,
             roleId: editFormData.roleId,
             branchId: editFormData.branchId,
+            compteComptable: editFormData.compteComptable || null,
             userAction: getUserAction()
         };
         fetchData(dataToSend, 'PUT', `${baseUrl}/api/users/${selectedUser.id}`, 'updateUser');
     };
+
+    // Handle caisse account assignment
+    const openCaisseDialog = (user: AppUserResponse) => {
+        setSelectedUser(user);
+        setSelectedCaisseValue(user.compteComptable || null);
+        caissesApi.fetchData(null, 'GET', `${baseUrl}/api/comptability/caisses/findall`, 'loadCaisses');
+        setCaisseDialog(true);
+    };
+
+    const handleSaveCaisseAccount = () => {
+        if (!selectedUser) return;
+        setBtnLoading(true);
+        caisseAssignApi.fetchData(
+            { compteComptable: selectedCaisseValue, userAction: getUserAction() },
+            'PUT',
+            `${baseUrl}/api/users/${selectedUser.id}`,
+            'assignCaisse'
+        );
+    };
+
+    useEffect(() => {
+        if (caisseAssignApi.data) {
+            setBtnLoading(false);
+            showMessage('success', 'Succès', 'Compte caisse assigné avec succès');
+            setCaisseDialog(false);
+            loadUsers();
+        }
+        if (caisseAssignApi.error) {
+            setBtnLoading(false);
+            showMessage('error', 'Erreur', caisseAssignApi.error.message || 'Une erreur s\'est produite');
+        }
+    }, [caisseAssignApi.data, caisseAssignApi.error]);
 
     // Handle view details
     const openDetailsDialog = (user: AppUserResponse) => {
@@ -301,6 +352,7 @@ const UsersPage = () => {
     };
 
     const actionsTemplate = (rowData: AppUserResponse) => {
+        const isCaissier = rowData.roleName?.toLowerCase().includes('caissier');
         return (
             <div className="flex gap-1">
                 <Button
@@ -320,6 +372,17 @@ const UsersPage = () => {
                     tooltip="Modifier l'utilisateur"
                     tooltipOptions={{ position: 'top' }}
                 />
+                {isCaissier && (
+                    <Button
+                        icon="pi pi-building"
+                        rounded
+                        outlined
+                        severity="secondary"
+                        onClick={() => openCaisseDialog(rowData)}
+                        tooltip="Assigner compte caisse"
+                        tooltipOptions={{ position: 'top' }}
+                    />
+                )}
                 <Button
                     icon={rowData.enabled ? 'pi pi-ban' : 'pi pi-check-circle'}
                     rounded
@@ -648,7 +711,13 @@ const UsersPage = () => {
                                 id="edit-roleId"
                                 value={editFormData.roleId}
                                 options={roles}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, roleId: e.value }))}
+                                onChange={(e) => {
+                                    const selectedRole = roles.find(r => r.id === e.value);
+                                    if (selectedRole?.name?.toLowerCase().includes('caissier') && caisses.length === 0) {
+                                        caissesApi.fetchData(null, 'GET', `${baseUrl}/api/comptability/caisses/findall`, 'loadCaisses');
+                                    }
+                                    setEditFormData(prev => ({ ...prev, roleId: e.value, compteComptable: null }));
+                                }}
                                 optionLabel="name"
                                 optionValue="id"
                                 placeholder="Sélectionner un rôle"
@@ -677,6 +746,29 @@ const UsersPage = () => {
                                 )}
                             />
                         </div>
+
+                        {roles.find(r => r.id === editFormData.roleId)?.name?.toLowerCase().includes('caissier') && (
+                            <div className="field col-12 md:col-6">
+                                <label htmlFor="edit-compteComptable" className="font-semibold">
+                                    Compte Caisse <span className="text-red-500">*</span>
+                                </label>
+                                <Dropdown
+                                    id="edit-compteComptable"
+                                    value={editFormData.compteComptable}
+                                    options={caisses}
+                                    onChange={(e) => setEditFormData(prev => ({ ...prev, compteComptable: e.value }))}
+                                    optionLabel="codeCaisse"
+                                    optionValue="compteComptable"
+                                    placeholder="Sélectionner le compte caisse"
+                                    className="w-full"
+                                    filter
+                                    showClear
+                                    itemTemplate={(option: any) => (
+                                        <span>{option.compteComptable} - {option.codeCaisse} ({option.libelle})</span>
+                                    )}
+                                />
+                            </div>
+                        )}
 
                         <div className="col-12 flex justify-content-end gap-2 mt-3">
                             <Button
@@ -784,6 +876,66 @@ const UsersPage = () => {
                         loading={btnLoading}
                     />
                 </div>
+            </Dialog>
+
+            {/* Caisse Account Assignment Dialog */}
+            <Dialog
+                header="Assigner un compte caisse"
+                visible={caisseDialog}
+                style={{ width: '450px' }}
+                modal
+                onHide={() => setCaisseDialog(false)}
+            >
+                {selectedUser && (
+                    <div>
+                        <div className="flex align-items-center gap-3 mb-4 pb-3 border-bottom-1 surface-border">
+                            <div className="bg-primary border-circle flex align-items-center justify-content-center" style={{ width: '2.5rem', height: '2.5rem' }}>
+                                <i className="pi pi-building text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <div className="font-semibold">{selectedUser.firstname} {selectedUser.lastname}</div>
+                                <div className="text-sm text-500">{selectedUser.roleName}</div>
+                            </div>
+                        </div>
+
+                        <div className="field">
+                            <label className="font-semibold block mb-2">
+                                Compte Comptable (Caisse) <span className="text-red-500">*</span>
+                            </label>
+                            <Dropdown
+                                value={selectedCaisseValue}
+                                options={caisses}
+                                onChange={(e) => setSelectedCaisseValue(e.value)}
+                                optionLabel="codeCaisse"
+                                optionValue="compteComptable"
+                                placeholder="Sélectionner le compte caisse"
+                                className="w-full"
+                                filter
+                                showClear
+                                itemTemplate={(option: any) => (
+                                    <span>{option.compteComptable} - {option.codeCaisse} ({option.libelle})</span>
+                                )}
+                            />
+                            <small className="text-500">Ce compte sera associé à l'utilisateur pour les opérations de caisse</small>
+                        </div>
+
+                        <div className="flex justify-content-end gap-2 mt-4">
+                            <Button
+                                label="Annuler"
+                                icon="pi pi-times"
+                                outlined
+                                onClick={() => setCaisseDialog(false)}
+                            />
+                            <Button
+                                label="Enregistrer"
+                                icon="pi pi-check"
+                                onClick={handleSaveCaisseAccount}
+                                loading={btnLoading}
+                                disabled={!selectedCaisseValue}
+                            />
+                        </div>
+                    </div>
+                )}
             </Dialog>
         </>
     );

@@ -15,6 +15,7 @@ import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const STATEMENT_URL = `${API_BASE_URL}/api/epargne/statement-requests`;
@@ -98,8 +99,8 @@ const RapportDemandesHistoriquePage = () => {
         setLoading(true);
         const params = new URLSearchParams();
         params.append('requestType', 'HISTORIQUE');
-        if (dateFrom) params.append('dateFrom', dateFrom.toISOString().split('T')[0]);
-        if (dateTo) params.append('dateTo', dateTo.toISOString().split('T')[0]);
+        if (dateFrom) params.append('dateFrom', formatLocalDate(dateFrom));
+        if (dateTo) params.append('dateTo', formatLocalDate(dateTo));
         if (branchId) params.append('branchId', branchId.toString());
         if (status) params.append('status', status);
         reportApi.fetchData(null, 'GET', `${STATEMENT_URL}/findall?${params.toString()}`, 'generateReport');
@@ -122,7 +123,7 @@ const RapportDemandesHistoriquePage = () => {
         let csv = '\uFEFF' + ['N\u00b0 Demande', 'Date', 'Client', 'N\u00b0 Client', 'Agence', 'P\u00e9riode D\u00e9but', 'P\u00e9riode Fin', 'Frais', 'Statut', 'Livr\u00e9 \u00e0', 'Cr\u00e9\u00e9 par'].join(';') + '\n';
         reportData.forEach(r => { csv += [r.requestNumber, r.requestDate, r.clientName, r.clientNumber, r.branchName, r.periodStart, r.periodEnd, r.feeAmount, statusLabels[r.status] || r.status, r.deliveredToName || '', r.userAction || ''].map(c => `"${c || ''}"`).join(';') + '\n'; });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_demandes_historique_${new Date().toISOString().split('T')[0]}.csv`; link.click();
+        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_demandes_historique_${formatLocalDate(new Date())}.csv`; link.click();
     };
 
     const statusTemplate = (row: HistoryRequestReport) => {

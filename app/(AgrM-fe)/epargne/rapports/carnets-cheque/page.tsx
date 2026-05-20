@@ -15,6 +15,7 @@ import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const CHECKBOOK_URL = `${API_BASE_URL}/api/epargne/checkbook-orders`;
@@ -99,8 +100,8 @@ const RapportCarnetsChequePage = () => {
     const generateReport = () => {
         setLoading(true);
         const params = new URLSearchParams();
-        if (dateFrom) params.append('dateFrom', dateFrom.toISOString().split('T')[0]);
-        if (dateTo) params.append('dateTo', dateTo.toISOString().split('T')[0]);
+        if (dateFrom) params.append('dateFrom', formatLocalDate(dateFrom));
+        if (dateTo) params.append('dateTo', formatLocalDate(dateTo));
         if (branchId) params.append('branchId', branchId.toString());
         if (status) params.append('status', status);
         reportApi.fetchData(null, 'GET', `${CHECKBOOK_URL}/findall?${params.toString()}`, 'generateReport');
@@ -124,7 +125,7 @@ const RapportCarnetsChequePage = () => {
         reportData.forEach(r => { csv += [r.orderNumber, r.orderDate, r.clientName, r.clientNumber, r.accountNumber, r.branchName, r.numberOfLeaves, r.unitPrice, r.feeAmount, r.totalAmount, statusLabels[r.status] || r.status, r.userAction || ''].map(c => `"${c || ''}"`).join(';') + '\n'; });
         csv += `\n"Total";"${totals.totalOrders}";;;;"Montant Total";"${totals.totalAmount}";"Frais";"${totals.totalFees}";\n`;
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_carnets_cheque_${new Date().toISOString().split('T')[0]}.csv`; link.click();
+        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_carnets_cheque_${formatLocalDate(new Date())}.csv`; link.click();
         toast.current?.show({ severity: 'success', summary: 'Export', detail: 'CSV t\u00e9l\u00e9charg\u00e9' });
     };
 

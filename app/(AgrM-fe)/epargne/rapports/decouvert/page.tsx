@@ -12,6 +12,7 @@ import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BASE_URL     = `${API_BASE_URL}/api/epargne/decouvert`;
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
@@ -274,7 +275,7 @@ export default function RapportDecouvertPage() {
         const url  = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `rapport_decouvert_${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `rapport_decouvert_${formatLocalDate(new Date())}.csv`;
         link.click();
         URL.revokeObjectURL(url);
 

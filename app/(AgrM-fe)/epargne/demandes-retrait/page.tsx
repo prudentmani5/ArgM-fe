@@ -93,6 +93,8 @@ function WithdrawalRequestPage() {
     const [caisses, setCaisses] = useState<any[]>([]);
     const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
     const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
+    const [isCaissierWithoutCaisse, setIsCaissierWithoutCaisse] = useState(false);
+    const [isNotCaissierRole, setIsNotCaissierRole] = useState(false);
     const [isManager, setIsManager] = useState<boolean>(false);
     const [printDialog, setPrintDialog] = useState(false);
     const [periodStart, setPeriodStart] = useState<Date | null>(null);
@@ -131,6 +133,12 @@ function WithdrawalRequestPage() {
     useEffect(() => {
         loadReferenceData();
         loadRequests();
+        // Block non-caissier roles from creating withdrawals
+        try {
+            const appUser = JSON.parse(Cookies.get('appUser') || '{}');
+            const roleName = (appUser.roleName || '').toLowerCase();
+            setIsNotCaissierRole(!roleName.includes('caiss'));
+        } catch (e) {}
     }, []);
 
     // Handle clients data
@@ -298,6 +306,18 @@ function WithdrawalRequestPage() {
                             userCaisse = allData.find((c: any) =>
                                 c.compteComptable === appUser.compteComptable && isGuichet(c));
                         }
+                        // Priority 4: Match by codeCaisse (user management stores caisse code in compteComptable)
+                        if (!userCaisse && appUser.compteComptable) {
+                            userCaisse = allData.find((c: any) =>
+                                c.codeCaisse === appUser.compteComptable && isGuichet(c));
+                        }
+                        // Priority 5: If only one GUICHET caisse in branch, auto-assign (handles stale cookie)
+                        if (!userCaisse) {
+                            const guichetCaisses = allData.filter(isGuichet);
+                            if (guichetCaisses.length === 1) {
+                                userCaisse = guichetCaisses[0];
+                            }
+                        }
                         filteredData = userCaisse ? [userCaisse] : [];
                     } else {
                         // Chef d'Agence / Admin / VIEW_ALL_BRANCHES: show all loaded caisses
@@ -314,6 +334,7 @@ function WithdrawalRequestPage() {
                     }
 
                     setCaisses(filteredData);
+                    setIsCaissierWithoutCaisse(isCaissier && !isChefAgence && !isSuperAdmin && !canViewAll && !userCaisse);
 
                     if (userCaisse) {
                         setSelectedCaisseId(userCaisse.caisseId);
@@ -507,7 +528,7 @@ function WithdrawalRequestPage() {
     const handleDateChange = (name: string, value: Date | null) => {
         setRequest(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : null
+            [name]: value ? formatLocalDate(value) : null
         }));
     };
 
@@ -711,7 +732,8 @@ function WithdrawalRequestPage() {
             showToast('warn', 'Attention', 'Seuls les retraits decaisses peuvent etre imprimes');
             return;
         }
-        setSelectedRequest(rowData);
+        const acc = savingsAccounts.find((a: any) => Number(a.id) === Number(rowData.savingsAccountId));
+        setSelectedRequest({ ...rowData, savingsAccount: acc || (rowData as any).savingsAccount } as any);
         setPrintDialog(true);
     };
 
@@ -1021,6 +1043,34 @@ function WithdrawalRequestPage() {
                         </div>
                     )}
 
+                    {isNotCaissierRole && (
+                        <div className="p-3 mt-3 border-round bg-red-50 border-red-300" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-lock text-red-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-red-700">Opération non autorisée</div>
+                                    <div className="text-red-600 text-sm">
+                                        Seuls les utilisateurs ayant le rôle Caissier avec une caisse assignée peuvent enregistrer des retraits.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isCaissierWithoutCaisse && (
+                        <div className="p-3 mt-3 border-round bg-orange-50 border-orange-300" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-exclamation-triangle text-orange-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-orange-700">Aucune caisse assignée</div>
+                                    <div className="text-orange-600 text-sm">
+                                        Votre compte n'est associé à aucune caisse guichetier. Contactez l'administrateur pour assigner votre caisse avant d'enregistrer des retraits.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Caisse selection */}
                     <div className="grid mt-3">
                         <div className="col-12 md:col-6">
@@ -1057,7 +1107,7 @@ function WithdrawalRequestPage() {
                             icon="pi pi-send"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={request.requestedAmount <= 2000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen}
+                            disabled={request.requestedAmount <= 2000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole}
                         />
                         <Button
                             label="Réinitialiser"

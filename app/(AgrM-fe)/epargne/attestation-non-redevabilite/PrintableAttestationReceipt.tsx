@@ -1,6 +1,7 @@
 'use client';
 import React, { forwardRef } from 'react';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 interface CreditInfo {
     applicationNumber: string;
@@ -76,7 +77,7 @@ const PrintableAttestationReceipt = forwardRef<HTMLDivElement, PrintableAttestat
                                 N° {request.requestNumber || '-'}
                             </p>
                             <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#666' }}>
-                                Date: {formatDate(request.requestDate || new Date().toISOString().split('T')[0])}
+                                Date: {formatDate(request.requestDate || formatLocalDate(new Date()))}
                             </p>
                         </div>
                     </div>

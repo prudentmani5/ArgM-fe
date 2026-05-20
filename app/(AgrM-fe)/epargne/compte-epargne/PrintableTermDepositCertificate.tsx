@@ -1,5 +1,6 @@
 'use client';
 import React, { forwardRef } from 'react';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 interface PrintableTermDepositCertificateProps {
     account: any;
@@ -66,7 +67,7 @@ const PrintableTermDepositCertificate = forwardRef<HTMLDivElement, PrintableTerm
                                 N° Compte: {account?.accountNumber || '-'}
                             </p>
                             <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#666' }}>
-                                Date: {formatDate(new Date().toISOString().split('T')[0])}
+                                Date: {formatDate(formatLocalDate(new Date()))}
                             </p>
                         </div>
                     </div>

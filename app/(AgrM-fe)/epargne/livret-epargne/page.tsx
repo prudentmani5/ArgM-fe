@@ -18,6 +18,7 @@ import { Passbook, PassbookClass } from './Passbook';
 import PassbookForm from './PassbookForm';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/passbooks`;
 const CLIENTS_URL = `${API_BASE_URL}/api/clients`;
@@ -193,7 +194,7 @@ function PassbookPage() {
     const handleDateChange = (name: string, value: Date | null) => {
         setPassbook(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : null
+            [name]: value ? formatLocalDate(value) : null
         }));
     };
 

@@ -16,6 +16,7 @@ import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const VIREMENT_URL = `${API_BASE_URL}/api/epargne/virements`;
@@ -130,8 +131,8 @@ const RapportVirementsPage = () => {
     const generateReport = () => {
         setLoading(true);
         const params = new URLSearchParams();
-        if (dateFrom) params.append('dateFrom', dateFrom.toISOString().split('T')[0]);
-        if (dateTo) params.append('dateTo', dateTo.toISOString().split('T')[0]);
+        if (dateFrom) params.append('dateFrom', formatLocalDate(dateFrom));
+        if (dateTo) params.append('dateTo', formatLocalDate(dateTo));
         if (branchId) params.append('branchId', branchId.toString());
         if (status) params.append('status', status);
         virementsApi.fetchData(null, 'GET', `${VIREMENT_URL}/findall?${params.toString()}`, 'loadVirements');
@@ -164,7 +165,7 @@ const RapportVirementsPage = () => {
             batchData.forEach(r => { csv += [r.batchNumber, r.dateVirement, r.sourceClientName, r.numberOfTransfers, r.totalAmount, r.commissionAmount, r.totalDebitAmount, r.motif, statusLabels[r.status] || r.status, r.userAction].map(c => `"${c || ''}"`).join(';') + '\n'; });
         }
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_virements_${new Date().toISOString().split('T')[0]}.csv`; link.click();
+        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_virements_${formatLocalDate(new Date())}.csv`; link.click();
     };
 
     const statusTemplate = (row: any) => {

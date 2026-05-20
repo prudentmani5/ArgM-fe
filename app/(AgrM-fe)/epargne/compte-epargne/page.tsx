@@ -714,7 +714,7 @@ function SavingsAccountPage() {
         if (!startDate) return null;
         const date = new Date(startDate);
         date.setMonth(date.getMonth() + months);
-        return date.toISOString().split('T')[0];
+        return formatLocalDate(date);
     };
 
     const calculateAccruedInterest = (amount: number, rate: number, months: number): number => {
@@ -740,7 +740,7 @@ function SavingsAccountPage() {
     };
 
     const handleTermStartDateChange = (date: Date | null) => {
-        const dateStr = date ? date.toISOString().split('T')[0] : null;
+        const dateStr = date ? formatLocalDate(date) : null;
         const td = termDurations.find((t: any) => t.id === termDepositParams.termDurationId);
         const months = td ? td.months : 0;
         const maturityDate = calculateMaturityDate(dateStr, months);
@@ -809,7 +809,7 @@ function SavingsAccountPage() {
 
     const canProcessMaturity = (rowData: SavingsAccount): boolean => {
         if (!rowData.termDepositValidated || !rowData.maturityDate) return false;
-        const today = new Date().toISOString().split('T')[0];
+        const today = formatLocalDate(new Date());
         return rowData.maturityDate <= today;
     };
 
@@ -2025,12 +2025,12 @@ function SavingsAccountPage() {
                             disabled={!!(
                                 termDepositAccount?.termDepositValidated &&
                                 termDepositAccount?.maturityDate &&
-                                termDepositAccount.maturityDate > new Date().toISOString().split('T')[0]
+                                termDepositAccount.maturityDate > formatLocalDate(new Date())
                             )}
                             tooltip={
                                 termDepositAccount?.termDepositValidated &&
                                 termDepositAccount?.maturityDate &&
-                                termDepositAccount.maturityDate > new Date().toISOString().split('T')[0]
+                                termDepositAccount.maturityDate > formatLocalDate(new Date())
                                     ? 'Modification impossible: compte validé et période en cours'
                                     : undefined
                             }
@@ -2466,7 +2466,7 @@ function SavingsAccountPage() {
                     const capital = historyAccount.blockedAmount || historyAccount.currentBalance || 0;
                     const interest = historyAccount.accruedInterest || 0;
                     const total = capital + interest;
-                    const today = new Date().toISOString().split('T')[0];
+                    const today = formatLocalDate(new Date());
                     const isMatured = historyAccount.maturityDate && historyAccount.maturityDate <= today;
                     const daysRemaining = historyAccount.maturityDate ?
                         Math.max(0, Math.ceil((new Date(historyAccount.maturityDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;

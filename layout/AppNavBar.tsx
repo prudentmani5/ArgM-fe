@@ -196,7 +196,8 @@ const AppNavBar = () => {
                             { label: 'Rapport Découverts', icon: 'pi pi-arrow-circle-down', to: '/epargne/rapports/decouvert' },
                             { label: 'Rapport Comptes Réguliers', icon: 'pi pi-book', to: '/epargne/rapports/comptes-reguliers' },
                             { label: 'Rapport Comptes DAT', icon: 'pi pi-lock', to: '/epargne/rapports/comptes-dat' },
-                            { label: 'Situation des Comptes', icon: 'pi pi-list', to: '/epargne/rapports/situation-comptes' }
+                            { label: 'Situation des Comptes', icon: 'pi pi-list', to: '/epargne/rapports/situation-comptes' },
+                            { label: 'Rapport par Caissier', icon: 'pi pi-user', to: '/epargne/rapports/caissier', visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_RAPPORT_CAISSIER_VIEW']) : false }
                         ]
                     }
                 ]

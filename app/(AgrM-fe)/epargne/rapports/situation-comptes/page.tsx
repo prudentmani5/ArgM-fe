@@ -15,6 +15,7 @@ import { buildApiUrl } from '@/utils/apiConfig';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { shouldFilterByBranch } from '@/utils/branchFilter';
 import { printReport } from '@/utils/pdfExport';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -215,7 +216,7 @@ export default function SituationComptesPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `situation_comptes_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `situation_comptes_${formatLocalDate(new Date())}.csv`;
         a.style.display = 'none';
         document.body.appendChild(a);
         a.click();

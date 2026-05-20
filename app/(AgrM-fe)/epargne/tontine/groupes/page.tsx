@@ -22,6 +22,7 @@ import { API_BASE_URL } from '@/utils/apiConfig';
 import { TontineGroup, TontineGroupClass, TontineMember, ContributionFrequency } from './TontineGroup';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BASE_URL = `${API_BASE_URL}/api/epargne/tontine-groups`;
 const CLIENTS_URL = `${API_BASE_URL}/api/clients`;
@@ -205,7 +206,7 @@ function TontineGroupPage() {
     const handleDateChange = (name: string, value: Date | null) => {
         setGroup(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : null
+            [name]: value ? formatLocalDate(value) : null
         }));
     };
 

@@ -15,6 +15,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { ProtectedPage } from '@/components/ProtectedPage';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const REPORTS_URL = `${API_BASE_URL}/api/epargne/reports`;
@@ -134,8 +135,8 @@ const RapportTontinePage = () => {
     const generateReport = () => {
         setLoading(true);
         const params = new URLSearchParams();
-        if (dateFrom) params.append('dateFrom', dateFrom.toISOString().split('T')[0]);
-        if (dateTo) params.append('dateTo', dateTo.toISOString().split('T')[0]);
+        if (dateFrom) params.append('dateFrom', formatLocalDate(dateFrom));
+        if (dateTo) params.append('dateTo', formatLocalDate(dateTo));
         if (branchId) params.append('branchId', branchId.toString());
         if (status) params.append('status', status);
 
@@ -358,7 +359,7 @@ const RapportTontinePage = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `rapport_tontine_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `rapport_tontine_${formatLocalDate(new Date())}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();

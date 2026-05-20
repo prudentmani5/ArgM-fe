@@ -234,7 +234,7 @@ function TermDepositPage() {
     const handleDateChange = (name: string, value: Date | null) => {
         setTermDeposit(prev => ({
             ...prev,
-            [name]: value ? value.toISOString().split('T')[0] : null
+            [name]: value ? formatLocalDate(value) : null
         }));
     };
 
@@ -252,7 +252,7 @@ function TermDepositPage() {
                 ...prev,
                 termDuration: duration,
                 interestRate: duration.interestRate,
-                maturityDate: maturityDate.toISOString().split('T')[0]
+                maturityDate: formatLocalDate(maturityDate)
             }));
         }
     };

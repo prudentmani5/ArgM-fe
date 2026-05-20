@@ -13,6 +13,7 @@ import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const BRANCHES_URL = `${API_BASE_URL}/api/reference-data/branches`;
 const ACCOUNTS_URL = `${API_BASE_URL}/api/savings-accounts`;
@@ -55,11 +56,11 @@ const RapportComptesDATPage = () => {
 
             // Filter by date range (openingDate)
             if (dateFrom) {
-                const from = dateFrom.toISOString().split('T')[0];
+                const from = formatLocalDate(dateFrom);
                 accounts = accounts.filter((a: any) => a.openingDate >= from);
             }
             if (dateTo) {
-                const to = dateTo.toISOString().split('T')[0];
+                const to = formatLocalDate(dateTo);
                 accounts = accounts.filter((a: any) => a.openingDate <= to);
             }
             // Filter by branch
@@ -195,7 +196,7 @@ const RapportComptesDATPage = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `rapport_comptes_dat_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `rapport_comptes_dat_${formatLocalDate(new Date())}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();

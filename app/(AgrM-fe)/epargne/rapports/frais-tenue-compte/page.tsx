@@ -16,6 +16,7 @@ import { Dialog } from 'primereact/dialog';
 import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { ProtectedPage } from '@/components/ProtectedPage';
+import { formatLocalDate } from '@/utils/dateUtils';
 
 const FTC_URL = `${API_BASE_URL}/api/epargne/frais-tenue-compte`;
 
@@ -97,8 +98,8 @@ const RapportFraisTenueComptePage = () => {
     const generateReport = () => {
         setLoading(true);
         const params = new URLSearchParams();
-        if (dateFrom) params.append('dateFrom', dateFrom.toISOString().split('T')[0]);
-        if (dateTo) params.append('dateTo', dateTo.toISOString().split('T')[0]);
+        if (dateFrom) params.append('dateFrom', formatLocalDate(dateFrom));
+        if (dateTo) params.append('dateTo', formatLocalDate(dateTo));
         if (statusFilter) params.append('status', statusFilter);
         executionsApi.fetchData(null, 'GET', `${FTC_URL}/executions/findall?${params.toString()}`, 'generateReport');
     };
@@ -127,7 +128,7 @@ const RapportFraisTenueComptePage = () => {
         executionData.forEach(r => { csv += [r.batchNumber, r.executionDate, r.periodStart, r.periodEnd, accountTypeLabels[r.accountType] || r.accountType, frequencyLabels[r.frequency] || r.frequency, r.feeAmount, r.totalAccountsProcessed, r.totalAccountsSkipped, r.totalAmountCollected, r.status, r.executedBy].map(c => `"${c || ''}"`).join(';') + '\n'; });
         csv += `\n"Total";"${totals.totalExecutions}";;;;"Comptes";"${totals.totalAccounts}";;"Collect\u00e9";"${totals.totalCollected}";\n`;
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_ftc_${new Date().toISOString().split('T')[0]}.csv`; link.click();
+        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `rapport_ftc_${formatLocalDate(new Date())}.csv`; link.click();
     };
 
     const statusTemplate = (row: FtcExecution) => {

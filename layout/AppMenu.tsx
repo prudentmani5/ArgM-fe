@@ -563,6 +563,12 @@ const AppMenu = () => {
                             label: 'Situation des Comptes',
                             icon: 'pi pi-list',
                             to: '/epargne/rapports/situation-comptes'
+                        },
+                        {
+                            label: 'Rapport par Caissier',
+                            icon: 'pi pi-user',
+                            to: '/epargne/rapports/caissier',
+                            visible: appUser ? hasAnyAuthority(appUser, ['EPARGNE_RAPPORT_CAISSIER_VIEW']) : false
                         }
                     ]
                 }
