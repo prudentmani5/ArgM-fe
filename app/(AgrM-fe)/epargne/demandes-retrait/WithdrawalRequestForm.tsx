@@ -8,8 +8,10 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
+import { Image } from 'primereact/image';
 import { WithdrawalRequest, CashDenomination } from './WithdrawalRequest';
 import { getClientDisplayName } from '@/utils/clientUtils';
+import { buildApiUrl } from '@/utils/apiConfig';
 import CancellationRefDropdown from '@/components/CancellationRefDropdown';
 
 const FBU_DENOMINATIONS = [10000, 5000, 2000, 1000, 500, 100, 50, 10, 5, 1];
@@ -26,6 +28,8 @@ interface WithdrawalRequestFormProps {
     currencies: any[];
     authorizationLevels: any[];
     onSavingsAccountChange?: (accountId: number) => void;
+    selectedAccountGroup?: any;
+    onViewGroupDetails?: () => void;
     onAmountChange?: (amount: number) => void;
     onDenominationsChange?: (denominations: CashDenomination[], total: number) => void;
     accountBalance?: number;
@@ -54,6 +58,8 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
     currencies: _currencies,
     authorizationLevels: _authorizationLevels,
     onSavingsAccountChange,
+    selectedAccountGroup,
+    onViewGroupDetails,
     onAmountChange,
     onDenominationsChange,
     accountBalance = 0,
@@ -210,58 +216,93 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                 optionValue="id"
                                 placeholder="Sélectionner le compte d'épargne..."
                                 filter
-                                filterBy="accountNumber,client.firstName,client.lastName,client.businessName"
+                                filterBy="accountNumber,client.firstName,client.lastName,client.businessName,solidarityGroup.groupName,solidarityGroup.name"
                                 filterPlaceholder="Rechercher par numéro de compte"
                                 className="w-full"
-                                itemTemplate={(item: any) => (
-                                    <span>{item.accountNumber} - {getClientDisplayName(item.client)} ({formatCurrency(item.currentBalance || 0, item.currency?.code)})</span>
-                                )}
+                                itemTemplate={(item: any) => {
+                                    const holderName = item.solidarityGroup
+                                        ? (item.solidarityGroup.groupName || item.solidarityGroup.name || 'Groupe')
+                                        : getClientDisplayName(item.client);
+                                    return <span>{item.accountNumber} - {holderName} ({formatCurrency(item.currentBalance || 0, item.currency?.code)})</span>;
+                                }}
                                 valueTemplate={(item: any, props: any) => {
-                                    if (item) return <span>{item.accountNumber} - {getClientDisplayName(item.client)}</span>;
+                                    if (item) {
+                                        const holderName = item.solidarityGroup
+                                            ? (item.solidarityGroup.groupName || item.solidarityGroup.name || 'Groupe')
+                                            : getClientDisplayName(item.client);
+                                        return <span>{item.accountNumber} - {holderName}</span>;
+                                    }
                                     return <span>{props?.placeholder}</span>;
                                 }}
                             />
                         )}
                     </div>
                     <div className="field col-12 md:col-6">
-                        <label htmlFor="clientId" className="font-medium">Client</label>
-                        {isViewMode ? (
-                            <InputText
-                                value={request.client ? `${getClientDisplayName(request.client)} - ${request.client.clientNumber || ''}` : '-'}
-                                disabled
-                                className="w-full"
-                            />
+                        {selectedAccountGroup ? (
+                            <>
+                                <label htmlFor="groupAutoFill" className="font-medium">Groupe (auto-rempli)</label>
+                                <InputText
+                                    id="groupAutoFill"
+                                    value={selectedAccountGroup.groupName || selectedAccountGroup.name || ''}
+                                    disabled
+                                    className="w-full"
+                                />
+                            </>
                         ) : (
-                            <Dropdown
-                                id="clientId"
-                                value={request.clientId}
-                                options={clients}
-                                onChange={(e) => handleDropdownChange('clientId', e.value)}
-                                optionLabel="clientNumber"
-                                optionValue="id"
-                                placeholder="Sélectionnez d'abord un compte..."
-                                disabled={true}
-                                className="w-full"
-                                filterBy="clientNumber,firstName,lastName,businessName"
-                                itemTemplate={(item: any) => (
-                                    <span>{getClientDisplayName(item)} - {item.clientNumber}</span>
+                            <>
+                                <label htmlFor="clientId" className="font-medium">Client</label>
+                                {isViewMode ? (
+                                    <InputText
+                                        value={request.client ? `${getClientDisplayName(request.client)} - ${request.client.clientNumber || ''}` : '-'}
+                                        disabled
+                                        className="w-full"
+                                    />
+                                ) : (
+                                    <Dropdown
+                                        id="clientId"
+                                        value={request.clientId}
+                                        options={clients}
+                                        onChange={(e) => handleDropdownChange('clientId', e.value)}
+                                        optionLabel="clientNumber"
+                                        optionValue="id"
+                                        placeholder="Sélectionnez d'abord un compte..."
+                                        disabled={true}
+                                        className="w-full"
+                                        filterBy="clientNumber,firstName,lastName,businessName"
+                                        itemTemplate={(item: any) => (
+                                            <span>{getClientDisplayName(item)} - {item.clientNumber}</span>
+                                        )}
+                                        valueTemplate={(item: any, props: any) => {
+                                            if (item) return <span>{getClientDisplayName(item)} - {item.clientNumber}</span>;
+                                            return <span>{props?.placeholder}</span>;
+                                        }}
+                                    />
                                 )}
-                                valueTemplate={(item: any, props: any) => {
-                                    if (item) return <span>{getClientDisplayName(item)} - {item.clientNumber}</span>;
-                                    return <span>{props?.placeholder}</span>;
-                                }}
-                            />
+                            </>
                         )}
                     </div>
                 </div>
-                {!isViewMode && request.savingsAccountId && (
+                {!isViewMode && (request.savingsAccountId || !!selectedAccountGroup) && (
                     <div className="mt-2 p-2 surface-50 border-round">
                         <div className="flex align-items-center justify-content-between">
                             <div className="flex align-items-center gap-2">
                                 <i className="pi pi-info-circle text-blue-500"></i>
-                                <span className="text-500">Le client est automatiquement récupéré depuis le compte sélectionné</span>
+                                <span className="text-500">
+                                    {selectedAccountGroup
+                                        ? 'Le groupe est automatiquement récupéré depuis le compte sélectionné'
+                                        : 'Le client est automatiquement récupéré depuis le compte sélectionné'}
+                                </span>
                             </div>
-                            {request.clientId && onViewClientDetails && (
+                            {selectedAccountGroup && onViewGroupDetails && (
+                                <Button
+                                    label="Voir les détails du Groupe"
+                                    icon="pi pi-eye"
+                                    className="p-button-outlined p-button-info p-button-sm"
+                                    onClick={onViewGroupDetails}
+                                    type="button"
+                                />
+                            )}
+                            {!selectedAccountGroup && request.clientId && onViewClientDetails && (
                                 <Button
                                     label="Voir les détails du Client"
                                     icon="pi pi-eye"
@@ -898,6 +939,79 @@ const WithdrawalRequestForm: React.FC<WithdrawalRequestFormProps> = ({
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Pièces Jointes */}
+            {(request.supportingDocumentPath || request.signatureImagePath) && (
+                <div className="surface-100 p-3 border-round mb-4">
+                    <h5 className="m-0 mb-3 text-primary">
+                        <i className="pi pi-paperclip mr-2"></i>
+                        Pièces Jointes
+                    </h5>
+                    <div className="grid">
+                        {request.supportingDocumentPath && (() => {
+                            const path = request.supportingDocumentPath!;
+                            const ext = path.split('.').pop()?.toLowerCase() || '';
+                            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext);
+                            const fileUrl = buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(path)}`);
+                            const fileName = path.split(/[\\/]/).pop() || 'Document';
+                            return (
+                                <div className="col-12 md:col-6">
+                                    <div className="p-3 surface-50 border-round flex flex-column gap-2">
+                                        <div className="font-semibold text-sm text-primary flex align-items-center gap-2">
+                                            <i className={`pi ${isImage ? 'pi-image' : 'pi-file-pdf'}`} />
+                                            Pièce Justificative
+                                        </div>
+                                        {isImage ? (
+                                            <Image
+                                                src={fileUrl}
+                                                alt="Pièce justificative"
+                                                width="160"
+                                                preview
+                                                imageClassName="border-round shadow-1"
+                                                style={{ objectFit: 'contain' }}
+                                            />
+                                        ) : (
+                                            <div className="flex align-items-center gap-2">
+                                                <i className="pi pi-file text-2xl text-500" />
+                                                <div>
+                                                    <div className="text-sm font-medium">{fileName}</div>
+                                                    <a
+                                                        href={fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary text-sm"
+                                                    >
+                                                        <i className="pi pi-download mr-1" />
+                                                        Télécharger / Visualiser
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                        {request.signatureImagePath && (
+                            <div className="col-12 md:col-6">
+                                <div className="p-3 surface-50 border-round flex flex-column gap-2">
+                                    <div className="font-semibold text-sm text-primary flex align-items-center gap-2">
+                                        <i className="pi pi-pencil" />
+                                        Signature du Client
+                                    </div>
+                                    <Image
+                                        src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(request.signatureImagePath)}`)}
+                                        alt="Signature"
+                                        width="200"
+                                        preview
+                                        imageClassName="border-round shadow-1"
+                                        style={{ objectFit: 'contain', background: '#fff', padding: '4px' }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

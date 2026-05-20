@@ -39,6 +39,7 @@ const CURRENCIES_URL = `${API_BASE_URL}/api/financial-products/reference/currenc
 const AUTH_LEVELS_URL = `${API_BASE_URL}/api/epargne/withdrawal-authorization-levels`;
 const CAISSES_URL = `${API_BASE_URL}/api/comptability/caisses`;
 const INTERNAL_ACCOUNTS_URL = `${API_BASE_URL}/api/comptability/internal-accounts`;
+const GROUPS_URL = `${API_BASE_URL}/api/solidarity-groups`;
 
 const DENOMINATIONS = [
     { field: 'bill10000', label: 'Billets 10 000 FBu', value: 10000 },
@@ -92,15 +93,25 @@ function WithdrawalRequestPage() {
     const [accountBalance, setAccountBalance] = useState(0);
     const [caisses, setCaisses] = useState<any[]>([]);
     const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
+    const [selectedAccountGroup, setSelectedAccountGroup] = useState<any>(null);
     const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
     const [isCaissierWithoutCaisse, setIsCaissierWithoutCaisse] = useState(false);
     const [isNotCaissierRole, setIsNotCaissierRole] = useState(false);
+    const isCaisseClosed = !!(selectedCaisseId && caisses.find((c: any) => c.caisseId === selectedCaisseId)?.status === 'CLOSED');
     const [isManager, setIsManager] = useState<boolean>(false);
     const [printDialog, setPrintDialog] = useState(false);
     const [periodStart, setPeriodStart] = useState<Date | null>(null);
     const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
     const [viewClientDialog, setViewClientDialog] = useState(false);
     const [clientDetail, setClientDetail] = useState<any>(null);
+    const [clientSignatories, setClientSignatories] = useState<any[]>([]);
+    const [selectedSignatory, setSelectedSignatory] = useState<any>(null);
+    const [signatoryDetailDialog, setSignatoryDetailDialog] = useState(false);
+    const [viewGroupDialog, setViewGroupDialog] = useState(false);
+    const [groupMembers, setGroupMembers] = useState<any[]>([]);
+    const [selectedMember, setSelectedMember] = useState<any>(null);
+    const [memberDetailDialog, setMemberDetailDialog] = useState(false);
+    const [memberDocuments, setMemberDocuments] = useState<any[]>([]);
     const [deliveredCheckbooks, setDeliveredCheckbooks] = useState<any[]>([]);
     const [chequierValidation, setChequierValidation] = useState<'valid' | 'invalid' | 'checking' | null>(null);
     const [chequierValidationMessage, setChequierValidationMessage] = useState<string>('');
@@ -129,6 +140,9 @@ function WithdrawalRequestPage() {
     const checkbookApi = useConsumApi('');
     const internalAccountsApi = useConsumApi('');
     const receiptSeriesApi = useConsumApi('');
+    const groupMembersApi = useConsumApi('');
+    const memberDocumentsApi = useConsumApi('');
+    const clientSignatoriesApi = useConsumApi('');
 
     useEffect(() => {
         loadReferenceData();
@@ -361,10 +375,46 @@ function WithdrawalRequestPage() {
     // Handle client detail API response
     useEffect(() => {
         if (clientDetailApi.data && clientDetailApi.callType === 'viewClientById') {
-            setClientDetail(clientDetailApi.data);
+            const client = clientDetailApi.data;
+            setClientDetail(client);
             setViewClientDialog(true);
+            // Fetch signatory members separately for BUSINESS clients
+            if (client.clientType === 'BUSINESS' && client.id) {
+                setClientSignatories([]);
+                clientSignatoriesApi.fetchData(null, 'GET', `${CLIENTS_URL}/${client.id}/signatory-members/findall`, 'loadSignatories');
+            }
         }
     }, [clientDetailApi.data, clientDetailApi.callType]);
+
+    // Handle client signatories API response
+    useEffect(() => {
+        if (clientSignatoriesApi.data && clientSignatoriesApi.callType === 'loadSignatories') {
+            setClientSignatories(Array.isArray(clientSignatoriesApi.data) ? clientSignatoriesApi.data : []);
+        }
+        if (clientSignatoriesApi.error) {
+            setClientSignatories([]);
+        }
+    }, [clientSignatoriesApi.data, clientSignatoriesApi.error, clientSignatoriesApi.callType]);
+
+    // Handle group members API response
+    useEffect(() => {
+        if (groupMembersApi.data && groupMembersApi.callType === 'loadGroupMembers') {
+            setGroupMembers(Array.isArray(groupMembersApi.data) ? groupMembersApi.data : []);
+        }
+        if (groupMembersApi.error) {
+            setGroupMembers([]);
+        }
+    }, [groupMembersApi.data, groupMembersApi.error, groupMembersApi.callType]);
+
+    // Handle member documents API response
+    useEffect(() => {
+        if (memberDocumentsApi.data && memberDocumentsApi.callType === 'loadMemberDocs') {
+            setMemberDocuments(Array.isArray(memberDocumentsApi.data) ? memberDocumentsApi.data : []);
+        }
+        if (memberDocumentsApi.error) {
+            setMemberDocuments([]);
+        }
+    }, [memberDocumentsApi.data, memberDocumentsApi.error, memberDocumentsApi.callType]);
 
     // Handle checkbook API responses (load + validate)
     useEffect(() => {
@@ -410,6 +460,14 @@ function WithdrawalRequestPage() {
         }
     };
 
+    const viewGroupDetails = () => {
+        if (selectedAccountGroup) {
+            setGroupMembers([]);
+            setViewGroupDialog(true);
+            groupMembersApi.fetchData(null, 'GET', `${GROUPS_URL}/${selectedAccountGroup.id}/members`, 'loadGroupMembers');
+        }
+    };
+
     const loadReferenceData = () => {
         clientsApi.fetchData(null, 'GET', `${CLIENTS_URL}/findall`, 'loadClients');
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
@@ -448,12 +506,22 @@ function WithdrawalRequestPage() {
             const selectedAccount = savingsAccounts.find(acc => acc.id === accountId);
             if (selectedAccount) {
                 setAccountBalance(selectedAccount.currentBalance || 0);
-                if (selectedAccount.client) {
+                if (selectedAccount.solidarityGroup) {
+                    setSelectedAccountGroup(selectedAccount.solidarityGroup);
+                    setRequest(prev => ({
+                        ...prev,
+                        savingsAccountId: accountId,
+                        clientId: undefined
+                    }));
+                } else if (selectedAccount.client) {
+                    setSelectedAccountGroup(null);
                     setRequest(prev => ({
                         ...prev,
                         savingsAccountId: accountId,
                         clientId: selectedAccount.client.id
                     }));
+                } else {
+                    setSelectedAccountGroup(null);
                 }
             }
             // Load checkbooks for this account to validate chequier number
@@ -561,7 +629,7 @@ function WithdrawalRequestPage() {
             showToast('warn', 'Attention', 'Veuillez sélectionner un compte');
             return false;
         }
-        if (!request.clientId) {
+        if (!request.clientId && !selectedAccountGroup) {
             showToast('warn', 'Attention', 'Veuillez sélectionner un client');
             return false;
         }
@@ -1014,6 +1082,8 @@ function WithdrawalRequestPage() {
                         currencies={currencies}
                         authorizationLevels={authorizationLevels}
                         onSavingsAccountChange={handleSavingsAccountChange}
+                        selectedAccountGroup={selectedAccountGroup}
+                        onViewGroupDetails={viewGroupDetails}
                         onAmountChange={handleAmountChange}
                         accountBalance={accountBalance}
                         branchLocked={!!selectedCaisseId}
@@ -1071,6 +1141,20 @@ function WithdrawalRequestPage() {
                         </div>
                     )}
 
+                    {isCaisseClosed && (
+                        <div className="p-3 mt-3 border-round bg-red-50 border-red-200" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-lock text-red-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-red-700">Caisse fermée</div>
+                                    <div className="text-red-600 text-sm">
+                                        La caisse sélectionnée est fermée. Aucune opération ne peut être enregistrée tant que la caisse n'est pas ouverte.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Caisse selection */}
                     <div className="grid mt-3">
                         <div className="col-12 md:col-6">
@@ -1107,7 +1191,7 @@ function WithdrawalRequestPage() {
                             icon="pi pi-send"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={request.requestedAmount <= 2000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole}
+                            disabled={request.requestedAmount <= 2000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole || isCaisseClosed}
                         />
                         <Button
                             label="Réinitialiser"
@@ -1467,6 +1551,7 @@ function WithdrawalRequestPage() {
                 onHide={() => setViewClientDialog(false)}
             >
                 {clientDetail && (
+                    <>
                     <div className="grid">
                         {/* Left Column */}
                         <div className="col-12 md:col-4">
@@ -1788,8 +1873,658 @@ function WithdrawalRequestPage() {
                             )}
                         </div>
                     </div>
+
+                        {/* Signatory Members — for BUSINESS clients */}
+                        {clientDetail.clientType === ClientType.BUSINESS && (
+                            <div className="mt-3">
+                                <Card title={
+                                    <div className="flex align-items-center justify-content-between">
+                                        <div className="flex align-items-center gap-2">
+                                            <i className="pi pi-id-card text-primary" />
+                                            <span>Membres de Signature</span>
+                                            {clientSignatoriesApi.loading && <i className="pi pi-spin pi-spinner text-500 text-sm" />}
+                                            {!clientSignatoriesApi.loading && (
+                                                <Tag value={`${clientSignatories.length} membre(s)`} severity="info" />
+                                            )}
+                                        </div>
+                                    </div>
+                                }>
+                                    <DataTable
+                                        value={clientSignatories}
+                                        loading={clientSignatoriesApi.loading}
+                                        stripedRows
+                                        showGridlines
+                                        size="small"
+                                        emptyMessage="Aucun membre de signature enregistré"
+                                        paginator
+                                        rows={5}
+                                    >
+                                        <Column
+                                            header="Photo"
+                                            style={{ width: '70px', textAlign: 'center' }}
+                                            body={(s: any) => s.photoPath ? (
+                                                <Image
+                                                    src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(s.photoPath)}`)}
+                                                    alt="Photo"
+                                                    width="45"
+                                                    preview
+                                                    imageClassName="border-round-xl shadow-1"
+                                                    style={{ objectFit: 'cover' }}
+                                                />
+                                            ) : <Avatar icon="pi pi-user" size="normal" shape="circle" className="bg-gray-100" />}
+                                        />
+                                        <Column
+                                            header="Nom Complet"
+                                            sortable
+                                            body={(s: any) => (
+                                                <div>
+                                                    <div className="font-semibold">{`${s.firstName || ''} ${s.lastName || ''}`.trim() || '—'}</div>
+                                                    <div className="text-xs text-500">{s.functionRole || '—'}</div>
+                                                </div>
+                                            )}
+                                        />
+                                        <Column
+                                            header="Téléphone"
+                                            body={(s: any) => (
+                                                <div>
+                                                    <div>{s.phonePrimary || '—'}</div>
+                                                    {s.phoneSecondary && <div className="text-500 text-xs">{s.phoneSecondary}</div>}
+                                                </div>
+                                            )}
+                                            style={{ width: '130px' }}
+                                        />
+                                        <Column
+                                            header="Email"
+                                            body={(s: any) => s.email || '—'}
+                                            style={{ width: '180px' }}
+                                        />
+                                        <Column
+                                            header="Pièce d'identité"
+                                            body={(s: any) => (
+                                                <div>
+                                                    <div className="text-xs text-500">{s.idDocumentType?.name || '—'}</div>
+                                                    <div className="font-semibold">{s.idDocumentNumber || '—'}</div>
+                                                </div>
+                                            )}
+                                            style={{ width: '150px' }}
+                                        />
+                                        <Column
+                                            header="Statut"
+                                            style={{ width: '80px' }}
+                                            body={(s: any) => (
+                                                <Tag
+                                                    value={s.isActive ? 'Actif' : 'Inactif'}
+                                                    severity={s.isActive ? 'success' : 'warning'}
+                                                />
+                                            )}
+                                        />
+                                        <Column
+                                            header="Signature"
+                                            style={{ width: '90px', textAlign: 'center' }}
+                                            body={(s: any) => s.signatureImagePath ? (
+                                                <Image
+                                                    src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(s.signatureImagePath)}`)}
+                                                    alt="Signature"
+                                                    width="75"
+                                                    preview
+                                                    imageClassName="border-round shadow-1"
+                                                    style={{ objectFit: 'contain' }}
+                                                />
+                                            ) : <span className="text-500 text-xs">—</span>}
+                                        />
+                                        <Column
+                                            header="Détails"
+                                            style={{ width: '70px', textAlign: 'center' }}
+                                            body={(s: any) => (
+                                                <Button
+                                                    icon="pi pi-eye"
+                                                    className="p-button-rounded p-button-info p-button-sm"
+                                                    tooltip="Voir tous les détails"
+                                                    tooltipOptions={{ position: 'left' }}
+                                                    onClick={() => { setSelectedSignatory(s); setSignatoryDetailDialog(true); }}
+                                                />
+                                            )}
+                                        />
+                                    </DataTable>
+                                </Card>
+                            </div>
+                        )}
+                    </>
                 )}
             </Dialog>
+
+            {/* Dialog détails d'un membre signataire */}
+            <Dialog
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-user text-xl text-primary" />
+                        <span>Détails du Signataire — {selectedSignatory ? `${selectedSignatory.firstName || ''} ${selectedSignatory.lastName || ''}`.trim() : ''}</span>
+                    </div>
+                }
+                visible={signatoryDetailDialog}
+                style={{ width: '80vw', maxWidth: '900px' }}
+                modal
+                onHide={() => setSignatoryDetailDialog(false)}
+                footer={<Button label="Fermer" icon="pi pi-times" className="p-button-text" onClick={() => setSignatoryDetailDialog(false)} />}
+            >
+                {selectedSignatory && (
+                    <div className="flex flex-column gap-3">
+                        {/* Header strip */}
+                        <div className="flex align-items-center gap-3 p-3 surface-100 border-round">
+                            {selectedSignatory.photoPath ? (
+                                <Image
+                                    src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(selectedSignatory.photoPath)}`)}
+                                    alt="Photo"
+                                    width="70"
+                                    preview
+                                    imageClassName="border-round-xl shadow-2"
+                                    style={{ objectFit: 'cover', height: '70px' }}
+                                />
+                            ) : (
+                                <Avatar icon="pi pi-user" size="xlarge" shape="circle" className="bg-green-100 text-green-600" style={{ width: '70px', height: '70px', fontSize: '2rem' }} />
+                            )}
+                            <div className="flex-grow-1">
+                                <div className="font-bold text-xl">{`${selectedSignatory.firstName || ''} ${selectedSignatory.lastName || ''}`.trim() || '—'}</div>
+                                <div className="text-primary font-medium mt-1">{selectedSignatory.functionRole || '—'}</div>
+                                <div className="flex gap-2 mt-2">
+                                    <Tag value={selectedSignatory.isActive ? 'Actif' : 'Inactif'} severity={selectedSignatory.isActive ? 'success' : 'warning'} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid">
+                            {/* Coordonnées */}
+                            <div className="col-12 md:col-4">
+                                <div className="surface-50 border-round p-3 h-full">
+                                    <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                        <i className="pi pi-phone" />Coordonnées
+                                    </div>
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex justify-content-between text-sm"><span className="text-500">Téléphone</span><span className="font-semibold">{selectedSignatory.phonePrimary || '—'}</span></div>
+                                        {selectedSignatory.phoneSecondary && <div className="flex justify-content-between text-sm"><span className="text-500">Tél. 2</span><span className="font-semibold">{selectedSignatory.phoneSecondary}</span></div>}
+                                        <div className="flex justify-content-between text-sm"><span className="text-500">Email</span><span className="font-semibold" style={{ wordBreak: 'break-all' }}>{selectedSignatory.email || '—'}</span></div>
+                                        <div className="flex justify-content-between text-sm"><span className="text-500">Adresse</span><span className="font-semibold text-right" style={{ maxWidth: '55%' }}>{selectedSignatory.address || '—'}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Pièce d'identité */}
+                            <div className="col-12 md:col-4">
+                                <div className="surface-50 border-round p-3 h-full">
+                                    <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                        <i className="pi pi-id-card" />Pièce d'Identité
+                                    </div>
+                                    <div className="flex flex-column gap-2">
+                                        <div className="flex justify-content-between text-sm"><span className="text-500">Type</span><span className="font-semibold">{selectedSignatory.idDocumentType?.name || '—'}</span></div>
+                                        <div className="flex justify-content-between text-sm"><span className="text-500">Numéro</span><span className="font-semibold">{selectedSignatory.idDocumentNumber || '—'}</span></div>
+                                        {selectedSignatory.idIssueDate && <div className="flex justify-content-between text-sm"><span className="text-500">Délivré le</span><span className="font-semibold">{new Date(selectedSignatory.idIssueDate).toLocaleDateString('fr-FR')}</span></div>}
+                                        {selectedSignatory.idExpiryDate && <div className="flex justify-content-between text-sm"><span className="text-500">Expire le</span><span className="font-semibold">{new Date(selectedSignatory.idExpiryDate).toLocaleDateString('fr-FR')}</span></div>}
+                                    </div>
+                                    {selectedSignatory.idDocumentScanPath && (
+                                        <div className="mt-3">
+                                            <div className="text-xs text-500 mb-1">Scan du document</div>
+                                            {selectedSignatory.idDocumentScanPath.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/) ? (
+                                                <Image
+                                                    src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(selectedSignatory.idDocumentScanPath)}`)}
+                                                    alt="Scan ID"
+                                                    width="120"
+                                                    preview
+                                                    imageClassName="border-round shadow-1"
+                                                />
+                                            ) : (
+                                                <a href={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(selectedSignatory.idDocumentScanPath)}`)} target="_blank" rel="noopener noreferrer" className="text-primary text-sm">
+                                                    <i className="pi pi-download mr-1" />Télécharger le scan
+                                                </a>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Contact & Signature */}
+                            <div className="col-12 md:col-4">
+                                <div className="flex flex-column gap-2 h-full">
+                                    {/* Signature */}
+                                    {selectedSignatory.signatureImagePath && (
+                                        <div className="surface-50 border-round p-3">
+                                            <div className="font-bold text-sm mb-2 text-primary flex align-items-center gap-2">
+                                                <i className="pi pi-pencil" />Signature
+                                            </div>
+                                            <Image
+                                                src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(selectedSignatory.signatureImagePath)}`)}
+                                                alt="Signature"
+                                                width="180"
+                                                preview
+                                                imageClassName="border-round shadow-1"
+                                                style={{ objectFit: 'contain', background: '#fff', padding: '4px' }}
+                                            />
+                                        </div>
+                                    )}
+                                    {/* Personne de contact */}
+                                    {selectedSignatory.contactPersonName && (
+                                        <div className="surface-50 border-round p-3 flex-grow-1">
+                                            <div className="font-bold text-sm mb-2 text-primary flex align-items-center gap-2">
+                                                <i className="pi pi-users" />Personne de Contact
+                                            </div>
+                                            <div className="flex flex-column gap-2">
+                                                <div className="flex justify-content-between text-sm"><span className="text-500">Nom</span><span className="font-semibold">{selectedSignatory.contactPersonName}</span></div>
+                                                {selectedSignatory.contactPersonRelationshipType && <div className="flex justify-content-between text-sm"><span className="text-500">Relation</span><span className="font-semibold">{selectedSignatory.contactPersonRelationshipType?.name || selectedSignatory.contactPersonRelationshipOther || '—'}</span></div>}
+                                                {selectedSignatory.contactPersonPhone && <div className="flex justify-content-between text-sm"><span className="text-500">Téléphone</span><span className="font-semibold">{selectedSignatory.contactPersonPhone}</span></div>}
+                                                {selectedSignatory.contactPersonAddress && <div className="flex justify-content-between text-sm"><span className="text-500">Adresse</span><span className="font-semibold">{selectedSignatory.contactPersonAddress}</span></div>}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {/* Notes */}
+                                    {selectedSignatory.notes && (
+                                        <div className="p-2 border-round surface-50 text-sm">
+                                            <div className="text-500 text-xs mb-1">Notes</div>
+                                            <div>{selectedSignatory.notes}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Dialog pour voir les détails du groupe solidaire */}
+            <Dialog
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-users text-2xl text-primary"></i>
+                        <span>Détails du Groupe Solidaire</span>
+                    </div>
+                }
+                visible={viewGroupDialog}
+                style={{ width: '900px' }}
+                modal
+                onHide={() => setViewGroupDialog(false)}
+                footer={
+                    <Button label="Fermer" icon="pi pi-times" className="p-button-text" onClick={() => setViewGroupDialog(false)} />
+                }
+            >
+                {selectedAccountGroup && (
+                    <div className="flex flex-column gap-4">
+                        {/* Group summary header */}
+                        <div className="grid">
+                            <div className="col-12 md:col-8">
+                                <div className="flex align-items-center gap-3 p-3 surface-100 border-round h-full">
+                                    <i className="pi pi-users text-3xl text-primary" />
+                                    <div>
+                                        <div className="font-bold text-xl">{selectedAccountGroup.groupName || selectedAccountGroup.name || '—'}</div>
+                                        {selectedAccountGroup.groupCode && <div className="text-500 text-sm mt-1">{selectedAccountGroup.groupCode}</div>}
+                                        {selectedAccountGroup.branch?.name && <div className="text-600 text-sm mt-1"><i className="pi pi-map-marker mr-1" />{selectedAccountGroup.branch.name}</div>}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="col-12 md:col-4">
+                                <div className="flex flex-column gap-2 p-3 surface-100 border-round h-full justify-content-center">
+                                    <div className="flex align-items-center justify-content-between">
+                                        <span className="text-500 text-sm">Statut</span>
+                                        <Tag
+                                            value={selectedAccountGroup.status || '—'}
+                                            severity={selectedAccountGroup.status === 'ACTIVE' ? 'success' : selectedAccountGroup.status === 'PENDING' ? 'warning' : 'danger'}
+                                        />
+                                    </div>
+                                    <div className="flex align-items-center justify-content-between">
+                                        <span className="text-500 text-sm">Membres</span>
+                                        <Tag value={`${groupMembers.length} membres`} severity="info" icon="pi pi-users" />
+                                    </div>
+                                    {selectedAccountGroup.formationDate && (
+                                        <div className="flex align-items-center justify-content-between">
+                                            <span className="text-500 text-sm">Formation</span>
+                                            <span className="font-medium text-sm">{new Date(selectedAccountGroup.formationDate).toLocaleDateString('fr-FR')}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Members table */}
+                        <div>
+                            <h5 className="m-0 mb-3">
+                                <i className="pi pi-list mr-2 text-primary" />
+                                Liste des Membres
+                            </h5>
+                            <DataTable
+                                value={groupMembers}
+                                loading={groupMembersApi.loading}
+                                emptyMessage="Aucun membre trouvé"
+                                stripedRows
+                                showGridlines
+                                size="small"
+                                paginator
+                                rows={10}
+                            >
+                                <Column field="membershipNumber" header="N° Adhésion" sortable style={{ width: '130px' }} />
+                                <Column
+                                    header="Nom / Prénom"
+                                    sortable
+                                    body={(row: any) => {
+                                        if (row.client) {
+                                            return row.client.businessName
+                                                || `${row.client.firstName || ''} ${row.client.lastName || ''}`.trim()
+                                                || row.client.clientNumber || '—';
+                                        }
+                                        if (row.memberProfile) {
+                                            return row.memberProfile.fullName || '—';
+                                        }
+                                        return '—';
+                                    }}
+                                />
+                                <Column
+                                    header="N° Client"
+                                    body={(row: any) => row.client?.clientNumber || row.memberProfile?.id ? `PROFIL-${row.memberProfile.id}` : '—'}
+                                    style={{ width: '120px' }}
+                                />
+                                <Column
+                                    header="Téléphone"
+                                    body={(row: any) => row.client?.phonePrimary || row.memberProfile?.phone || '—'}
+                                    style={{ width: '130px' }}
+                                />
+                                <Column
+                                    field="role.nameFr"
+                                    header="Rôle"
+                                    sortable
+                                    body={(row: any) => (
+                                        <div className="flex align-items-center gap-1">
+                                            {row.isExecutive && <Tag value="Bureau" severity="warning" style={{ fontSize: '0.7rem' }} />}
+                                            <span>{row.role?.nameFr || row.role?.name || '—'}</span>
+                                        </div>
+                                    )}
+                                />
+                                <Column
+                                    field="joinDate"
+                                    header="Date Adhésion"
+                                    sortable
+                                    body={(row: any) => row.joinDate ? new Date(row.joinDate).toLocaleDateString('fr-FR') : '—'}
+                                    style={{ width: '130px' }}
+                                />
+                                <Column
+                                    field="status"
+                                    header="Statut"
+                                    sortable
+                                    style={{ width: '110px' }}
+                                    body={(row: any) => (
+                                        <Tag
+                                            value={row.status || '—'}
+                                            severity={row.status === 'ACTIVE' ? 'success' : row.status === 'PENDING' ? 'warning' : row.status === 'SUSPENDED' ? 'danger' : null}
+                                        />
+                                    )}
+                                />
+                                <Column
+                                    header="Contributions"
+                                    sortable
+                                    sortField="totalContributions"
+                                    style={{ width: '140px' }}
+                                    body={(row: any) => row.totalContributions != null
+                                        ? `${Number(row.totalContributions).toLocaleString('fr-FR')} FBu`
+                                        : '—'}
+                                />
+                                <Column
+                                    header="Actions"
+                                    style={{ width: '80px', textAlign: 'center' }}
+                                    body={(row: any) => (
+                                        <Button
+                                            icon="pi pi-eye"
+                                            className="p-button-rounded p-button-info p-button-sm"
+                                            tooltip="Voir détails"
+                                            tooltipOptions={{ position: 'left' }}
+                                            onClick={() => {
+                                                setSelectedMember(row);
+                                                setMemberDocuments([]);
+                                                setMemberDetailDialog(true);
+                                                if (selectedAccountGroup?.id && row.id) {
+                                                    memberDocumentsApi.fetchData(null, 'GET', `${GROUPS_URL}/${selectedAccountGroup.id}/members/${row.id}/documents`, 'loadMemberDocs');
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </DataTable>
+                        </div>
+                    </div>
+                )}
+            </Dialog>
+
+            {/* Dialog détails d'un membre du groupe */}
+            <Dialog
+                header={
+                    <div className="flex align-items-center gap-2">
+                        <i className="pi pi-user text-xl text-primary"></i>
+                        <span>Détails du Membre — {selectedMember?.client
+                            ? (selectedMember.client.businessName || `${selectedMember.client.firstName || ''} ${selectedMember.client.lastName || ''}`.trim())
+                            : (`${selectedMember?.memberProfile?.firstName || ''} ${selectedMember?.memberProfile?.lastName || ''}`.trim() || '—')}
+                        </span>
+                    </div>
+                }
+                visible={memberDetailDialog}
+                style={{ width: '85vw', maxWidth: '1000px' }}
+                modal
+                onHide={() => setMemberDetailDialog(false)}
+                footer={
+                    <Button label="Fermer" icon="pi pi-times" className="p-button-text" onClick={() => setMemberDetailDialog(false)} />
+                }
+            >
+                {selectedMember && (() => {
+                    const c = selectedMember.client;
+                    const p = selectedMember.memberProfile;
+                    const fullName = c
+                        ? (c.businessName || `${c.firstName || ''} ${c.lastName || ''}`.trim())
+                        : (`${p?.firstName || ''} ${p?.lastName || ''}`.trim());
+                    const phone1 = c?.phonePrimary || p?.phonePrimary || '—';
+                    const phone2 = c?.phoneSecondary || p?.phoneSecondary;
+                    const email = c?.email || p?.email;
+                    const idNum = c?.idDocumentNumber || p?.idDocumentNumber;
+                    const idType = c?.idDocumentType?.name;
+                    const idIssue = c?.idIssueDate || p?.idDocumentIssueDate;
+                    const idExpiry = c?.idExpiryDate || p?.idDocumentExpiryDate;
+                    const address = c?.streetAddress || p?.streetAddress;
+                    const province = c?.province?.name;
+                    const commune = c?.commune?.name;
+                    const zone = c?.zone?.name;
+                    const colline = c?.colline?.name;
+                    const dob = c?.dateOfBirth || p?.dateOfBirth;
+                    const placeOfBirth = c?.placeOfBirth || p?.placeOfBirth;
+                    const gender = c?.gender || p?.gender;
+                    const profession = c?.profession;
+                    const employer = c?.employerName;
+                    const income = c?.monthlyIncome;
+
+                    return (
+                        <div className="flex flex-column gap-3">
+
+                            {/* Header identity strip */}
+                            <div className="flex align-items-center gap-3 p-3 surface-100 border-round">
+                                <Avatar icon="pi pi-user" size="xlarge" shape="circle" className="bg-blue-100 text-blue-600" style={{ width: '70px', height: '70px', fontSize: '2rem' }} />
+                                <div className="flex-grow-1">
+                                    <div className="font-bold text-xl">{fullName || '—'}</div>
+                                    {c?.clientNumber && <div className="text-500 text-sm mt-1">{c.clientNumber}</div>}
+                                    {selectedMember.membershipNumber && <div className="text-500 text-sm">Adhésion: {selectedMember.membershipNumber}</div>}
+                                    <div className="flex gap-2 mt-2 flex-wrap">
+                                        {selectedMember.isExecutive && <Tag value="Membre du Bureau" severity="warning" icon="pi pi-star" />}
+                                        <Tag
+                                            value={selectedMember.role?.nameFr || selectedMember.role?.name || '—'}
+                                            severity="info"
+                                        />
+                                        <Tag
+                                            value={selectedMember.status || '—'}
+                                            severity={selectedMember.status === 'ACTIVE' ? 'success' : selectedMember.status === 'PENDING' ? 'warning' : selectedMember.status === 'SUSPENDED' ? 'danger' : null}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-500 text-xs mb-1">Date d'adhésion</div>
+                                    <div className="font-bold">{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('fr-FR') : '—'}</div>
+                                </div>
+                            </div>
+
+                            <div className="grid">
+                                {/* === Informations Personnelles === */}
+                                <div className="col-12 md:col-4">
+                                    <div className="surface-50 border-round p-3 h-full">
+                                        <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                            <i className="pi pi-user" />
+                                            Informations Personnelles
+                                        </div>
+                                        <div className="flex flex-column gap-2">
+                                            {gender && <div className="flex justify-content-between text-sm"><span className="text-500">Genre</span><span className="font-semibold">{gender === 'M' ? 'Masculin' : gender === 'F' ? 'Féminin' : gender}</span></div>}
+                                            {dob && <div className="flex justify-content-between text-sm"><span className="text-500">Date de naissance</span><span className="font-semibold">{new Date(dob).toLocaleDateString('fr-FR')}</span></div>}
+                                            {placeOfBirth && <div className="flex justify-content-between text-sm"><span className="text-500">Lieu de naissance</span><span className="font-semibold">{placeOfBirth}</span></div>}
+                                            <div className="flex justify-content-between text-sm"><span className="text-500">Téléphone</span><span className="font-semibold">{phone1}</span></div>
+                                            {phone2 && <div className="flex justify-content-between text-sm"><span className="text-500">Tél. secondaire</span><span className="font-semibold">{phone2}</span></div>}
+                                            {email && <div className="flex justify-content-between text-sm"><span className="text-500">Email</span><span className="font-semibold" style={{ wordBreak: 'break-all' }}>{email}</span></div>}
+                                            {profession && <div className="flex justify-content-between text-sm"><span className="text-500">Profession</span><span className="font-semibold">{profession}</span></div>}
+                                            {employer && <div className="flex justify-content-between text-sm"><span className="text-500">Employeur</span><span className="font-semibold">{employer}</span></div>}
+                                            {income != null && <div className="flex justify-content-between text-sm"><span className="text-500">Revenu mensuel</span><span className="font-semibold text-green-600">{Number(income).toLocaleString('fr-FR')} FBu</span></div>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* === Pièce d'identité & Adresse === */}
+                                <div className="col-12 md:col-4">
+                                    <div className="flex flex-column gap-2 h-full">
+                                        <div className="surface-50 border-round p-3">
+                                            <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                                <i className="pi pi-id-card" />
+                                                Pièce d'Identité
+                                            </div>
+                                            <div className="flex flex-column gap-2">
+                                                {idType && <div className="flex justify-content-between text-sm"><span className="text-500">Type</span><span className="font-semibold">{idType}</span></div>}
+                                                <div className="flex justify-content-between text-sm"><span className="text-500">Numéro</span><span className="font-semibold">{idNum || '—'}</span></div>
+                                                {idIssue && <div className="flex justify-content-between text-sm"><span className="text-500">Délivré le</span><span className="font-semibold">{new Date(idIssue).toLocaleDateString('fr-FR')}</span></div>}
+                                                {idExpiry && <div className="flex justify-content-between text-sm"><span className="text-500">Expire le</span><span className="font-semibold">{new Date(idExpiry).toLocaleDateString('fr-FR')}</span></div>}
+                                                {c?.idIssuePlace && <div className="flex justify-content-between text-sm"><span className="text-500">Délivré par</span><span className="font-semibold">{c.idIssuePlace}</span></div>}
+                                            </div>
+                                        </div>
+                                        <div className="surface-50 border-round p-3 flex-grow-1">
+                                            <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                                <i className="pi pi-map-marker" />
+                                                Adresse
+                                            </div>
+                                            <div className="flex flex-column gap-2">
+                                                {province && <div className="flex justify-content-between text-sm"><span className="text-500">Province</span><span className="font-semibold">{province}</span></div>}
+                                                {commune && <div className="flex justify-content-between text-sm"><span className="text-500">Commune</span><span className="font-semibold">{commune}</span></div>}
+                                                {zone && <div className="flex justify-content-between text-sm"><span className="text-500">Zone</span><span className="font-semibold">{zone}</span></div>}
+                                                {colline && <div className="flex justify-content-between text-sm"><span className="text-500">Colline</span><span className="font-semibold">{colline}</span></div>}
+                                                {c?.quartier && <div className="flex justify-content-between text-sm"><span className="text-500">Quartier</span><span className="font-semibold">{c.quartier}</span></div>}
+                                                {address && <div className="flex justify-content-between text-sm"><span className="text-500">Adresse</span><span className="font-semibold text-right" style={{ maxWidth: '55%' }}>{address}</span></div>}
+                                                {!province && !commune && !address && <span className="text-500 text-sm">—</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* === Informations d'Adhésion & Contributions === */}
+                                <div className="col-12 md:col-4">
+                                    <div className="flex flex-column gap-2 h-full">
+                                        <div className="surface-50 border-round p-3">
+                                            <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                                <i className="pi pi-users" />
+                                                Adhésion au Groupe
+                                            </div>
+                                            <div className="flex flex-column gap-2">
+                                                <div className="flex justify-content-between text-sm"><span className="text-500">N° Adhésion</span><span className="font-semibold">{selectedMember.membershipNumber || '—'}</span></div>
+                                                <div className="flex justify-content-between text-sm"><span className="text-500">Rôle</span><span className="font-semibold">{selectedMember.role?.nameFr || selectedMember.role?.name || '—'}</span></div>
+                                                <div className="flex justify-content-between text-sm"><span className="text-500">Membre du bureau</span><span className="font-semibold">{selectedMember.isExecutive ? 'Oui' : 'Non'}</span></div>
+                                                <div className="flex justify-content-between text-sm"><span className="text-500">Date d'adhésion</span><span className="font-semibold">{selectedMember.joinDate ? new Date(selectedMember.joinDate).toLocaleDateString('fr-FR') : '—'}</span></div>
+                                                <div className="flex justify-content-between text-sm"><span className="text-500">Statut</span>
+                                                    <Tag value={selectedMember.status || '—'} severity={selectedMember.status === 'ACTIVE' ? 'success' : selectedMember.status === 'PENDING' ? 'warning' : selectedMember.status === 'SUSPENDED' ? 'danger' : null} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="surface-50 border-round p-3 flex-grow-1">
+                                            <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                                <i className="pi pi-wallet" />
+                                                Contributions
+                                            </div>
+                                            <div className="flex flex-column gap-2">
+                                                <div className="flex justify-content-between text-sm">
+                                                    <span className="text-500">Part sociale</span>
+                                                    <span className="font-semibold text-primary">{selectedMember.shareContribution != null ? `${Number(selectedMember.shareContribution).toLocaleString('fr-FR')} FBu` : '—'}</span>
+                                                </div>
+                                                <div className="flex justify-content-between text-sm">
+                                                    <span className="text-500">Total versé</span>
+                                                    <span className="font-semibold text-green-600">{selectedMember.totalContributions != null ? `${Number(selectedMember.totalContributions).toLocaleString('fr-FR')} FBu` : '—'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {selectedMember.statusReason && selectedMember.status !== 'ACTIVE' && (
+                                            <div className="p-2 border-round bg-orange-50 text-sm" style={{ border: '1px solid #f59e0b' }}>
+                                                <div className="text-500 text-xs mb-1">Raison du statut</div>
+                                                <div>{selectedMember.statusReason}</div>
+                                            </div>
+                                        )}
+                                        {selectedMember.notes && (
+                                            <div className="p-2 border-round surface-50 text-sm">
+                                                <div className="text-500 text-xs mb-1">Notes</div>
+                                                <div>{selectedMember.notes}</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Documents Joints du Membre */}
+                            <div className="surface-50 border-round p-3">
+                                <div className="font-bold text-sm mb-3 text-primary flex align-items-center gap-2">
+                                    <i className="pi pi-paperclip" />
+                                    Documents Joints
+                                    {memberDocumentsApi.loading && <i className="pi pi-spin pi-spinner text-500" />}
+                                </div>
+                                {!memberDocumentsApi.loading && memberDocuments.length === 0 ? (
+                                    <div className="text-500 text-sm flex align-items-center gap-2">
+                                        <i className="pi pi-inbox" />
+                                        Aucun document joint pour ce membre
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-wrap gap-3">
+                                        {memberDocuments.map((doc: any, idx: number) => {
+                                            const ext = (doc.filePath || doc.fileName || '').split('.').pop()?.toLowerCase() || '';
+                                            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext);
+                                            const fileUrl = buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(doc.filePath)}`);
+                                            const docLabel = doc.documentType === 'ESPACE_HUMAINE' ? 'Photo (Espace Humaine)'
+                                                : doc.documentType === 'ID_CARTE' ? "Carte d'identité"
+                                                : doc.documentType || 'Document';
+                                            return (
+                                                <div key={idx} className="p-2 surface-100 border-round flex flex-column align-items-center gap-1" style={{ minWidth: '120px', maxWidth: '160px' }}>
+                                                    <div className="text-xs text-500 text-center font-medium">{docLabel}</div>
+                                                    {isImage ? (
+                                                        <Image
+                                                            src={fileUrl}
+                                                            alt={docLabel}
+                                                            width="120"
+                                                            preview
+                                                            imageClassName="border-round shadow-1"
+                                                            style={{ objectFit: 'contain', maxHeight: '90px' }}
+                                                        />
+                                                    ) : (
+                                                        <div className="flex flex-column align-items-center gap-1">
+                                                            <i className="pi pi-file-pdf text-3xl text-red-400" />
+                                                            <div className="text-xs text-center text-500" style={{ wordBreak: 'break-all' }}>
+                                                                {doc.fileName || doc.filePath?.split(/[\\/]/).pop() || 'Fichier'}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary text-xs">
+                                                        <i className="pi pi-download mr-1" />
+                                                        Ouvrir
+                                                    </a>
+                                                    {doc.fileSizeBytes && (
+                                                        <div className="text-xs text-500">{Math.round(doc.fileSizeBytes / 1024)} Ko</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+            </Dialog>
+
             {/* Disburse Billetage Dialog */}
             <Dialog
                 visible={disburseBilletageVisible}

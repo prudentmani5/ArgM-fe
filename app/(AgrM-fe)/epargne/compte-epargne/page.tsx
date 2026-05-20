@@ -13,6 +13,8 @@ import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { FileUpload } from 'primereact/fileupload';
+import { Card } from 'primereact/card';
+import { Divider } from 'primereact/divider';
 import Cookies from 'js-cookie';
 import useConsumApi, { getUserAction } from '@/hooks/fetchData/useConsumApi';
 import { API_BASE_URL, buildApiUrl } from '@/utils/apiConfig';
@@ -135,6 +137,7 @@ function SavingsAccountPage() {
         loadReferenceData();
         loadSavingsAccounts();
         loadGroupAccounts();
+        schedulerStatusApi.fetchData(null, 'GET', `${BASE_URL}/monthly-interest-status`, 'schedulerStatus');
     }, []);
 
     // Handle clients data
@@ -1331,6 +1334,80 @@ function SavingsAccountPage() {
                         <Column field="userAction" header="Utilisateur" sortable />
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
                     </DataTable>
+
+                    {/* ===== Planned Task Section ===== */}
+                    <div className="mt-4">
+                        <Card style={{ border: schedulerStatus?.currentMonthProcessed ? '2px solid #4caf50' : '1px solid #ddd' }}>
+                            <div className="flex align-items-center justify-content-between mb-2">
+                                <h4 className="m-0">
+                                    <i className="pi pi-clock mr-2 text-blue-500" />
+                                    Exécution Automatique (Planificateur)
+                                </h4>
+                                <Button
+                                    label="Rafraîchir"
+                                    icon="pi pi-refresh"
+                                    className="p-button-outlined p-button-sm"
+                                    onClick={() => schedulerStatusApi.fetchData(null, 'GET', `${BASE_URL}/monthly-interest-status`, 'schedulerStatus')}
+                                    loading={schedulerStatusApi.loading && schedulerStatusApi.callType === 'schedulerStatus'}
+                                />
+                            </div>
+                            <p className="text-color-secondary mt-0 mb-3">
+                                Le calcul des intérêts mensuels sur les comptes Dépôt à Terme est exécuté automatiquement selon le calendrier ci-dessous.
+                            </p>
+                            <Divider className="mt-0" />
+
+                            {/* Active indicator */}
+                            <div className={`p-3 border-round mb-4 flex align-items-center gap-3 ${schedulerStatus?.currentMonthProcessed ? 'bg-green-50' : 'bg-blue-50'}`}
+                                style={{ border: schedulerStatus?.currentMonthProcessed ? '1px solid #4caf50' : '1px solid #2196F3' }}>
+                                <i className={`pi ${schedulerStatus?.currentMonthProcessed ? 'pi-check-circle text-green-600' : 'pi-clock text-blue-600'}`}
+                                    style={{ fontSize: '1.5rem' }} />
+                                <div className="flex-grow-1">
+                                    <div className="font-bold">Planificateur actif</div>
+                                    <div className="text-sm text-600">
+                                        Tâche planifiée : {schedulerStatus?.nextRunDescription || '1er de chaque mois à 00h01'}
+                                    </div>
+                                </div>
+                                <Tag value="Actif" severity="success" />
+                            </div>
+
+                            {/* Status grid */}
+                            <div className="grid">
+                                <div className="col-12 md:col-4">
+                                    <div className="text-500 text-sm mb-2">Statut du mois en cours</div>
+                                    <Tag
+                                        value={schedulerStatus?.currentMonthProcessed ? '✓ Traité automatiquement' : 'Non encore traité'}
+                                        severity={schedulerStatus?.currentMonthProcessed ? 'success' : 'info'}
+                                    />
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <div className="text-500 text-sm mb-2">Dernière exécution automatique</div>
+                                    <div className="font-bold text-sm">
+                                        {schedulerStatus?.lastRunMessage || 'Jamais exécuté'}
+                                    </div>
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <div className="text-500 text-sm mb-2">Prochaine exécution prévue</div>
+                                    <div className="font-bold text-sm">
+                                        {(() => {
+                                            const now = new Date();
+                                            const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                                            return next.toLocaleDateString('fr-FR') + ' à 00h01';
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Divider />
+
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-info-circle text-600" />
+                                <small className="text-600">
+                                    Pour lancer manuellement le calcul des intérêts avant la date planifiée, utilisez le bouton{' '}
+                                    <strong>"Calculer Intérêts du Mois"</strong> dans le tableau ci-dessus.
+                                </small>
+                            </div>
+                        </Card>
+                    </div>
                 </TabPanel>
 
                 <TabPanel header="Comptes Groupe" leftIcon="pi pi-users mr-2">
@@ -1797,6 +1874,88 @@ function SavingsAccountPage() {
                             </DataTable>
                         );
                     })()}
+                </TabPanel>}
+
+                {/* Tab: Configuration Planificateur DAT */}
+                {can('EPARGNE_DAT_SCHEDULER_CONFIG') && <TabPanel header="Configuration Planificateur" leftIcon="pi pi-cog mr-2">
+                    <div className="p-3">
+                        <Card style={{ border: schedulerStatus?.currentMonthProcessed ? '2px solid #4caf50' : '1px solid #ddd' }}>
+                            <div className="flex align-items-center justify-content-between mb-2">
+                                <h4 className="m-0">
+                                    <i className="pi pi-clock mr-2 text-blue-500" />
+                                    Exécution Automatique (Planificateur) — Dépôt à Terme
+                                </h4>
+                                <Button
+                                    label="Rafraîchir"
+                                    icon="pi pi-refresh"
+                                    className="p-button-outlined p-button-sm"
+                                    onClick={() => schedulerStatusApi.fetchData(null, 'GET', `${BASE_URL}/monthly-interest-status`, 'schedulerStatus')}
+                                    loading={schedulerStatusApi.loading && schedulerStatusApi.callType === 'schedulerStatus'}
+                                />
+                            </div>
+                            <p className="text-color-secondary mt-0 mb-3">
+                                Le calcul des intérêts mensuels sur les comptes Dépôt à Terme est exécuté automatiquement selon le calendrier ci-dessous.
+                                Ce planificateur est géré par le serveur et ne peut pas être désactivé depuis l'interface.
+                            </p>
+                            <Divider className="mt-0" />
+
+                            {/* Active indicator */}
+                            <div className={`p-3 border-round mb-4 flex align-items-center gap-3 ${schedulerStatus?.currentMonthProcessed ? 'bg-green-50' : 'bg-blue-50'}`}
+                                style={{ border: schedulerStatus?.currentMonthProcessed ? '1px solid #4caf50' : '1px solid #2196F3' }}>
+                                <i className={`pi ${schedulerStatus?.currentMonthProcessed ? 'pi-check-circle text-green-600' : 'pi-clock text-blue-600'}`}
+                                    style={{ fontSize: '1.5rem' }} />
+                                <div className="flex-grow-1">
+                                    <div className="font-bold">Planificateur actif</div>
+                                    <div className="text-sm text-600">
+                                        Tâche planifiée : {schedulerStatus?.nextRunDescription || '1er de chaque mois à 00h01'}
+                                    </div>
+                                </div>
+                                <Tag value="Actif" severity="success" />
+                            </div>
+
+                            {/* Status grid */}
+                            <div className="grid">
+                                <div className="col-12 md:col-4">
+                                    <div className="text-500 text-sm mb-2">Statut du mois en cours</div>
+                                    <Tag
+                                        value={schedulerStatus?.currentMonthProcessed ? '✓ Traité automatiquement' : 'Non encore traité'}
+                                        severity={schedulerStatus?.currentMonthProcessed ? 'success' : 'info'}
+                                    />
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <div className="text-500 text-sm mb-2">Dernière exécution automatique</div>
+                                    <div className="font-bold text-sm">
+                                        {schedulerStatus?.lastRunMessage || 'Jamais exécuté'}
+                                    </div>
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <div className="text-500 text-sm mb-2">Prochaine exécution prévue</div>
+                                    <div className="font-bold text-sm">
+                                        {(() => {
+                                            const now = new Date();
+                                            const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                                            return next.toLocaleDateString('fr-FR') + ' à 00h01';
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Divider />
+
+                            <div className="surface-100 border-round p-3">
+                                <div className="flex align-items-center gap-2 mb-2">
+                                    <i className="pi pi-info-circle text-blue-600" style={{ fontSize: '1.1rem' }} />
+                                    <span className="font-bold text-sm">Informations sur le planificateur</span>
+                                </div>
+                                <ul className="m-0 pl-4 text-sm text-600" style={{ lineHeight: '1.8' }}>
+                                    <li>Le planificateur s'exécute automatiquement le <strong>1er de chaque mois à 00h01</strong>.</li>
+                                    <li>Il calcule et crédite les intérêts pour tous les comptes Dépôt à Terme actifs.</li>
+                                    <li>Pour lancer manuellement le calcul avant la date planifiée, utilisez le bouton <strong>"Calculer Intérêts du Mois"</strong> dans l'onglet Dépôt à Terme.</li>
+                                    <li>Le statut est mis à jour automatiquement après chaque exécution.</li>
+                                </ul>
+                            </div>
+                        </Card>
+                    </div>
                 </TabPanel>}
             </TabView>
 

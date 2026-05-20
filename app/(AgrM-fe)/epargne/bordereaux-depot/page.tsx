@@ -70,6 +70,8 @@ function DepositSlipPage() {
     const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
     const [agencyOpen, setAgencyOpen] = useState<boolean>(true);
     const [isCaissierWithoutCaisse, setIsCaissierWithoutCaisse] = useState(false);
+    // Derived: true when the auto-selected or manually selected caisse is CLOSED
+    const isCaisseClosed = !!(selectedCaisseId && caisses.find((c: any) => c.caisseId === selectedCaisseId)?.status === 'CLOSED');
     const [isNotCaissierRole, setIsNotCaissierRole] = useState(false);
     const [selectedAccountGroup, setSelectedAccountGroup] = useState<any>(null);
     const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
@@ -759,6 +761,20 @@ function DepositSlipPage() {
                         </div>
                     )}
 
+                    {isCaisseClosed && (
+                        <div className="p-3 mt-3 border-round bg-red-50 border-red-200" style={{ border: '1px solid' }}>
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-lock text-red-500 text-xl" />
+                                <div>
+                                    <div className="font-bold text-red-700">Caisse fermée</div>
+                                    <div className="text-red-600 text-sm">
+                                        La caisse sélectionnée est fermée. Aucune opération ne peut être enregistrée tant que la caisse n'est pas ouverte.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Caisse selection */}
                     <div className="grid mt-3">
                         <div className="col-12 md:col-6">
@@ -795,7 +811,7 @@ function DepositSlipPage() {
                             icon="pi pi-save"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={depositSlip.totalAmount < 500 || !can('EPARGNE_DEPOSIT_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole}
+                            disabled={depositSlip.totalAmount < 500 || !can('EPARGNE_DEPOSIT_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole || isCaisseClosed}
                         />
                         <Button
                             label="Réinitialiser"
