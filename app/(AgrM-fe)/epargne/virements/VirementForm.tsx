@@ -280,32 +280,18 @@ const VirementForm: React.FC<VirementFormProps> = ({
                         />
                     </div>
                     <div className="field col-12 md:col-3">
-                        <label htmlFor="commissionRate" className="font-medium">Taux Commission (%)</label>
-                        <InputNumber
-                            id="commissionRate"
-                            value={virement.commissionRate}
-                            onValueChange={(e) => handleNumberChange('commissionRate', e.value)}
-                            mode="decimal"
-                            minFractionDigits={1}
-                            maxFractionDigits={2}
-                            disabled={isViewMode}
-                            className="w-full"
-                            suffix=" %"
-                            min={0}
-                            max={100}
-                        />
-                    </div>
-                    <div className="field col-12 md:col-3">
-                        <label htmlFor="commissionAmount" className="font-medium">Commission</label>
+                        <label htmlFor="commissionAmount" className="font-medium">Commission (FBU)</label>
                         <InputNumber
                             id="commissionAmount"
                             value={virement.commissionAmount}
-                            disabled
+                            onValueChange={(e) => handleNumberChange('commissionAmount', e.value)}
                             mode="decimal"
                             minFractionDigits={0}
-                            maxFractionDigits={2}
+                            maxFractionDigits={0}
+                            disabled={isViewMode}
                             className="w-full"
-                            suffix={` ${sourceCurrency}`}
+                            suffix=" FBU"
+                            min={0}
                         />
                     </div>
                     <div className="field col-12 md:col-3">

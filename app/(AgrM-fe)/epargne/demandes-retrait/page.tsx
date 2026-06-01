@@ -220,7 +220,12 @@ function WithdrawalRequestPage() {
             if (selectedCaisseId && !isManager) {
                 const currentUser = getCurrentUser();
                 if (currentUser && currentUser !== 'Unknown') {
-                    data = data.filter((r: any) => r.userAction === currentUser);
+                    // Also keep MANAGER_APPROVED requests from this caisse — after manager approval
+                    // userAction changes to the manager's name, so the caissier would lose visibility
+                    data = data.filter((r: any) =>
+                        r.userAction === currentUser ||
+                        (r.status === 'MANAGER_APPROVED' && r.caisseId === selectedCaisseId)
+                    );
                 } else {
                     data = data.filter((r: any) => r.caisseId === selectedCaisseId);
                 }

@@ -98,6 +98,8 @@ function SavingsAccountPage() {
     const validateTermApi = useConsumApi('');
     const maturityApi = useConsumApi('');
     const historyApi = useConsumApi('');
+    const opsHistoryApi = useConsumApi('');
+    const interestHistoryApi = useConsumApi('');
     const previewInterestApi = useConsumApi('');
     const processInterestApi = useConsumApi('');
     const [maturityDialog, setMaturityDialog] = useState(false);
@@ -105,6 +107,16 @@ function SavingsAccountPage() {
     const [historyDialog, setHistoryDialog] = useState(false);
     const [historyAccount, setHistoryAccount] = useState<SavingsAccount | null>(null);
     const [termDepositHistory, setTermDepositHistory] = useState<any[]>([]);
+    const [opsHistoryDialog, setOpsHistoryDialog] = useState(false);
+    const [interestHistoryDialog, setInterestHistoryDialog] = useState(false);
+    const [interestExecutionHistory, setInterestExecutionHistory] = useState<any[]>([]);
+    const [interestHistoryExpandedRows, setInterestHistoryExpandedRows] = useState<any>(null);
+    const [opsHistoryAccount, setOpsHistoryAccount] = useState<SavingsAccount | null>(null);
+    const [opsHistory, setOpsHistory] = useState<any[]>([]);
+    const [opsHistorySummary, setOpsHistorySummary] = useState<any>(null);
+    const [opsHistoryFrom, setOpsHistoryFrom] = useState<Date | null>(null);
+    const [opsHistoryTo, setOpsHistoryTo] = useState<Date | null>(null);
+    const [opsHistoryType, setOpsHistoryType] = useState<string>('');
     const [pendingPrint, setPendingPrint] = useState(false);
     const [monthlyInterestDialog, setMonthlyInterestDialog] = useState(false);
     const [monthlyInterestPreview, setMonthlyInterestPreview] = useState<any[]>([]);
@@ -330,6 +342,25 @@ function SavingsAccountPage() {
         }
     }, [schedulerStatusApi.data]);
 
+    // Handle interest execution history response
+    useEffect(() => {
+        if (interestHistoryApi.data) {
+            setInterestExecutionHistory(Array.isArray(interestHistoryApi.data) ? interestHistoryApi.data : []);
+        }
+    }, [interestHistoryApi.data]);
+
+    // Handle operations history response
+    useEffect(() => {
+        if (opsHistoryApi.data) {
+            const resp = opsHistoryApi.data as any;
+            setOpsHistory(Array.isArray(resp.data) ? resp.data : Array.isArray(resp) ? resp : []);
+            setOpsHistorySummary(resp.totalOperations !== undefined ? resp : null);
+        }
+        if (opsHistoryApi.error) {
+            showToast('error', 'Erreur', opsHistoryApi.error.message || 'Erreur lors du chargement de l\'historique');
+        }
+    }, [opsHistoryApi.data, opsHistoryApi.error]);
+
     // Handle monthly interest preview response
     useEffect(() => {
         if (previewInterestApi.data) {
@@ -528,6 +559,10 @@ function SavingsAccountPage() {
         }
         if (!savingsAccount.currencyId) {
             showToast('warn', 'Attention', 'Veuillez sélectionner une devise');
+            return false;
+        }
+        if (!savingsAccount.internalAccountId) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner le compte interne (suivi)');
             return false;
         }
         return true;
@@ -828,6 +863,25 @@ function SavingsAccountPage() {
         historyApi.fetchData(null, 'GET', `${BASE_URL}/${rowData.id}/term-deposit-history`, 'history');
     };
 
+    const openOpsHistoryDialog = (rowData: SavingsAccount) => {
+        setOpsHistoryAccount(rowData);
+        setOpsHistory([]);
+        setOpsHistorySummary(null);
+        setOpsHistoryFrom(null);
+        setOpsHistoryTo(null);
+        setOpsHistoryType('');
+        setOpsHistoryDialog(true);
+        loadOpsHistory(rowData, null, null, '');
+    };
+
+    const loadOpsHistory = (account: SavingsAccount, from: Date | null, to: Date | null, type: string) => {
+        let url = `${API_BASE_URL}/api/epargne/reports/operation-history?accountId=${account.id}`;
+        if (from) url += `&dateFrom=${from.toISOString().split('T')[0]}`;
+        if (to) url += `&dateTo=${to.toISOString().split('T')[0]}`;
+        if (type) url += `&operationType=${type}`;
+        opsHistoryApi.fetchData(null, 'GET', url, 'opsHistory');
+    };
+
     const handlePrintCertificate = (account: SavingsAccount) => {
         setHistoryAccount(account);
         setTermDepositHistory([]);
@@ -1045,6 +1099,13 @@ function SavingsAccountPage() {
                     severity="secondary"
                     onClick={() => openHistoryDialog(rowData)}
                     tooltip={isBlocked ? 'Historique des blocages' : 'Historique des dépôts à terme'}
+                />
+                <Button
+                    icon="pi pi-list"
+                    className="p-button-rounded p-button-sm"
+                    severity="secondary"
+                    onClick={() => openOpsHistoryDialog(rowData)}
+                    tooltip="Toutes les opérations"
                 />
                 <Button
                     icon="pi pi-folder"
@@ -1332,7 +1393,7 @@ function SavingsAccountPage() {
                         <Column field="openingDate" header="Date d'Ouverture" sortable />
                         <Column header="Statut" body={statusBodyTemplate} />
                         <Column field="userAction" header="Utilisateur" sortable />
-                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '200px' }} />
+                        <Column header="Actions" body={termDepositActionsTemplate} style={{ width: '250px' }} />
                     </DataTable>
 
                     {/* ===== Planned Task Section ===== */}
@@ -1885,13 +1946,25 @@ function SavingsAccountPage() {
                                     <i className="pi pi-clock mr-2 text-blue-500" />
                                     Exécution Automatique (Planificateur) — Dépôt à Terme
                                 </h4>
-                                <Button
-                                    label="Rafraîchir"
-                                    icon="pi pi-refresh"
-                                    className="p-button-outlined p-button-sm"
-                                    onClick={() => schedulerStatusApi.fetchData(null, 'GET', `${BASE_URL}/monthly-interest-status`, 'schedulerStatus')}
-                                    loading={schedulerStatusApi.loading && schedulerStatusApi.callType === 'schedulerStatus'}
-                                />
+                                <div className="flex gap-2">
+                                    <Button
+                                        label="Historique"
+                                        icon="pi pi-history"
+                                        className="p-button-outlined p-button-sm"
+                                        onClick={() => {
+                                            setInterestHistoryDialog(true);
+                                            setInterestHistoryExpandedRows(null);
+                                            interestHistoryApi.fetchData(null, 'GET', `${BASE_URL}/interest-execution-history`, 'interestHistory');
+                                        }}
+                                    />
+                                    <Button
+                                        label="Rafraîchir"
+                                        icon="pi pi-refresh"
+                                        className="p-button-outlined p-button-sm"
+                                        onClick={() => schedulerStatusApi.fetchData(null, 'GET', `${BASE_URL}/monthly-interest-status`, 'schedulerStatus')}
+                                        loading={schedulerStatusApi.loading && schedulerStatusApi.callType === 'schedulerStatus'}
+                                    />
+                                </div>
                             </div>
                             <p className="text-color-secondary mt-0 mb-3">
                                 Le calcul des intérêts mensuels sur les comptes Dépôt à Terme est exécuté automatiquement selon le calendrier ci-dessous.
@@ -1942,6 +2015,31 @@ function SavingsAccountPage() {
 
                             <Divider />
 
+                            <Divider />
+
+                            {/* Manual trigger section */}
+                            <div className="mb-3">
+                                <h6 className="mt-0 mb-2"><i className="pi pi-play-circle mr-2 text-orange-500"></i>Exécution Manuelle</h6>
+                                <p className="text-600 text-sm mt-0 mb-3">
+                                    Si le calcul automatique n'a pas encore été effectué ce mois-ci, vous pouvez le déclencher manuellement.
+                                    Cela calculera et créditera les intérêts sur tous les comptes DAT actifs.
+                                </p>
+                                <Button
+                                    label="Déclencher le calcul maintenant"
+                                    icon="pi pi-play"
+                                    className="p-button-warning"
+                                    onClick={openMonthlyInterestDialog}
+                                    disabled={schedulerStatus?.currentMonthProcessed}
+                                    tooltip={schedulerStatus?.currentMonthProcessed ? 'Le calcul a déjà été effectué ce mois-ci' : 'Déclencher le calcul des intérêts maintenant'}
+                                />
+                                {schedulerStatus?.currentMonthProcessed && (
+                                    <div className="mt-2 p-2 border-round bg-green-50" style={{ border: '1px solid #4caf50' }}>
+                                        <i className="pi pi-check-circle text-green-600 mr-2"></i>
+                                        <span className="text-sm text-green-700">Le calcul des intérêts du mois en cours a déjà été effectué.</span>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="surface-100 border-round p-3">
                                 <div className="flex align-items-center gap-2 mb-2">
                                     <i className="pi pi-info-circle text-blue-600" style={{ fontSize: '1.1rem' }} />
@@ -1950,8 +2048,9 @@ function SavingsAccountPage() {
                                 <ul className="m-0 pl-4 text-sm text-600" style={{ lineHeight: '1.8' }}>
                                     <li>Le planificateur s'exécute automatiquement le <strong>1er de chaque mois à 00h01</strong>.</li>
                                     <li>Il calcule et crédite les intérêts pour tous les comptes Dépôt à Terme actifs.</li>
-                                    <li>Pour lancer manuellement le calcul avant la date planifiée, utilisez le bouton <strong>"Calculer Intérêts du Mois"</strong> dans l'onglet Dépôt à Terme.</li>
+                                    <li>Le déclenchement manuel ci-dessus produit le même résultat que l'exécution automatique.</li>
                                     <li>Le statut est mis à jour automatiquement après chaque exécution.</li>
+                                    <li>La modification de la fréquence de planification nécessite une reconfiguration du serveur.</li>
                                 </ul>
                             </div>
                         </Card>
@@ -1973,9 +2072,9 @@ function SavingsAccountPage() {
                             className="p-button-text"
                             onClick={() => setMonthlyInterestDialog(false)}
                         />
-                        {monthlyInterestStep === 'preview' && monthlyInterestPreview.length > 0 && (
+                        {monthlyInterestStep === 'preview' && !schedulerStatus?.currentMonthProcessed && monthlyInterestPreview.filter((r: any) => r.eligible !== false).length > 0 && (
                             <Button
-                                label="Confirmer et Créditer"
+                                label={`Confirmer et Créditer (${monthlyInterestPreview.filter((r: any) => r.eligible !== false).length} compte(s))`}
                                 icon="pi pi-check"
                                 className="p-button-success"
                                 loading={isProcessingInterest}
@@ -1988,53 +2087,107 @@ function SavingsAccountPage() {
             >
                 {monthlyInterestStep === 'preview' && (
                     <div>
-                        {/* Scheduler status banner */}
-                        <div className={`p-3 border-round mb-3 flex align-items-center gap-2 ${schedulerStatus?.currentMonthProcessed ? 'surface-200' : 'bg-blue-50'}`}>
-                            <i className={`pi ${schedulerStatus?.currentMonthProcessed ? 'pi-check-circle text-green-500' : 'pi-clock text-blue-500'}`} />
-                            <div>
-                                <div className="font-semibold text-sm">
-                                    Tâche planifiée: {schedulerStatus?.nextRunDescription || '1er de chaque mois à 00h01'}
+                        {/* Already processed blocking banner */}
+                        {schedulerStatus?.currentMonthProcessed ? (
+                            <div className="p-3 border-round mb-3 flex align-items-center gap-3 bg-green-50" style={{ border: '2px solid #4caf50' }}>
+                                <i className="pi pi-lock text-green-600" style={{ fontSize: '1.5rem' }} />
+                                <div className="flex-grow-1">
+                                    <div className="font-bold text-green-700">Calcul déjà effectué ce mois-ci</div>
+                                    <div className="text-sm text-green-600 mt-1">
+                                        Le calcul des intérêts pour ce mois a déjà été exécuté. Une seule exécution par mois est autorisée.
+                                        Consultez l'historique pour voir le détail.
+                                    </div>
                                 </div>
-                                <small className="text-600">
-                                    {schedulerStatus?.currentMonthProcessed
-                                        ? `✓ Mois en cours déjà traité automatiquement — ${schedulerStatus.lastRunMessage}`
-                                        : 'Mois en cours non encore traité automatiquement. Vous pouvez lancer manuellement ci-dessous.'}
-                                </small>
+                                <Button
+                                    label="Voir historique"
+                                    icon="pi pi-history"
+                                    className="p-button-outlined p-button-success p-button-sm"
+                                    onClick={() => {
+                                        setMonthlyInterestDialog(false);
+                                        setInterestHistoryDialog(true);
+                                        setInterestHistoryExpandedRows(null);
+                                        interestHistoryApi.fetchData(null, 'GET', `${BASE_URL}/interest-execution-history`, 'interestHistory');
+                                    }}
+                                />
                             </div>
-                        </div>
-                        {monthlyInterestPreview.length === 0 ? (
+                        ) : (
+                            <div className="p-3 border-round mb-3 flex align-items-center gap-2 bg-blue-50">
+                                <i className="pi pi-clock text-blue-500" />
+                                <div>
+                                    <div className="font-semibold text-sm">
+                                        Tâche planifiée: {schedulerStatus?.nextRunDescription || '1er de chaque mois à 00h01'}
+                                    </div>
+                                    <small className="text-600">Mois en cours non encore traité. Vous pouvez lancer manuellement ci-dessous.</small>
+                                </div>
+                            </div>
+                        )}
+                        {previewInterestApi.loading ? (
+                            <div className="flex justify-content-center p-4">
+                                <i className="pi pi-spin pi-spinner text-4xl"></i>
+                            </div>
+                        ) : monthlyInterestPreview.length === 0 ? (
                             <div className="text-center p-4 text-500">
                                 <i className="pi pi-info-circle mr-2" />
-                                Aucun compte éligible (solde positif + taux + compte intérêts requis)
+                                Aucun compte dépôt à terme actif trouvé.
                             </div>
                         ) : (
                             <>
                                 <div className="surface-50 p-3 border-round mb-3">
                                     <small className="text-600">
                                         <i className="pi pi-info-circle mr-1" />
-                                        Intérêt = Solde du mois × Taux / 12. Seuls les montants présents tout le mois sont rémunérés.
+                                        Intérêt = Solde × Taux / 12. Les comptes non éligibles sont affichés en rouge avec la raison.
                                     </small>
                                 </div>
-                                <DataTable value={monthlyInterestPreview} size="small" stripedRows showGridlines>
-                                    <Column field="accountNumber" header="N° Compte" sortable />
-                                    <Column field="clientName" header="Client" sortable />
-                                    <Column header="Solde du Mois" body={(row) => `${(row.balance || 0).toLocaleString('fr-FR')} ${row.currency}`} />
-                                    <Column field="interestRate" header="Taux (%)" body={(row) => `${(row.interestRate || 0).toFixed(2)} %`} />
-                                    <Column
-                                        header="Intérêt Calculé"
-                                        body={(row) => (
-                                            <span className="font-bold text-green-600">
-                                                {(row.calculatedInterest || 0).toLocaleString('fr-FR')} {row.currency}
+                                {/* Eligible accounts */}
+                                {monthlyInterestPreview.filter((r: any) => r.eligible !== false).length > 0 && (
+                                    <>
+                                        <h6 className="mt-0 mb-2 text-green-700"><i className="pi pi-check-circle mr-2"></i>Comptes éligibles ({monthlyInterestPreview.filter((r: any) => r.eligible !== false).length})</h6>
+                                        <DataTable value={monthlyInterestPreview.filter((r: any) => r.eligible !== false)} size="small" stripedRows showGridlines className="mb-3">
+                                            <Column field="accountNumber" header="N° Compte" sortable />
+                                            <Column field="clientName" header="Client" sortable />
+                                            <Column header="Solde" body={(row: any) => `${(row.balance || 0).toLocaleString('fr-FR')} ${row.currency}`} />
+                                            <Column field="interestRate" header="Taux (%)" body={(row: any) => `${(row.interestRate || 0).toFixed(2)} %`} />
+                                            <Column header="Intérêt Calculé" body={(row: any) => (
+                                                <span className="font-bold text-green-600">{(row.calculatedInterest || 0).toLocaleString('fr-FR')} {row.currency}</span>
+                                            )} />
+                                        </DataTable>
+                                        <div className="surface-100 p-3 border-round mb-3 flex justify-content-between align-items-center">
+                                            <span className="font-bold">Total à créditer :</span>
+                                            <span className="font-bold text-green-600 text-lg">
+                                                {monthlyInterestPreview.filter((r: any) => r.eligible !== false).reduce((s: number, r: any) => s + (r.calculatedInterest || 0), 0).toLocaleString('fr-FR')} {monthlyInterestPreview[0]?.currency || 'BIF'}
                                             </span>
-                                        )}
-                                    />
-                                </DataTable>
-                                <div className="surface-100 p-3 border-round mt-3 flex justify-content-between align-items-center">
-                                    <span className="font-bold">Total intérêts à créditer :</span>
-                                    <span className="font-bold text-green-600 text-lg">
-                                        {monthlyInterestPreview.reduce((s, r) => s + (r.calculatedInterest || 0), 0).toLocaleString('fr-FR')} {monthlyInterestPreview[0]?.currency || 'BIF'}
-                                    </span>
-                                </div>
+                                        </div>
+                                    </>
+                                )}
+                                {/* Ineligible accounts */}
+                                {monthlyInterestPreview.filter((r: any) => r.eligible === false).length > 0 && (
+                                    <>
+                                        <h6 className="mt-0 mb-2 text-orange-600"><i className="pi pi-exclamation-triangle mr-2"></i>Comptes non éligibles — configuration requise ({monthlyInterestPreview.filter((r: any) => r.eligible === false).length})</h6>
+                                        <DataTable value={monthlyInterestPreview.filter((r: any) => r.eligible === false)} size="small" showGridlines
+                                            rowClassName={() => 'bg-orange-50'}>
+                                            <Column field="accountNumber" header="N° Compte" sortable />
+                                            <Column field="clientName" header="Client" sortable />
+                                            <Column header="Solde" body={(row: any) => `${(row.balance || 0).toLocaleString('fr-FR')} ${row.currency}`} />
+                                            <Column field="interestRate" header="Taux (%)" body={(row: any) => `${(row.interestRate || 0).toFixed(2)} %`} />
+                                            <Column header="Raison" body={(row: any) => (
+                                                <span className="text-orange-700 text-sm"><i className="pi pi-exclamation-circle mr-1"></i>{row.ineligibleReason}</span>
+                                            )} />
+                                        </DataTable>
+                                        <div className="mt-2 p-2 border-round bg-orange-50" style={{ border: '1px solid #ff9800' }}>
+                                            <small className="text-orange-700">
+                                                <i className="pi pi-info-circle mr-1"></i>
+                                                Pour rendre un compte éligible, ouvrez l'onglet <strong>Dépôts à Terme</strong>, cliquez sur l'icône <strong>Paramètres</strong> (<i className="pi pi-cog"></i>) et configurez le <strong>Compte d'intérêts</strong>.
+                                            </small>
+                                        </div>
+                                    </>
+                                )}
+                                {/* All ineligible message */}
+                                {monthlyInterestPreview.filter((r: any) => r.eligible !== false).length === 0 && (
+                                    <div className="text-center p-3 bg-orange-50 border-round" style={{ border: '1px solid #ff9800' }}>
+                                        <i className="pi pi-exclamation-triangle text-orange-500 mr-2" />
+                                        <span className="text-orange-700">Aucun compte éligible. Configurez le compte d'intérêts via le bouton <strong>Paramètres</strong> (<i className="pi pi-cog"></i>) sur chaque compte.</span>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -2048,23 +2201,26 @@ function SavingsAccountPage() {
                         <DataTable value={monthlyInterestResult} size="small" stripedRows showGridlines>
                             <Column field="accountNumber" header="N° Compte" sortable />
                             <Column field="clientName" header="Client" sortable />
-                            <Column
-                                header="Intérêt Crédité"
-                                body={(row) => (
-                                    <span className="font-bold text-green-600">
-                                        + {(row.interest || 0).toLocaleString('fr-FR')} {row.currency}
-                                    </span>
-                                )}
-                            />
-                            <Column
-                                header="Nouveau Solde"
-                                body={(row) => (
-                                    <span className="font-bold text-primary">
-                                        {(row.newBalance || 0).toLocaleString('fr-FR')} {row.currency}
-                                    </span>
-                                )}
-                            />
+                            <Column header="Intérêt Crédité" body={(row) => (
+                                <span className="font-bold text-green-600">+ {(row.interest || 0).toLocaleString('fr-FR')} {row.currency}</span>
+                            )} />
+                            <Column header="Nouveau Solde" body={(row) => (
+                                <span className="font-bold text-primary">{(row.newBalance || 0).toLocaleString('fr-FR')} {row.currency}</span>
+                            )} />
                         </DataTable>
+                        <div className="mt-3 text-center">
+                            <Button
+                                label="Voir l'historique complet des exécutions"
+                                icon="pi pi-history"
+                                className="p-button-outlined p-button-sm"
+                                onClick={() => {
+                                    setMonthlyInterestDialog(false);
+                                    setInterestHistoryDialog(true);
+                                    setInterestHistoryExpandedRows(null);
+                                    interestHistoryApi.fetchData(null, 'GET', `${BASE_URL}/interest-execution-history`, 'interestHistory');
+                                }}
+                            />
+                        </div>
                     </div>
                 )}
             </Dialog>
@@ -2755,6 +2911,171 @@ function SavingsAccountPage() {
                 })()}
             </Dialog>
 
+            {/* Dialog Historique de toutes les opérations */}
+            <Dialog
+                header={`Historique des Opérations — ${opsHistoryAccount?.accountNumber || ''}`}
+                visible={opsHistoryDialog}
+                style={{ width: '1050px' }}
+                onHide={() => { setOpsHistoryDialog(false); setOpsHistoryAccount(null); setOpsHistory([]); setOpsHistorySummary(null); }}
+                footer={
+                    <div className="flex justify-content-end">
+                        <Button label="Fermer" icon="pi pi-times" onClick={() => { setOpsHistoryDialog(false); setOpsHistoryAccount(null); setOpsHistory([]); setOpsHistorySummary(null); }} className="p-button-text" />
+                    </div>
+                }
+            >
+                {opsHistoryAccount && (
+                    <div>
+                        {/* Filtres */}
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <div className="grid align-items-end">
+                                <div className="col-12 md:col-3">
+                                    <label className="text-500 text-sm mb-1 block">Du</label>
+                                    <Calendar
+                                        value={opsHistoryFrom}
+                                        onChange={(e) => {
+                                            const v = e.value as Date | null;
+                                            setOpsHistoryFrom(v);
+                                            loadOpsHistory(opsHistoryAccount, v, opsHistoryTo, opsHistoryType);
+                                        }}
+                                        dateFormat="dd/mm/yy"
+                                        showIcon
+                                        showButtonBar
+                                        placeholder="Date début"
+                                        className="w-full"
+                                    />
+                                </div>
+                                <div className="col-12 md:col-3">
+                                    <label className="text-500 text-sm mb-1 block">Au</label>
+                                    <Calendar
+                                        value={opsHistoryTo}
+                                        onChange={(e) => {
+                                            const v = e.value as Date | null;
+                                            setOpsHistoryTo(v);
+                                            loadOpsHistory(opsHistoryAccount, opsHistoryFrom, v, opsHistoryType);
+                                        }}
+                                        dateFormat="dd/mm/yy"
+                                        showIcon
+                                        showButtonBar
+                                        placeholder="Date fin"
+                                        className="w-full"
+                                    />
+                                </div>
+                                <div className="col-12 md:col-4">
+                                    <label className="text-500 text-sm mb-1 block">Type d'opération</label>
+                                    <Dropdown
+                                        value={opsHistoryType}
+                                        onChange={(e) => {
+                                            setOpsHistoryType(e.value);
+                                            loadOpsHistory(opsHistoryAccount, opsHistoryFrom, opsHistoryTo, e.value);
+                                        }}
+                                        options={[
+                                            { label: 'Tous les types', value: '' },
+                                            { label: 'Dépôt', value: 'DEPOSIT' },
+                                            { label: 'Retrait', value: 'WITHDRAWAL' },
+                                            { label: 'Virement sortant', value: 'TRANSFER_OUT' },
+                                            { label: 'Virement entrant', value: 'TRANSFER_IN' },
+                                            { label: 'Frais', value: 'FEE' },
+                                            { label: 'Remboursement crédit', value: 'LOAN_PAYMENT' },
+                                        ]}
+                                        placeholder="Tous les types"
+                                        className="w-full"
+                                    />
+                                </div>
+                                <div className="col-12 md:col-2">
+                                    <Button
+                                        icon="pi pi-refresh"
+                                        label="Actualiser"
+                                        className="p-button-outlined w-full"
+                                        size="small"
+                                        onClick={() => loadOpsHistory(opsHistoryAccount, opsHistoryFrom, opsHistoryTo, opsHistoryType)}
+                                        loading={opsHistoryApi.loading}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Résumé */}
+                        {opsHistorySummary && (
+                            <div className="grid mb-3">
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Nb opérations</div>
+                                        <div className="text-xl font-bold text-primary">{opsHistorySummary.totalOperations || 0}</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Total Débits</div>
+                                        <div className="text-xl font-bold text-red-500">{(opsHistorySummary.totalDebits || 0).toLocaleString('fr-FR')} FBU</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Total Crédits</div>
+                                        <div className="text-xl font-bold text-green-600">{(opsHistorySummary.totalCredits || 0).toLocaleString('fr-FR')} FBU</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Mouvement Net</div>
+                                        <div className={`text-xl font-bold ${(opsHistorySummary.netMovement || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {(opsHistorySummary.netMovement || 0).toLocaleString('fr-FR')} FBU
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Table opérations */}
+                        {opsHistoryApi.loading ? (
+                            <div className="flex justify-content-center p-4">
+                                <i className="pi pi-spin pi-spinner text-4xl"></i>
+                            </div>
+                        ) : (
+                            <DataTable
+                                value={opsHistory}
+                                size="small"
+                                stripedRows
+                                showGridlines
+                                emptyMessage="Aucune opération trouvée"
+                                sortField="operationDate"
+                                sortOrder={-1}
+                                paginator
+                                rows={15}
+                                rowsPerPageOptions={[10, 15, 25, 50]}
+                            >
+                                <Column field="operationDate" header="Date" sortable style={{ width: '110px' }}
+                                    body={(row: any) => row.operationDate ? new Date(row.operationDate).toLocaleDateString('fr-FR') : '-'} />
+                                <Column field="operationType" header="Type" style={{ width: '130px' }}
+                                    body={(row: any) => {
+                                        const typeMap: Record<string, { label: string; severity: 'success' | 'info' | 'danger' | 'warning' }> = {
+                                            'DEPOSIT':       { label: 'Dépôt', severity: 'success' },
+                                            'WITHDRAWAL':    { label: 'Retrait', severity: 'danger' },
+                                            'TRANSFER_OUT':  { label: 'Virt. sortant', severity: 'warning' },
+                                            'TRANSFER_IN':   { label: 'Virt. entrant', severity: 'info' },
+                                            'FEE':           { label: 'Frais', severity: 'warning' },
+                                            'LOAN_PAYMENT':  { label: 'Rembours.', severity: 'info' },
+                                        };
+                                        const t = typeMap[row.operationType];
+                                        return t ? <Tag value={t.label} severity={t.severity} /> : <Tag value={row.operationType} />;
+                                    }} />
+                                <Column field="referenceNumber" header="Référence" style={{ width: '140px' }} />
+                                <Column field="description" header="Description" />
+                                <Column field="debitAmount" header="Débit" style={{ width: '110px' }}
+                                    body={(row: any) => row.debitAmount ? <span className="text-red-500 font-semibold">{(row.debitAmount).toLocaleString('fr-FR')}</span> : '-'} />
+                                <Column field="creditAmount" header="Crédit" style={{ width: '110px' }}
+                                    body={(row: any) => row.creditAmount ? <span className="text-green-600 font-semibold">{(row.creditAmount).toLocaleString('fr-FR')}</span> : '-'} />
+                                <Column field="balance" header="Solde" style={{ width: '120px' }}
+                                    body={(row: any) => <span className="font-semibold">{(row.balance || 0).toLocaleString('fr-FR')}</span>} />
+                                <Column field="status" header="Statut" style={{ width: '90px' }}
+                                    body={(row: any) => row.status ? <Tag value={row.status} severity={row.status === 'VALIDATED' || row.status === 'COMPLETED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'info'} /> : '-'} />
+                                <Column field="processedBy" header="Effectué par" style={{ width: '120px' }} />
+                            </DataTable>
+                        )}
+                    </div>
+                )}
+            </Dialog>
+
             {/* Dialog Documents du compte */}
             <Dialog
                 header={`Documents - ${documentsAccount?.accountNumber || ''}`}
@@ -2907,6 +3228,137 @@ function SavingsAccountPage() {
                         <span className="text-500 ml-2">({(selectedFile.size / 1024).toFixed(0)} KB)</span>
                     </div>
                 )}
+            </Dialog>
+
+            {/* Dialog Historique des exécutions des intérêts mensuels */}
+            <Dialog
+                header="Historique des Calculs d'Intérêts — Dépôt à Terme"
+                visible={interestHistoryDialog}
+                style={{ width: '850px' }}
+                onHide={() => setInterestHistoryDialog(false)}
+                footer={
+                    <div className="flex justify-content-end">
+                        <Button label="Fermer" icon="pi pi-times" onClick={() => setInterestHistoryDialog(false)} className="p-button-text" />
+                    </div>
+                }
+            >
+                <div>
+                    <div className="surface-50 p-3 border-round mb-3">
+                        <small className="text-600">
+                            <i className="pi pi-info-circle mr-1" />
+                            Toutes les exécutions manuelles et automatiques du calcul des intérêts DAT sont enregistrées ici.
+                        </small>
+                    </div>
+                    {interestHistoryApi.loading ? (
+                        <div className="flex justify-content-center p-4">
+                            <i className="pi pi-spin pi-spinner text-4xl"></i>
+                        </div>
+                    ) : interestExecutionHistory.length === 0 ? (
+                        <div className="text-center p-4 text-500">
+                            <i className="pi pi-inbox mr-2" />
+                            Aucune exécution enregistrée.
+                        </div>
+                    ) : (
+                        <>
+                            {/* Summary cards */}
+                            <div className="grid mb-3">
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Total exécutions</div>
+                                        <div className="text-xl font-bold text-primary">{interestExecutionHistory.length}</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Manuelles</div>
+                                        <div className="text-xl font-bold text-blue-600">{interestExecutionHistory.filter((e: any) => e.executionType === 'MANUAL').length}</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Automatiques</div>
+                                        <div className="text-xl font-bold text-green-600">{interestExecutionHistory.filter((e: any) => e.executionType === 'AUTOMATIC').length}</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-100 p-3 border-round text-center">
+                                        <div className="text-xs text-500 mb-1">Total intérêts crédités</div>
+                                        <div className="text-lg font-bold text-orange-500">
+                                            {interestExecutionHistory.reduce((s: number, e: any) => s + (e.totalInterest || 0), 0).toLocaleString('fr-FR')} BIF
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <DataTable
+                                value={interestExecutionHistory}
+                                size="small"
+                                stripedRows
+                                showGridlines
+                                sortField="createdAt"
+                                sortOrder={-1}
+                                paginator
+                                rows={10}
+                                expandedRows={interestHistoryExpandedRows}
+                                onRowToggle={(e) => setInterestHistoryExpandedRows(e.data)}
+                                rowExpansionTemplate={(row: any) => (
+                                    <div className="p-3 bg-blue-50">
+                                        <h6 className="mt-0 mb-2 text-primary"><i className="pi pi-list mr-2"></i>Comptes affectés ({(row.details || []).length})</h6>
+                                        {(row.details || []).length === 0 ? (
+                                            <div className="text-500 text-sm text-center p-2">Aucun détail disponible pour cette exécution.</div>
+                                        ) : (
+                                            <DataTable value={row.details} size="small" showGridlines>
+                                                <Column field="accountNumber" header="N° Compte" style={{ width: '130px' }} />
+                                                <Column field="clientName" header="Client" />
+                                                <Column field="interestRate" header="Taux" style={{ width: '70px' }}
+                                                    body={(d: any) => `${(d.interestRate || 0).toFixed(2)} %`} />
+                                                <Column header="Solde Avant" style={{ width: '130px' }}
+                                                    body={(d: any) => (
+                                                        <span className="text-600">{(d.balanceBefore || 0).toLocaleString('fr-FR')} {d.currency}</span>
+                                                    )} />
+                                                <Column header="Intérêt Crédité" style={{ width: '140px' }}
+                                                    body={(d: any) => (
+                                                        <span className="font-bold text-green-600">+ {(d.interestAmount || 0).toLocaleString('fr-FR')} {d.currency}</span>
+                                                    )} />
+                                                <Column header="Solde Après" style={{ width: '130px' }}
+                                                    body={(d: any) => (
+                                                        <span className="font-bold text-primary">{(d.balanceAfter || 0).toLocaleString('fr-FR')} {d.currency}</span>
+                                                    )} />
+                                            </DataTable>
+                                        )}
+                                    </div>
+                                )}
+                            >
+                                <Column expander style={{ width: '3rem' }} />
+                                <Column field="executionDate" header="Date" sortable style={{ width: '110px' }}
+                                    body={(row: any) => row.executionDate || '-'} />
+                                <Column field="executionType" header="Type" style={{ width: '120px' }}
+                                    body={(row: any) => (
+                                        <Tag
+                                            value={row.executionType === 'AUTOMATIC' ? 'Automatique' : 'Manuelle'}
+                                            severity={row.executionType === 'AUTOMATIC' ? 'success' : 'info'}
+                                            icon={row.executionType === 'AUTOMATIC' ? 'pi pi-clock' : 'pi pi-user'}
+                                        />
+                                    )} />
+                                <Column field="accountsProcessed" header="Comptes" style={{ width: '90px' }}
+                                    body={(row: any) => <span className="font-semibold">{row.accountsProcessed}</span>} />
+                                <Column field="totalInterest" header="Total Intérêts" style={{ width: '140px' }}
+                                    body={(row: any) => (
+                                        <span className="font-bold text-green-600">{(row.totalInterest || 0).toLocaleString('fr-FR')} {row.currency}</span>
+                                    )} />
+                                <Column field="referencePrefix" header="Référence" style={{ width: '150px' }} />
+                                <Column field="status" header="Statut" style={{ width: '90px' }}
+                                    body={(row: any) => (
+                                        <Tag value={row.status === 'SUCCESS' ? 'Succès' : 'Erreur'}
+                                             severity={row.status === 'SUCCESS' ? 'success' : 'danger'}
+                                             icon={row.status === 'SUCCESS' ? 'pi pi-check' : 'pi pi-times'} />
+                                    )} />
+                                <Column field="executedBy" header="Exécuté par" />
+                                <Column field="createdAt" header="Horodatage" sortable
+                                    body={(row: any) => row.createdAt ? new Date(row.createdAt).toLocaleString('fr-FR') : '-'} />
+                            </DataTable>
+                        </>
+                    )}
+                </div>
             </Dialog>
 
             {/* Hidden printable certificate */}

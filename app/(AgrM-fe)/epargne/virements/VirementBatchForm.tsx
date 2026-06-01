@@ -8,7 +8,7 @@ import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Calendar } from 'primereact/calendar';
-import { VirementBatch, VirementBatchDetail, DEFAULT_COMMISSION_RATE, BatchSourceType, BATCH_SOURCE_TYPE_OPTIONS } from './Virement';
+import { VirementBatch, VirementBatchDetail, DEFAULT_COMMISSION_AMOUNT, BatchSourceType, BATCH_SOURCE_TYPE_OPTIONS } from './Virement';
 import { getClientDisplayName } from '@/utils/clientUtils';
 import { formatLocalDate } from '@/utils/dateUtils';
 
@@ -52,8 +52,8 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
     // Calculate total allocated to destinations
     const totalAllocated = batch.details.reduce((sum, d) => sum + (d.amount || 0), 0);
 
-    // Commission calculation
-    const commissionAmount = Math.round(totalAllocated * (batch.commissionRate || 0) / 100);
+    // Commission is a fixed FBU amount
+    const commissionAmount = batch.commissionAmount || DEFAULT_COMMISSION_AMOUNT;
     const totalDebitAmount = totalAllocated + commissionAmount;
 
     // Remaining balance = source balance - total debit
@@ -148,14 +148,14 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
 
         const newDetails = [...batch.details, newDetail];
         const newTotalAllocated = newDetails.reduce((sum, d) => sum + (d.amount || 0), 0);
-        const newCommission = Math.round(newTotalAllocated * (batch.commissionRate || 0) / 100);
+        const fixedCommission = batch.commissionAmount || DEFAULT_COMMISSION_AMOUNT;
 
         setBatch({
             ...batch,
             details: newDetails,
             totalAmount: newTotalAllocated,
-            commissionAmount: newCommission,
-            totalDebitAmount: newTotalAllocated + newCommission,
+            commissionAmount: fixedCommission,
+            totalDebitAmount: newTotalAllocated + fixedCommission,
             numberOfTransfers: newDetails.length
         });
 
@@ -167,25 +167,23 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
         const newDetails = batch.details.filter((_, i) => i !== index)
             .map((d, i) => ({ ...d, sequenceNumber: i + 1 }));
         const newTotalAllocated = newDetails.reduce((sum, d) => sum + (d.amount || 0), 0);
-        const newCommission = Math.round(newTotalAllocated * (batch.commissionRate || 0) / 100);
+        const fixedCommission = batch.commissionAmount || DEFAULT_COMMISSION_AMOUNT;
 
         setBatch({
             ...batch,
             details: newDetails,
             totalAmount: newTotalAllocated,
-            commissionAmount: newCommission,
-            totalDebitAmount: newTotalAllocated + newCommission,
+            commissionAmount: fixedCommission,
+            totalDebitAmount: newTotalAllocated + fixedCommission,
             numberOfTransfers: newDetails.length
         });
     };
 
-    const handleCommissionRateChange = (rate: number) => {
-        const newCommission = Math.round(totalAllocated * rate / 100);
+    const handleCommissionAmountChange = (amount: number) => {
         setBatch({
             ...batch,
-            commissionRate: rate,
-            commissionAmount: newCommission,
-            totalDebitAmount: totalAllocated + newCommission
+            commissionAmount: amount,
+            totalDebitAmount: totalAllocated + amount
         });
     };
 
@@ -316,19 +314,18 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                 </h5>
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-3">
-                        <label htmlFor="batchCommRate" className="font-medium">Taux Commission (%)</label>
+                        <label htmlFor="batchCommAmount" className="font-medium">Commission (FBU)</label>
                         <InputNumber
-                            id="batchCommRate"
-                            value={batch.commissionRate}
-                            onValueChange={(e) => handleCommissionRateChange(e.value || 0)}
+                            id="batchCommAmount"
+                            value={commissionAmount}
+                            onValueChange={(e) => handleCommissionAmountChange(e.value || 0)}
                             mode="decimal"
-                            minFractionDigits={1}
-                            maxFractionDigits={2}
+                            minFractionDigits={0}
+                            maxFractionDigits={0}
                             disabled={isViewMode}
                             className="w-full"
-                            suffix=" %"
+                            suffix=" FBU"
                             min={0}
-                            max={100}
                         />
                     </div>
                     <div className="field col-12 md:col-3">

@@ -413,7 +413,7 @@ const AppNavBar = () => {
                         visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW', 'ACCOUNTING_ENTRY_CREATE', 'ACCOUNTING_SETTINGS']) : false,
                         items: [
                             { label: 'Taux de change', icon: 'pi pi-dollar', to: '/comptability/settings/tauxChange', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_SETTINGS']) : false },
-                            { label: 'Plan comptable SYSCOHADA', icon: 'pi pi-list', to: '/comptability/compte', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false },
+                            { label: 'Plan comptable', icon: 'pi pi-list', to: '/comptability/compte', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false },
                             { label: 'Types de Journal', icon: 'pi pi-tags', to: '/comptability/type-journal', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_TYPE_JOURNAL_VIEW', 'ACCOUNTING_TYPE_JOURNAL_CREATE']) : false },
                             { label: 'Journaux', icon: 'pi pi-book', to: '/comptability/journal', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW']) : false },
                             { label: 'Exercice', icon: 'pi pi-calendar', to: '/comptability/exercice', visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_VIEW', 'ACCOUNTING_ENTRY_CREATE']) : false },
@@ -455,13 +455,14 @@ const AppNavBar = () => {
             {
                 label: 'Tableau de bord Rapprochement',
                 icon: 'pi pi-check-square',
-                routePrefix: '/rapprochement',
+                routePrefix: ['/rapprochement', '/operationsJournalieres'],
                 visible: appUser ? hasAnyAuthority(appUser, [
                     'RAPPROCHEMENT_VIEW', 'RAPPROCHEMENT_CREATE', 'RAPPROCHEMENT_UPDATE',
                     'RAPPROCHEMENT_DELETE', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE',
                     'RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_REPORT',
                     'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH',
-                    'DASHBOARD_DG_VIEW', 'DASHBOARD_CREDIT_OPS_VIEW', 'DASHBOARD_ACCOUNTING_VIEW', 'DASHBOARD_BRANCH_MANAGER_VIEW'
+                    'DASHBOARD_DG_VIEW', 'DASHBOARD_CREDIT_OPS_VIEW', 'DASHBOARD_ACCOUNTING_VIEW', 'DASHBOARD_BRANCH_MANAGER_VIEW',
+                    'OJ_EOD_VIEW', 'OJ_EOD_EXECUTE', 'OJ_JOURNAL_VIEW', 'OJ_RECONCILIATION_VIEW', 'OJ_RAPPORTS_VIEW'
                 ]) : false,
                 items: [
                     {
@@ -485,6 +486,18 @@ const AppNavBar = () => {
                             { label: 'Chef d\'Agence', icon: 'pi pi-home', to: '/dashbord/chef-agence', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_BRANCH_MANAGER_VIEW']) : false },
                             { label: 'Opérations Crédit', icon: 'pi pi-briefcase', to: '/dashbord/credit-ops', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_CREDIT_OPS_VIEW']) : false },
                             { label: 'Comptabilité', icon: 'pi pi-calculator', to: '/dashbord/comptable', visible: appUser ? hasAnyAuthority(appUser, ['DASHBOARD_ACCOUNTING_VIEW']) : false }
+                        ]
+                    },
+                    {
+                        label: 'Opérations Journalières',
+                        visible: appUser ? hasAnyAuthority(appUser, [
+                            'OJ_EOD_VIEW', 'OJ_EOD_EXECUTE', 'OJ_JOURNAL_VIEW', 'OJ_RECONCILIATION_VIEW', 'OJ_RAPPORTS_VIEW', 'ADMIN'
+                        ]) : false,
+                        items: [
+                            { label: 'Traitement EOD', icon: 'pi pi-cog', to: '/operationsJournalieres/eod', visible: appUser ? hasAnyAuthority(appUser, ['OJ_EOD_VIEW', 'OJ_EOD_EXECUTE', 'ADMIN']) : false },
+                            { label: 'Réconciliation des Soldes', icon: 'pi pi-check-square', to: '/operationsJournalieres/reconciliation', visible: appUser ? hasAnyAuthority(appUser, ['OJ_RECONCILIATION_VIEW', 'ADMIN']) : false },
+                            { label: 'Rapports Journaliers', icon: 'pi pi-chart-bar', to: '/operationsJournalieres/rapports', visible: appUser ? hasAnyAuthority(appUser, ['OJ_RAPPORTS_VIEW', 'ADMIN']) : false },
+                            { label: "Journal d'Audit OJ", icon: 'pi pi-history', to: '/operationsJournalieres/journal-audit', visible: appUser ? hasAnyAuthority(appUser, ['OJ_JOURNAL_VIEW', 'ADMIN']) : false }
                         ]
                     }
                 ]
@@ -685,12 +698,20 @@ const AppNavBar = () => {
             {
                 label: 'Administration',
                 icon: 'pi pi-cog',
-                routePrefix: ['/usermanagement', '/tracking'],
-                visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_VIEW', 'USER_CREATE', 'TRACKING_VIEW']) : false,
+                routePrefix: ['/usermanagement', '/tracking', '/operationsJournalieres'],
+                visible: appUser ? hasAnyAuthority(appUser, [
+                    'ADMIN', 'USER_VIEW', 'USER_CREATE', 'TRACKING_VIEW',
+                    'OJ_PARAMETRES_VIEW', 'OJ_PARAMETRES_MANAGE',
+                    'OJ_OUVERTURE_VIEW', 'OJ_OUVERTURE_EXECUTE',
+                    'OJ_FERMETURE_VIEW', 'OJ_FERMETURE_EXECUTE'
+                ]) : false,
                 items: [
                     { label: 'Créer un Utilisateur', icon: 'pi pi-user-plus', to: '/usermanagement/create-user', visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_CREATE']) : false },
                     { label: 'Gestion des utilisateurs', icon: 'pi pi-users', to: '/usermanagement', visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_VIEW']) : false },
-                    { label: 'Journal d\'Audit', icon: 'pi pi-history', to: '/tracking', visible: appUser ? hasAnyAuthority(appUser, ['TRACKING_VIEW']) : false }
+                    { label: 'Journal d\'Audit', icon: 'pi pi-history', to: '/tracking', visible: appUser ? hasAnyAuthority(appUser, ['TRACKING_VIEW']) : false },
+                    { label: 'Paramètres Système OJ', icon: 'pi pi-sliders-h', to: '/operationsJournalieres/parametres', visible: appUser ? hasAnyAuthority(appUser, ['OJ_PARAMETRES_VIEW', 'OJ_PARAMETRES_MANAGE', 'ADMIN']) : false },
+                    { label: 'Ouverture du Système', icon: 'pi pi-sun', to: '/operationsJournalieres/ouverture', visible: appUser ? hasAnyAuthority(appUser, ['OJ_OUVERTURE_VIEW', 'OJ_OUVERTURE_EXECUTE', 'ADMIN']) : false },
+                    { label: 'Fermeture du Système', icon: 'pi pi-moon', to: '/operationsJournalieres/fermeture', visible: appUser ? hasAnyAuthority(appUser, ['OJ_FERMETURE_VIEW', 'OJ_FERMETURE_EXECUTE', 'ADMIN']) : false }
                 ]
             },
             {

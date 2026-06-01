@@ -19,7 +19,7 @@ export const TRANSFER_TYPE_OPTIONS = [
     { label: 'Compte Interne → Client', value: 'ACCOUNT_TO_CLIENT' }
 ];
 
-export const DEFAULT_COMMISSION_RATE = 1.0; // 1%
+export const DEFAULT_COMMISSION_AMOUNT = 1000; // 1000 FBU fixed
 
 // Interface matching VirementInterne entity field names
 export interface Virement {
@@ -92,9 +92,9 @@ export class VirementClass implements Virement {
     destinationAccountCode?: string = '';
     destinationClient?: any;
     montant: number = 0;
-    commissionRate: number = DEFAULT_COMMISSION_RATE;
-    commissionAmount: number = 0;
-    totalDebitAmount: number = 0;
+    commissionRate: number = 0;
+    commissionAmount: number = DEFAULT_COMMISSION_AMOUNT;
+    totalDebitAmount: number = DEFAULT_COMMISSION_AMOUNT;
     commissionInternalAccountId?: number;
     libelle?: string = '';
     motif: string = '';
@@ -196,9 +196,9 @@ export class VirementBatchClass implements VirementBatch {
     sourceSavingsAccountId?: number;
     sourceInternalAccountId?: number;
     totalAmount: number = 0;
-    commissionRate: number = DEFAULT_COMMISSION_RATE;
-    commissionAmount: number = 0;
-    totalDebitAmount: number = 0;
+    commissionRate: number = 0;
+    commissionAmount: number = DEFAULT_COMMISSION_AMOUNT;
+    totalDebitAmount: number = DEFAULT_COMMISSION_AMOUNT;
     numberOfTransfers: number = 0;
     status: string = 'PENDING';
     motif: string = '';

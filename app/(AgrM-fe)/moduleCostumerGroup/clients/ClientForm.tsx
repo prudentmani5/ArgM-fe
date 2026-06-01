@@ -10,6 +10,7 @@ import { Image } from "primereact/image";
 import { Button } from "primereact/button";
 import { Client, ClientType, Gender, RiskRating, Province, Commune, Zone, Colline, Nationality, IdDocumentType, ActivitySector, MaritalStatus, EducationLevel, ClientCategory, HousingType, Branch, RelationshipType, EmergencyContact, EmergencyContactClass } from "./Client";
 import { parseLocalDate } from '../../../../utils/dateUtils';
+import { buildApiUrl } from '../../../../utils/apiConfig';
 
 interface ClientFormProps {
     client: Client;
@@ -933,7 +934,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                         {client.photoPath && !photoFile && (
                             <div className="mt-2">
                                 <Image
-                                    src={client.photoPath}
+                                    src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(client.photoPath)}`)}
                                     alt="Photo /Fiche du client"
                                     width="80"
                                     preview
@@ -974,7 +975,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
                             {client.signatureImagePath && !signatureFile && (
                                 <div className="mt-2">
                                     <Image
-                                        src={client.signatureImagePath}
+                                        src={buildApiUrl(`/api/files/download?filePath=${encodeURIComponent(client.signatureImagePath)}`)}
                                         alt="Signature du client"
                                         width="120"
                                         preview

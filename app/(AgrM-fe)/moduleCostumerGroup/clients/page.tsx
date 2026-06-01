@@ -2275,6 +2275,12 @@ function ClientComponent() {
                 onHide={() => {
                     setEditClientDialog(false);
                     setDocumentNumberErrorEdit(null);
+                    setIdDocumentFileEdit(null);
+                    setPhotoFileEdit(null);
+                    setSignatureFileEdit(null);
+                    setSecondPhotoFileEdit(null);
+                    setSecondSignatureFileEdit(null);
+                    setSecondIdDocumentFileEdit(null);
                 }}
             >
                 <ClientForm

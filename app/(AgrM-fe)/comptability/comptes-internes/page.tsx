@@ -214,6 +214,10 @@ export default function ComptesInternesPage() {
                     resetForm();
                     loadAccounts();
                     break;
+                case 'deleteAccount':
+                    toast.current?.show({ severity: 'success', summary: 'Succès', detail: 'Compte interne supprimé', life: 3000 });
+                    loadAccounts();
+                    break;
             }
         }
         if (crudError) {
@@ -357,6 +361,15 @@ export default function ComptesInternesPage() {
     };
 
     const toggleAccountStatus = (rowData: any) => {
+        if (rowData.actif && (rowData.soldeActuel ?? 0) !== 0) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Désactivation impossible',
+                detail: `Le compte ${rowData.accountNumber} a un solde de ${formatNumber(rowData.soldeActuel)} FBU. Ramenez le solde à 0 avant de le désactiver.`,
+                life: 5000
+            });
+            return;
+        }
         const action = rowData.actif ? 'Désactiver' : 'Activer';
         confirmDialog({
             message: `${action} le compte interne ${rowData.accountNumber} - ${rowData.libelle} ?`,
@@ -366,6 +379,20 @@ export default function ComptesInternesPage() {
             rejectLabel: 'Non',
             accept: () => {
                 fetchCrud({ userAction: getUserAction() }, 'PUT', `${BASE_URL}/toggle-status/${rowData.accountId}`, 'updateAccount');
+            }
+        });
+    };
+
+    const deleteAccount = (rowData: any) => {
+        confirmDialog({
+            message: `Supprimer définitivement le compte ${rowData.accountNumber} - ${rowData.libelle} ? Cette action est irréversible.`,
+            header: 'Confirmer la suppression',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Supprimer',
+            rejectLabel: 'Annuler',
+            acceptClassName: 'p-button-danger',
+            accept: () => {
+                fetchCrud(null, 'DELETE', `${BASE_URL}/delete/${rowData.accountId}`, 'deleteAccount');
             }
         });
     };
@@ -562,6 +589,7 @@ export default function ComptesInternesPage() {
     const canValidateRetrait = hasAuthority('ACCOUNTING_INTERNAL_VALIDATE_RETRAIT');
     const canValidateTransfert = hasAuthority('ACCOUNTING_INTERNAL_VALIDATE_TRANSFERT');
     const canToggleStatus = hasAuthority('ACCOUNTING_INTERNAL_TOGGLE_STATUS');
+    const canDelete = hasAuthority('ACCOUNTING_INTERNAL_DELETE');
 
     const canValidateOp = (op: any) => {
         if (op.status !== 'PENDING') return false;
@@ -591,6 +619,7 @@ export default function ComptesInternesPage() {
                 {canTransfert && rowData.actif && <Button icon="pi pi-arrow-right-arrow-left" rounded text severity="help" onClick={() => openTransfertDialog(rowData)} tooltip="Transfert" />}
                 {canToggleStatus && <Button icon={rowData.actif ? 'pi pi-ban' : 'pi pi-check-circle'} rounded text severity={rowData.actif ? 'warning' : 'success'}
                     onClick={() => toggleAccountStatus(rowData)} tooltip={rowData.actif ? 'Désactiver' : 'Activer'} />}
+                {canDelete && !rowData.actif && <Button icon="pi pi-trash" rounded text severity="danger" onClick={() => deleteAccount(rowData)} tooltip="Supprimer" />}
             </div>
         );
     };

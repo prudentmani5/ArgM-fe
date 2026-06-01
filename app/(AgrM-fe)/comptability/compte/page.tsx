@@ -167,7 +167,7 @@ function ComptePage() {
         <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
             <h4 className="m-0">
                 <i className="pi pi-book mr-2"></i>
-                Plan Comptable SYSCOHADA
+                Plan Comptable
             </h4>
             <span className="p-input-icon-left">
                 <i className="pi pi-search" />
@@ -194,7 +194,7 @@ function ComptePage() {
 
             <h2 className="mb-4">
                 <i className="pi pi-book mr-2"></i>
-                Plan Comptable SYSCOHADA
+                Plan Comptable
             </h2>
 
             <Toolbar className="mb-4" left={leftToolbarTemplate} />

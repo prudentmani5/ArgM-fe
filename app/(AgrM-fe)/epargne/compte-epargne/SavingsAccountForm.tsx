@@ -173,7 +173,7 @@ const SavingsAccountForm: React.FC<SavingsAccountFormProps> = ({
                 </div>
                 <div className="formgrid grid">
                     <div className="field col-12 md:col-6">
-                        <label htmlFor="internalAccountId" className="font-medium">Compte Interne (suivi)</label>
+                        <label htmlFor="internalAccountId" className="font-medium">Compte Interne (suivi) *</label>
                         <Dropdown
                             id="internalAccountId"
                             value={savingsAccount.internalAccountId}

@@ -1278,6 +1278,63 @@ const AppMenu = () => {
         },
 
         {
+            label: 'MODULE OPÉRATIONS JOURNALIÈRES',
+            icon: 'pi pi-clock',
+            visible: appUser ? hasAnyAuthority(appUser, [
+                'OJ_PARAMETRES_VIEW', 'OJ_PARAMETRES_MANAGE',
+                'OJ_OUVERTURE_VIEW', 'OJ_OUVERTURE_EXECUTE',
+                'OJ_FERMETURE_VIEW', 'OJ_FERMETURE_EXECUTE',
+                'OJ_EOD_VIEW', 'OJ_EOD_EXECUTE',
+                'OJ_JOURNAL_VIEW', 'OJ_RECONCILIATION_VIEW', 'OJ_RAPPORTS_VIEW',
+                'ADMIN'
+            ]) : false,
+            items: [
+                {
+                    label: 'Paramètres Système',
+                    icon: 'pi pi-sliders-h',
+                    to: '/operationsJournalieres/parametres',
+                    visible: appUser ? hasAnyAuthority(appUser, ['OJ_PARAMETRES_VIEW', 'OJ_PARAMETRES_MANAGE', 'ADMIN']) : false
+                },
+                {
+                    label: 'Ouverture du Système',
+                    icon: 'pi pi-sun',
+                    to: '/operationsJournalieres/ouverture',
+                    visible: appUser ? hasAnyAuthority(appUser, ['OJ_OUVERTURE_VIEW', 'OJ_OUVERTURE_EXECUTE', 'ADMIN']) : false
+                },
+                {
+                    label: 'Fermeture du Système',
+                    icon: 'pi pi-moon',
+                    to: '/operationsJournalieres/fermeture',
+                    visible: appUser ? hasAnyAuthority(appUser, ['OJ_FERMETURE_VIEW', 'OJ_FERMETURE_EXECUTE', 'ADMIN']) : false
+                },
+                {
+                    label: 'Traitement EOD',
+                    icon: 'pi pi-cog',
+                    to: '/operationsJournalieres/eod',
+                    visible: appUser ? hasAnyAuthority(appUser, ['OJ_EOD_VIEW', 'OJ_EOD_EXECUTE', 'ADMIN']) : false
+                },
+                {
+                    label: "Journal d'Audit",
+                    icon: 'pi pi-history',
+                    to: '/operationsJournalieres/journal-audit',
+                    visible: appUser ? hasAnyAuthority(appUser, ['OJ_JOURNAL_VIEW', 'ADMIN']) : false
+                },
+                {
+                    label: 'Réconciliation',
+                    icon: 'pi pi-check-square',
+                    to: '/operationsJournalieres/reconciliation',
+                    visible: appUser ? hasAnyAuthority(appUser, ['OJ_RECONCILIATION_VIEW', 'ADMIN']) : false
+                },
+                {
+                    label: 'Rapports Journaliers',
+                    icon: 'pi pi-chart-bar',
+                    to: '/operationsJournalieres/rapports',
+                    visible: appUser ? hasAnyAuthority(appUser, ['OJ_RAPPORTS_VIEW', 'ADMIN']) : false
+                }
+            ]
+        },
+
+        {
             label: 'ADMINISTRATION',
             icon: 'pi pi-home',
             visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_VIEW', 'USER_CREATE', 'TRACKING_VIEW']) : false,

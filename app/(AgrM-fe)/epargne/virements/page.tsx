@@ -17,7 +17,7 @@ import useConsumApi from '@/hooks/fetchData/useConsumApi';
 import { formatLocalDate } from '@/utils/dateUtils';
 import { API_BASE_URL } from '@/utils/apiConfig';
 import { useMarkCancellationReplaced } from '@/hooks/useMarkCancellationReplaced';
-import { Virement, VirementClass, VirementStatus, TRANSFER_TYPE_OPTIONS, DEFAULT_COMMISSION_RATE, VirementBatch, VirementBatchClass, VirementBatchDetail } from './Virement';
+import { Virement, VirementClass, VirementStatus, TRANSFER_TYPE_OPTIONS, DEFAULT_COMMISSION_AMOUNT, VirementBatch, VirementBatchClass, VirementBatchDetail } from './Virement';
 import VirementForm from './VirementForm';
 import VirementBatchForm from './VirementBatchForm';
 import PrintableVirementReceipt from './PrintableVirementReceipt';
@@ -76,6 +76,8 @@ function VirementPage() {
     const [batchLoading, setBatchLoading] = useState(false);
     const [periodStart, setPeriodStart] = useState<Date | null>(null);
     const [periodEnd, setPeriodEnd] = useState<Date | null>(null);
+    const [isTodayClosed, setIsTodayClosed] = useState(false);
+    const [isBatchDateClosed, setIsBatchDateClosed] = useState(false);
 
     const toast = useRef<Toast>(null);
     const printRef = useRef<HTMLDivElement>(null);
@@ -91,12 +93,21 @@ function VirementPage() {
     const batchListApi = useConsumApi('');
     const batchActionsApi = useConsumApi('');
     const batchDetailsApi = useConsumApi('');
+    const dateClosedApi = useConsumApi('');
+    const batchDateClosedApi = useConsumApi('');
 
     useEffect(() => {
         loadReferenceData();
         loadVirements();
         loadBatches();
     }, []);
+
+    // Re-check closed status whenever the virement date changes (including initial default)
+    useEffect(() => {
+        if (virement.dateVirement) {
+            dateClosedApi.fetchData(null, 'GET', `${API_BASE_URL}/api/comptability/daily-closing/status?date=${virement.dateVirement}`, 'checkDateClosed');
+        }
+    }, [virement.dateVirement]);
 
     // Handle branches
     useEffect(() => {
@@ -225,6 +236,27 @@ function VirementPage() {
         }
     }, [batchDetailsApi.data]);
 
+    // Re-check closed status whenever the batch date changes (including initial default)
+    useEffect(() => {
+        if (batch.dateVirement) {
+            batchDateClosedApi.fetchData(null, 'GET', `${API_BASE_URL}/api/comptability/daily-closing/status?date=${batch.dateVirement}`, 'checkBatchDateClosed');
+        }
+    }, [batch.dateVirement]);
+
+    // Handle virement date closed check
+    useEffect(() => {
+        if (dateClosedApi.data && dateClosedApi.callType === 'checkDateClosed') {
+            setIsTodayClosed(!!(dateClosedApi.data as any).closed);
+        }
+    }, [dateClosedApi.data, dateClosedApi.callType]);
+
+    // Handle batch date closed check
+    useEffect(() => {
+        if (batchDateClosedApi.data && batchDateClosedApi.callType === 'checkBatchDateClosed') {
+            setIsBatchDateClosed(!!(batchDateClosedApi.data as any).closed);
+        }
+    }, [batchDateClosedApi.data, batchDateClosedApi.callType]);
+
     const loadReferenceData = () => {
         branchesApi.fetchData(null, 'GET', `${BRANCHES_URL}/findall`, 'loadBranches');
         savingsApi.fetchData(null, 'GET', `${SAVINGS_URL}/findallactive`, 'loadSavingsAccounts');
@@ -243,6 +275,10 @@ function VirementPage() {
     };
 
     const handleBatchSubmit = () => {
+        if (isBatchDateClosed) {
+            showToast('error', 'Opération bloquée', 'La date sélectionnée a déjà été clôturée. Veuillez choisir une date non clôturée.');
+            return;
+        }
         const isInternalSource = batch.sourceType === 'INTERNAL';
         if (!isInternalSource && !batch.sourceSavingsAccountId) {
             showToast('warn', 'Attention', 'Veuillez sélectionner le compte source');
@@ -270,7 +306,8 @@ function VirementPage() {
             sourceSavingsAccountId: isInternalSource ? null : batch.sourceSavingsAccountId,
             sourceInternalAccountId: isInternalSource ? batch.sourceInternalAccountId : null,
             branchId: batch.branchId,
-            commissionRate: batch.commissionRate,
+            commissionRate: 0,
+            commissionAmount: batch.commissionAmount,
             motif: batch.motif,
             notes: batch.notes,
             dateVirement: batch.dateVirement,
@@ -521,11 +558,10 @@ function VirementPage() {
     const handleNumberChange = (name: string, value: number | null) => {
         setVirement(prev => {
             const updated = { ...prev, [name]: value || 0 };
-            // Auto-calculate commission and total
             const montant = name === 'montant' ? (value || 0) : updated.montant;
-            const rate = name === 'commissionRate' ? (value || 0) : updated.commissionRate;
-            updated.commissionAmount = Math.round(montant * rate / 100);
-            updated.totalDebitAmount = montant + updated.commissionAmount;
+            const commission = name === 'commissionAmount' ? (value || 0) : updated.commissionAmount;
+            updated.commissionAmount = commission;
+            updated.totalDebitAmount = montant + commission;
             return updated;
         });
     };
@@ -566,7 +602,7 @@ function VirementPage() {
             showToast('warn', 'Attention', 'Le montant doit être supérieur à 0');
             return false;
         }
-        if (virement.commissionRate > 0 && !virement.commissionInternalAccountId) {
+        if (virement.commissionAmount > 0 && !virement.commissionInternalAccountId) {
             showToast('warn', 'Attention', 'Veuillez sélectionner le compte interne pour la commission');
             return false;
         }
@@ -589,6 +625,10 @@ function VirementPage() {
     };
 
     const handleSubmit = () => {
+        if (isTodayClosed) {
+            showToast('error', 'Opération bloquée', 'La date sélectionnée a déjà été clôturée. Veuillez choisir une date non clôturée.');
+            return;
+        }
         if (!validateForm()) return;
         const data = {
             ...virement,
@@ -855,7 +895,7 @@ function VirementPage() {
                     <div className="col-12 md:col-6 lg:col-4">
                         <div className="flex align-items-center gap-2">
                             <i className="pi pi-info-circle text-blue-500"></i>
-                            <span><strong>Commission:</strong> {DEFAULT_COMMISSION_RATE}% par défaut</span>
+                            <span><strong>Commission:</strong> {DEFAULT_COMMISSION_AMOUNT.toLocaleString('fr-BI')} FBU par défaut</span>
                         </div>
                     </div>
                     <div className="col-12 md:col-6 lg:col-4">
@@ -875,6 +915,12 @@ function VirementPage() {
 
             <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
                 <TabPanel header="Nouveau Virement" leftIcon="pi pi-plus mr-2">
+                    {isTodayClosed && (
+                        <div className="p-message p-message-error mb-3" style={{ borderRadius: '6px', padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <i className="pi pi-lock" style={{ fontSize: '1.2rem' }}></i>
+                            <span><strong>Journée clôturée.</strong> La date sélectionnée ({virement.dateVirement}) a déjà été clôturée. Les nouvelles opérations sont bloquées.</span>
+                        </div>
+                    )}
                     <VirementForm
                         virement={virement}
                         handleChange={handleChange}
@@ -893,7 +939,7 @@ function VirementPage() {
                             icon="pi pi-save"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={virement.montant <= 0 || !can('EPARGNE_CREATE')}
+                            disabled={virement.montant <= 0 || !can('EPARGNE_VIREMENT_CREATE') || isTodayClosed}
                         />
                         <Button
                             label="Réinitialiser"
@@ -1055,6 +1101,12 @@ function VirementPage() {
 
                 {/* Tab 2: Virement Multiple Form */}
                 <TabPanel header="Virement Multiple" leftIcon="pi pi-users mr-2">
+                    {isBatchDateClosed && (
+                        <div className="p-message p-message-error mb-3" style={{ borderRadius: '6px', padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <i className="pi pi-lock" style={{ fontSize: '1.2rem' }}></i>
+                            <span><strong>Journée clôturée.</strong> La date sélectionnée a déjà été clôturée. Les nouvelles opérations sont bloquées.</span>
+                        </div>
+                    )}
                     <VirementBatchForm
                         batch={batch}
                         setBatch={setBatch}
@@ -1068,7 +1120,7 @@ function VirementPage() {
                             icon="pi pi-save"
                             onClick={handleBatchSubmit}
                             className="p-button-success"
-                            disabled={batch.details.length === 0 || !can('EPARGNE_VIREMENT_BATCH_CREATE')}
+                            disabled={batch.details.length === 0 || !can('EPARGNE_VIREMENT_BATCH_CREATE') || isBatchDateClosed}
                         />
                         <Button
                             label="Réinitialiser"

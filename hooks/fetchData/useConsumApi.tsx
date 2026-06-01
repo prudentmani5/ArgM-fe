@@ -191,6 +191,22 @@ const useConsumApi = (initialUrl: string) => {
 
             // Handle unauthorized (401) responses with token refresh
             if (response.status === 401 && !isRetry && !skipAuth) {
+                // Peek at the body before deciding — SYSTEM_CLOSED must not trigger token refresh
+                let body401: any = {};
+                try {
+                    const bodyText = await response.text();
+                    if (bodyText) body401 = JSON.parse(bodyText);
+                } catch { /* ignore parse errors */ }
+
+                if (body401.error === 'SYSTEM_CLOSED') {
+                    console.warn('🔴 SYSTEM_CLOSED — redirecting to login');
+                    Cookies.remove('token');
+                    Cookies.remove('appUser');
+                    Cookies.remove('XSRF-TOKEN');
+                    window.location.href = '/auth/login2?reason=SYSTEM_CLOSED';
+                    throw { message: body401.message || 'Système fermé', status: 401, error: 'SYSTEM_CLOSED' };
+                }
+
                 console.warn('🟡 401 Unauthorized - Token expired, attempting refresh...');
 
                 // Try to refresh the token
@@ -311,8 +327,8 @@ const useConsumApi = (initialUrl: string) => {
     // Optional: Add a function to initialize CSRF token
     //   const initializeCsrfToken = async () => {
     //     try {
-    //       await authFetch('http://localhost:8080/api/csrf-token', {
-    //         method: 'GET'localhost
+    //       await authFetch('http://10.50.60.25:8080/api/csrf-token', {
+    //         method: 'GET'10.50.60.25
     //       }, true);
     //     } catch (err) {
     //       console.error('Failed to initialize CSRF token:', err);
