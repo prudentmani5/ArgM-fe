@@ -82,7 +82,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
         setLoadingExercices(true);
         try {
             const authToken = Cookies.get('token');
-            const response = await fetch(buildApiUrl('/api/comptability/exercices/findall'), {
+            const response = await fetch(buildApiUrl('/api/comptability/exercices-select/findall'), {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',

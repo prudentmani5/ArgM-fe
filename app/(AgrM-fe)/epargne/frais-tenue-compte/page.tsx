@@ -198,6 +198,9 @@ export default function FraisTenueComptePage() {
     const [selectedExecution, setSelectedExecution] = useState<FraisTenueCompteExecution | null>(null);
     const [details, setDetails] = useState<FraisTenueCompteDetail[]>([]);
     const [detailDialog, setDetailDialog] = useState(false);
+    const [detailFilterAccount, setDetailFilterAccount] = useState('');
+    const [detailFilterName, setDetailFilterName] = useState('');
+    const [detailFilterBalance, setDetailFilterBalance] = useState<'all' | 'negative' | 'positive'>('all');
 
     // Comptes Affectés tab state
     const [periodFrom, setPeriodFrom] = useState<Date | null>(null);
@@ -224,7 +227,7 @@ export default function FraisTenueComptePage() {
                         libelle: `${a.accountNumber} - ${a.libelle} (${a.codeCompte})`
                     });
                     const filtered = allAccounts
-                        .filter((a: any) => a.actif !== false && a.codeCompte === '703')
+                        .filter((a: any) => a.actif !== false)
                         .map(mapAccount);
                     setComptesComptables(filtered);
                     // Chain: load configs
@@ -1164,7 +1167,7 @@ export default function FraisTenueComptePage() {
                 visible={detailDialog}
                 style={{ width: '90vw', maxWidth: '1200px' }}
                 modal
-                onHide={() => { setDetailDialog(false); setSelectedExecution(null); }}
+                onHide={() => { setDetailDialog(false); setSelectedExecution(null); setDetailFilterAccount(''); setDetailFilterName(''); setDetailFilterBalance('all'); }}
             >
                 {selectedExecution && (
                     <div className="mb-3">
@@ -1178,7 +1181,64 @@ export default function FraisTenueComptePage() {
                     </div>
                 )}
 
-                <DataTable value={details} paginator rows={15} emptyMessage="Aucun détail trouvé" stripedRows>
+                {/* Filters */}
+                <div className="flex flex-wrap gap-2 mb-3 align-items-center">
+                    <span className="p-input-icon-left">
+                        <i className="pi pi-search" />
+                        <InputText
+                            value={detailFilterAccount}
+                            onChange={(e) => setDetailFilterAccount(e.target.value)}
+                            placeholder="N° Compte..."
+                            style={{ width: '160px' }}
+                        />
+                    </span>
+                    <span className="p-input-icon-left">
+                        <i className="pi pi-user" />
+                        <InputText
+                            value={detailFilterName}
+                            onChange={(e) => setDetailFilterName(e.target.value)}
+                            placeholder="Nom client..."
+                            style={{ width: '200px' }}
+                        />
+                    </span>
+                    <Dropdown
+                        value={detailFilterBalance}
+                        options={[
+                            { label: 'Tous les soldes', value: 'all' },
+                            { label: 'Solde négatif', value: 'negative' },
+                            { label: 'Solde positif', value: 'positive' }
+                        ]}
+                        onChange={(e) => setDetailFilterBalance(e.value)}
+                        style={{ width: '180px' }}
+                    />
+                    {(detailFilterAccount || detailFilterName || detailFilterBalance !== 'all') && (
+                        <Button
+                            icon="pi pi-times"
+                            label="Effacer"
+                            severity="secondary"
+                            outlined
+                            size="small"
+                            onClick={() => { setDetailFilterAccount(''); setDetailFilterName(''); setDetailFilterBalance('all'); }}
+                        />
+                    )}
+                    <span className="text-500 text-sm ml-auto">
+                        {details.filter(d => {
+                            const matchAccount = !detailFilterAccount || d.accountNumber?.toLowerCase().includes(detailFilterAccount.toLowerCase());
+                            const matchName = !detailFilterName || d.clientName?.toLowerCase().includes(detailFilterName.toLowerCase());
+                            const matchBalance = detailFilterBalance === 'all' ? true : detailFilterBalance === 'negative' ? (d.balanceAfter ?? 0) < 0 : (d.balanceAfter ?? 0) >= 0;
+                            return matchAccount && matchName && matchBalance;
+                        }).length} / {details.length} entrée(s)
+                    </span>
+                </div>
+
+                <DataTable
+                    value={details.filter(d => {
+                        const matchAccount = !detailFilterAccount || d.accountNumber?.toLowerCase().includes(detailFilterAccount.toLowerCase());
+                        const matchName = !detailFilterName || d.clientName?.toLowerCase().includes(detailFilterName.toLowerCase());
+                        const matchBalance = detailFilterBalance === 'all' ? true : detailFilterBalance === 'negative' ? (d.balanceAfter ?? 0) < 0 : (d.balanceAfter ?? 0) >= 0;
+                        return matchAccount && matchName && matchBalance;
+                    })}
+                    paginator rows={15} emptyMessage="Aucun détail trouvé" stripedRows>
                     <Column field="accountNumber" header="N° Compte" sortable />
                     <Column field="clientName" header="Nom Client" sortable />
                     <Column
