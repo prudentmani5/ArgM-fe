@@ -165,6 +165,7 @@ export interface VirementBatch {
     totalAmount: number;
     commissionRate: number;
     commissionAmount: number;
+    commissionInternalAccountId?: number;
     totalDebitAmount: number;
     numberOfTransfers: number;
     numberOfSuccessful?: number;
@@ -198,6 +199,7 @@ export class VirementBatchClass implements VirementBatch {
     totalAmount: number = 0;
     commissionRate: number = 0;
     commissionAmount: number = DEFAULT_COMMISSION_AMOUNT;
+    commissionInternalAccountId?: number;
     totalDebitAmount: number = DEFAULT_COMMISSION_AMOUNT;
     numberOfTransfers: number = 0;
     status: string = 'PENDING';

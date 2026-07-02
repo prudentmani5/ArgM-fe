@@ -21,6 +21,7 @@ import { DepositSlip, DepositSlipClass, DepositSlipStatus, CashDenomination } fr
 import { getClientDisplayName } from '@/utils/clientUtils';
 import DepositSlipForm from './DepositSlipForm';
 import PrintableDepositSlip from './PrintableDepositSlip';
+import ClientDetailDialog from '@/components/ClientDetailDialog';
 import Cookies from 'js-cookie';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { useAuthorizedAction } from '@/hooks/useAuthorizedAction';
@@ -59,6 +60,10 @@ function DepositSlipPage() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const isSubmittingRef = useRef(false);
+    const [viewClientDialog, setViewClientDialog] = useState(false);
+    const [clientDetailId, setClientDetailId] = useState<number | null>(null);
     const [viewDialog, setViewDialog] = useState(false);
     const [cancelDialog, setCancelDialog] = useState(false);
     const [printDialog, setPrintDialog] = useState(false);
@@ -176,6 +181,8 @@ function DepositSlipPage() {
                 case 'create':
                     showToast('success', 'Succès', 'Bordereau créé avec succès');
                     markIfNeeded(actionsApi.data?.notes, actionsApi.data?.slipNumber || '');
+                    isSubmittingRef.current = false;
+                    setIsSubmitting(false);
                     resetForm();
                     loadDepositSlips();
                     setActiveIndex(1);
@@ -197,6 +204,8 @@ function DepositSlipPage() {
         }
         if (actionsApi.error) {
             showToast('error', 'Erreur', actionsApi.error.message || 'Une erreur est survenue');
+            isSubmittingRef.current = false;
+            setIsSubmitting(false);
         }
     }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
 
@@ -439,13 +448,25 @@ function DepositSlipPage() {
     };
 
     const handleSubmit = () => {
+        // Block duplicate submissions from rapid/double clicks (ref is synchronous,
+        // so it stops re-entry within the same tick before the button re-renders).
+        if (isSubmittingRef.current) return;
         if (!validateForm()) return;
+        isSubmittingRef.current = true;
+        setIsSubmitting(true);
         const slipData = {
             ...depositSlip,
             caisseId: selectedCaisseId,
             userAction: getCurrentUser()
         };
         actionsApi.fetchData(slipData, 'POST', `${BASE_URL}/new`, 'create');
+    };
+
+    const viewClientDetails = (clientId: number) => {
+        if (clientId) {
+            setClientDetailId(clientId);
+            setViewClientDialog(true);
+        }
     };
 
     const resetForm = () => {
@@ -717,6 +738,7 @@ function DepositSlipPage() {
                         branchLocked={!!selectedCaisseId}
                         selectedAccountGroup={selectedAccountGroup}
                         internalAccounts={internalAccounts}
+                        onViewClientDetails={viewClientDetails}
                     />
                     {/* Agency closed banner */}
                     {!agencyOpen && (
@@ -811,7 +833,8 @@ function DepositSlipPage() {
                             icon="pi pi-save"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={depositSlip.totalAmount < 500 || !can('EPARGNE_DEPOSIT_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole || isCaisseClosed}
+                            loading={isSubmitting}
+                            disabled={isSubmitting || depositSlip.totalAmount < 500 || !can('EPARGNE_DEPOSIT_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole || isCaisseClosed}
                         />
                         <Button
                             label="Réinitialiser"
@@ -1074,6 +1097,7 @@ function DepositSlipPage() {
                         currencies={currencies}
                         isViewMode={true}
                         internalAccounts={internalAccounts}
+                        onViewClientDetails={viewClientDetails}
                     />
                 )}
             </Dialog>
@@ -1113,6 +1137,13 @@ function DepositSlipPage() {
                     </div>
                 )}
             </Dialog>
+
+            {/* Client details dialog (shown after selecting an account/client) */}
+            <ClientDetailDialog
+                clientId={clientDetailId}
+                visible={viewClientDialog}
+                onHide={() => setViewClientDialog(false)}
+            />
         </div>
     );
 }

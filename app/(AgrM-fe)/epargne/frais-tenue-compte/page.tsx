@@ -124,8 +124,8 @@ const EMPTY_FRAIS: FraisTenueCompte = {
     label: '',
     amount: 0,
     frequency: 'MONTHLY',
-    debitAccountCode: '291',
-    revenueAccountCode: '703',
+    debitAccountCode: '2211',
+    revenueAccountCode: '712',
     isActive: true,
     minBalanceExempt: null,
     description: ''

@@ -358,6 +358,35 @@ const VirementBatchForm: React.FC<VirementBatchFormProps> = ({
                             suffix=" FBU"
                         />
                     </div>
+                    {commissionAmount > 0 && (
+                        <div className="field col-12">
+                            <label htmlFor="batchCommissionInternalAccountId" className="font-medium">
+                                Compte Interne Recevant la Commission *
+                            </label>
+                            <Dropdown
+                                id="batchCommissionInternalAccountId"
+                                value={batch.commissionInternalAccountId}
+                                options={internalAccounts}
+                                onChange={(e) => setBatch({ ...batch, commissionInternalAccountId: e.value })}
+                                optionLabel="codeCompte"
+                                optionValue="accountId"
+                                placeholder="Sélectionner le compte commission..."
+                                disabled={isViewMode}
+                                filter
+                                filterBy="codeCompte,libelle"
+                                filterPlaceholder="Rechercher par code ou libellé"
+                                className="w-full"
+                                itemTemplate={(item: any) => (
+                                    <span>{item.codeCompte} - {item.libelle}</span>
+                                )}
+                                valueTemplate={(item: any, props: any) => {
+                                    if (item) return <span>{item.codeCompte} - {item.libelle}</span>;
+                                    return <span>{props?.placeholder}</span>;
+                                }}
+                            />
+                            <small className="text-500">Ce compte interne sera crédité du montant de la commission lors de la validation.</small>
+                        </div>
+                    )}
                 </div>
                 {hasSourceSelected && totalDebitAmount > sourceBalance && (
                     <div className="mt-2 p-2 border-round bg-red-50" style={{ border: '1px solid #ef4444' }}>

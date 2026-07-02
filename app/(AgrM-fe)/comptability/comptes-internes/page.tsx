@@ -71,6 +71,7 @@ export default function ComptesInternesPage() {
     const [accounts, setAccounts] = useState<any[]>([]);
     const [comptes, setComptes] = useState<any[]>([]);
     const [journaux, setJournaux] = useState<CptJournal[]>([]);
+    const [journalFilter, setJournalFilter] = useState<string | null>(null); // filter accounts by journal (e.g. BQ)
     const [branches, setBranches] = useState<any[]>([]);
     const [mouvements, setMouvements] = useState<any[]>([]);
     const [operations, setOperations] = useState<any[]>([]);
@@ -323,6 +324,70 @@ export default function ComptesInternesPage() {
 
     const loadOperations = () => {
         fetchOperations(null, 'GET', `${BASE_URL}/operations`, 'loadOperations');
+    };
+
+    // ---- Journal des mouvements: exports ----
+    const branchNameOf = (m: any): string => {
+        if (!m.branchId) return '';
+        const b = branches.find((x: any) => String(x.id) === String(m.branchId));
+        return b ? b.name : String(m.branchId);
+    };
+
+    const exportMouvementsExcel = async () => {
+        if (!mouvements.length) {
+            toast.current?.show({ severity: 'warn', summary: 'Aucune donnée', detail: 'Aucun mouvement à exporter', life: 3000 });
+            return;
+        }
+        const XLSX = await import('xlsx');
+        const acc = selectedAccountForMvt;
+        const rows = mouvements.map((m: any) => ({
+            Date: formatDate(m.date),
+            Heure: m.heure || '',
+            Agence: branchNameOf(m),
+            Type: m.operationType || '',
+            Sens: m.sens || '',
+            'Entrée': m.entree ?? 0,
+            'Sortie': m.sortie ?? 0,
+            'Référence': m.reference || '',
+            'Libellé': m.libelle || '',
+            'Solde Avant': m.soldeAvant ?? 0,
+            'Solde Après': m.soldeApres ?? 0,
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Mouvements');
+        XLSX.writeFile(wb, `mouvements_${acc?.accountNumber || 'compte'}.xlsx`);
+    };
+
+    const exportMouvementsPDF = async () => {
+        if (!mouvements.length) {
+            toast.current?.show({ severity: 'warn', summary: 'Aucune donnée', detail: 'Aucun mouvement à exporter', life: 3000 });
+            return;
+        }
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
+        const acc = selectedAccountForMvt;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        // safe number formatter (avoid non-breaking spaces jsPDF can't render)
+        const num = (n: any) => Math.round(Number(n) || 0).toLocaleString('fr-FR').replace(/ /g, ' ');
+        doc.setFontSize(14);
+        doc.text(`Journal des Mouvements - ${acc?.accountNumber || ''} ${acc?.libelle || ''}`, 14, 15);
+        doc.setFontSize(10);
+        const periodStr = (dateDebut || dateFin)
+            ? `Période: ${dateDebut ? dateDebut.toLocaleDateString('fr-FR') : '...'} - ${dateFin ? dateFin.toLocaleDateString('fr-FR') : '...'}`
+            : 'Toute la période';
+        doc.text(`${periodStr}    Solde actuel: ${num(acc?.soldeActuel)} FBU`, 14, 22);
+        autoTable(doc, {
+            startY: 26,
+            head: [['Date', 'Heure', 'Agence', 'Type', 'Sens', 'Entrée', 'Sortie', 'Référence', 'Libellé', 'Solde Avant', 'Solde Après']],
+            body: mouvements.map((m: any) => [
+                formatDate(m.date), m.heure || '', branchNameOf(m), m.operationType || '', m.sens || '',
+                num(m.entree), num(m.sortie), m.reference || '', m.libelle || '', num(m.soldeAvant), num(m.soldeApres)
+            ]),
+            styles: { fontSize: 7 },
+            headStyles: { fillColor: [63, 81, 181] },
+        });
+        doc.save(`mouvements_${acc?.accountNumber || 'compte'}.pdf`);
     };
 
     const resetForm = () => {
@@ -747,12 +812,25 @@ export default function ComptesInternesPage() {
         { label: 'Rejetées', value: 'REJECTED' }
     ];
 
+    // Accounts filtered by the selected journal (e.g. BQ = banque/microfinance)
+    const displayedAccounts = journalFilter
+        ? accounts.filter((a: any) => String(a.journalId) === String(journalFilter))
+        : accounts;
+
     // Toolbar
     const leftToolbarTemplate = () => {
         return (
-            <div className="flex gap-2">
+            <div className="flex gap-2 align-items-center flex-wrap">
                 <Button label="Nouveau Compte" icon="pi pi-plus" severity="success" onClick={() => { resetForm(); setCreateDialog(true); }} />
                 <Button label="Actualiser" icon="pi pi-refresh" severity="secondary" onClick={loadAccounts} />
+                <Dropdown
+                    value={journalFilter}
+                    options={[{ label: 'Tous les journaux', value: null }, ...journaux.map((j: CptJournal) => ({ label: `${j.codeJournal} - ${j.nomJournal}`, value: String(j.journalId) }))]}
+                    onChange={(e) => setJournalFilter(e.value)}
+                    placeholder="Filtrer par journal"
+                    className="w-14rem"
+                    showClear
+                />
             </div>
         );
     };
@@ -793,7 +871,7 @@ export default function ComptesInternesPage() {
                         <TabPanel header="Comptes Internes" leftIcon="pi pi-list mr-2">
                             <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
                             <DataTable
-                                value={accounts}
+                                value={displayedAccounts}
                                 paginator
                                 rows={20}
                                 rowsPerPageOptions={[10, 20, 50]}
@@ -879,6 +957,32 @@ export default function ComptesInternesPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {selectedAccountForMvt && (
+                                <div className="flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                    <div className="flex gap-2">
+                                        <Button label="Excel" icon="pi pi-file-excel" severity="success" outlined onClick={exportMouvementsExcel} disabled={!mouvements.length} />
+                                        <Button label="PDF" icon="pi pi-file-pdf" severity="danger" outlined onClick={exportMouvementsPDF} disabled={!mouvements.length} />
+                                    </div>
+                                    {mouvements.length > 0 && (() => {
+                                        const totalEntrees = mouvements.reduce((s: number, m: any) => s + (m.entree || 0), 0);
+                                        const totalSorties = mouvements.reduce((s: number, m: any) => s + (m.sortie || 0), 0);
+                                        const net = totalEntrees - totalSorties;
+                                        const ouverture = mouvements[0]?.soldeAvant ?? 0;
+                                        const cloture = mouvements[mouvements.length - 1]?.soldeApres ?? 0;
+                                        return (
+                                            <div className="surface-100 p-2 border-round text-center" style={{ minWidth: '280px' }}>
+                                                <small className="text-500">Solde de la période sélectionnée (Entrées − Sorties)</small>
+                                                <div className={`text-xl font-bold ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>{formatNumber(net)} FBU</div>
+                                                <small className="text-500">
+                                                    Entrées <span className="text-green-600">{formatNumber(totalEntrees)}</span> · Sorties <span className="text-red-500">{formatNumber(totalSorties)}</span>
+                                                </small>
+                                                <div><small className="text-500">Ouverture {formatNumber(ouverture)} → Clôture {formatNumber(cloture)}</small></div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            )}
 
                             <DataTable
                                 value={mouvements}

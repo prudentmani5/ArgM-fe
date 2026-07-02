@@ -34,14 +34,23 @@ function RelevesPage() {
     const [isEditLigne, setIsEditLigne] = useState(false);
     const [viewDialogVisible, setViewDialogVisible] = useState(false);
     const [selectedReleve, setSelectedReleve] = useState<ReleveBancaire | null>(null);
+    // Bank accounts come from comptes-internes on the BQ (bank) journal
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
+    const [journaux, setJournaux] = useState<any[]>([]);
+    const [selectedBankAccountId, setSelectedBankAccountId] = useState<number | null>(null);
 
     const toast = useRef<Toast>(null);
 
     const { data: relevesData, error: relevesError, fetchData: fetchReleves } = useConsumApi('');
     const { data: actionData, error: actionError, fetchData: fetchAction, callType } = useConsumApi('');
     const { data: lignesData, error: lignesError, fetchData: fetchLignes } = useConsumApi('');
+    const { data: comptesData, fetchData: fetchComptes } = useConsumApi('');
+    const { data: journauxData, fetchData: fetchJournaux } = useConsumApi('');
+    const { data: soldeData, fetchData: fetchSolde } = useConsumApi('');
 
     const BASE_URL = buildApiUrl('/api/rapprochement/releves');
+    const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts');
+    const JOURNAUX_URL = buildApiUrl('/api/comptability/journaux');
 
     const showToast = (severity: 'success' | 'error' | 'info' | 'warn', summary: string, detail: string) => {
         toast.current?.show({ severity, summary, detail, life: 3000 });
@@ -49,7 +58,53 @@ function RelevesPage() {
 
     useEffect(() => {
         loadReleves();
+        fetchComptes(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findactive`, 'loadInternalAccounts');
+        fetchJournaux(null, 'GET', `${JOURNAUX_URL}/findall`, 'loadJournaux');
     }, []);
+
+    useEffect(() => {
+        if (comptesData) setInternalAccounts(Array.isArray(comptesData) ? comptesData : comptesData.content || []);
+    }, [comptesData]);
+
+    useEffect(() => {
+        if (journauxData) setJournaux(Array.isArray(journauxData) ? journauxData : []);
+    }, [journauxData]);
+
+    // Auto-fill opening/closing balances from the comptes-internes movements (running balances).
+    // soldeDebut = soldeApres of the last movement BEFORE the month (carried balance);
+    // soldeFin = soldeApres of the last movement ON/BEFORE the month end.
+    useEffect(() => {
+        if (soldeData && Array.isArray(soldeData)) {
+            const movements = [...soldeData].filter((m: any) => m.date);
+            movements.sort((a: any, b: any) =>
+                String(a.date + (a.heure || '')).localeCompare(String(b.date + (b.heure || ''))));
+            const monthStr = String(releve.moisReleve).padStart(2, '0');
+            const monthStart = `${releve.anneeReleve}-${monthStr}-01`;
+            const monthEnd = `${releve.anneeReleve}-${monthStr}-31`; // lexicographic upper bound for ISO dates
+            let soldeDebut = 0;
+            let soldeFin = 0;
+            for (const m of movements) {
+                const d = String(m.date).substring(0, 10);
+                if (d < monthStart) {
+                    soldeDebut = m.soldeApres ?? soldeDebut;
+                    soldeFin = m.soldeApres ?? soldeFin;
+                } else if (d <= monthEnd) {
+                    soldeFin = m.soldeApres ?? soldeFin;
+                }
+            }
+            setReleve(prev => ({ ...prev, soldeDebut, soldeFin }));
+        }
+    }, [soldeData]);
+
+    // Recompute the soldes whenever a BQ account + period is selected on the form
+    useEffect(() => {
+        const acc = internalAccounts.find((a: any) => a.compteComptableId === selectedBankAccountId);
+        if (acc?.accountId && releve.moisReleve && releve.anneeReleve) {
+            fetchSolde(null, 'GET',
+                `${INTERNAL_ACCOUNTS_URL}/mouvements/${acc.accountId}`,
+                'loadMouvements');
+        }
+    }, [selectedBankAccountId, releve.moisReleve, releve.anneeReleve, internalAccounts]);
 
     useEffect(() => {
         if (relevesData) {
@@ -96,6 +151,11 @@ function RelevesPage() {
                     if (selectedReleve?.id) loadLignes(selectedReleve.id);
                     loadReleves();
                     break;
+                case 'generateLignes':
+                    showToast('success', 'Succès', `${Array.isArray(actionData) ? actionData.length : 0} ligne(s) générée(s) depuis les mouvements du compte interne`);
+                    if (selectedReleve?.id) loadLignes(selectedReleve.id);
+                    loadReleves();
+                    break;
             }
         }
         if (actionError) {
@@ -121,10 +181,29 @@ function RelevesPage() {
         fetchLignes(null, 'GET', `${BASE_URL}/lignes/${releveId}`, 'loadLignes');
     };
 
+    // Internal accounts on the BQ (bank) journal — the real bank accounts in the system
+    const bqJournalIds = journaux
+        .filter((j: any) => String(j.codeJournal).toUpperCase() === 'BQ')
+        .map((j: any) => String(j.journalId));
+    const bankAccounts = internalAccounts.filter((a: any) => bqJournalIds.includes(String(a.journalId)));
+
+    const handleSelectBankAccount = (compteComptableId: number | null) => {
+        setSelectedBankAccountId(compteComptableId);
+        const acc = bankAccounts.find((a: any) => a.compteComptableId === compteComptableId);
+        if (acc) {
+            setReleve(prev => ({
+                ...prev,
+                nomBanque: acc.libelle || prev.nomBanque,
+                numeroCompte: acc.accountNumber || acc.codeCompte || prev.numeroCompte
+            }));
+        }
+    };
+
     const resetForm = () => {
         setReleve(new ReleveBancaire());
         setLignes([]);
         setIsEdit(false);
+        setSelectedBankAccountId(null);
     };
 
     const validateForm = (): boolean => {
@@ -184,6 +263,38 @@ function RelevesPage() {
         setLigne(newLigne);
         setIsEditLigne(false);
         setLigneDialogVisible(true);
+    };
+
+    // Resolve the internal account linked to a relevé via its account number
+    const resolveAccountForReleve = (rel: ReleveBancaire | null): any => {
+        if (!rel) return null;
+        return internalAccounts.find((a: any) =>
+            String(a.accountNumber) === String(rel.numeroCompte) ||
+            String(a.codeCompte) === String(rel.numeroCompte)) || null;
+    };
+
+    const handleGenerateLignes = () => {
+        if (!selectedReleve?.id) return;
+        const acc = resolveAccountForReleve(selectedReleve);
+        if (!acc?.accountId) {
+            showToast('warn', 'Compte introuvable', "Impossible de retrouver le compte interne lié à ce relevé (numéro de compte).");
+            return;
+        }
+        const run = () => fetchAction({ userAction: getUserAction() }, 'POST',
+            `${BASE_URL}/lignes/generate/${selectedReleve.id}?accountId=${acc.accountId}&mois=${selectedReleve.moisReleve}&annee=${selectedReleve.anneeReleve}`,
+            'generateLignes');
+        if (lignes.some(l => !l.rapprochee)) {
+            confirmDialog({
+                message: 'Régénérer les lignes depuis les mouvements du compte interne ? Les lignes non rapprochées seront remplacées (les lignes déjà rapprochées sont conservées).',
+                header: 'Générer les lignes',
+                icon: 'pi pi-bolt',
+                acceptLabel: 'Oui, générer',
+                rejectLabel: 'Annuler',
+                accept: run
+            });
+        } else {
+            run();
+        }
     };
 
     const openEditLigneDialog = (rowData: LigneReleve) => {
@@ -311,6 +422,24 @@ function RelevesPage() {
                             Informations du relevé bancaire
                         </h5>
                         <div className="p-fluid formgrid grid">
+                            <div className="field col-12">
+                                <label htmlFor="bankAccount" className="font-semibold">Compte bancaire (compte interne - Journal BQ)</label>
+                                <Dropdown
+                                    id="bankAccount"
+                                    value={selectedBankAccountId}
+                                    options={bankAccounts}
+                                    onChange={(e) => handleSelectBankAccount(e.value)}
+                                    optionLabel="libelle"
+                                    optionValue="compteComptableId"
+                                    itemTemplate={(a: any) => <span>{a.codeCompte} - {a.libelle} <span className="text-500">({formatCurrency(a.soldeActuel)})</span></span>}
+                                    placeholder="Sélectionner un compte bancaire (BQ) pour pré-remplir"
+                                    emptyMessage="Aucun compte interne sur le journal BQ"
+                                    filter
+                                    filterBy="codeCompte,libelle"
+                                    showClear
+                                />
+                                <small className="text-500">Pré-remplit le nom de la banque, le numéro de compte et les soldes (début/fin) à partir des mouvements du compte interne BQ pour la période.</small>
+                            </div>
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="nomBanque" className="font-semibold">Nom de la banque *</label>
                                 <InputText id="nomBanque" value={releve.nomBanque} onChange={(e) => setReleve({ ...releve, nomBanque: e.target.value })} placeholder="Ex: BANCOBU, INTERBANK..." />
@@ -338,11 +467,13 @@ function RelevesPage() {
                         <div className="p-fluid formgrid grid">
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="soldeDebut" className="font-semibold">Solde début de période</label>
-                                <InputNumber id="soldeDebut" value={releve.soldeDebut} onValueChange={(e) => setReleve({ ...releve, soldeDebut: e.value || 0 })} mode="currency" currency="BIF" locale="fr-BI" />
+                                <InputNumber id="soldeDebut" value={releve.soldeDebut} mode="currency" currency="BIF" locale="fr-BI" disabled readOnly />
+                                <small className="text-500">Calculé depuis les mouvements du compte interne (début du mois).</small>
                             </div>
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="soldeFin" className="font-semibold">Solde fin de période</label>
-                                <InputNumber id="soldeFin" value={releve.soldeFin} onValueChange={(e) => setReleve({ ...releve, soldeFin: e.value || 0 })} mode="currency" currency="BIF" locale="fr-BI" />
+                                <InputNumber id="soldeFin" value={releve.soldeFin} mode="currency" currency="BIF" locale="fr-BI" disabled readOnly />
+                                <small className="text-500">Calculé depuis les mouvements du compte interne (fin du mois).</small>
                             </div>
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="dateImport" className="font-semibold">Date d'import</label>
@@ -435,9 +566,15 @@ function RelevesPage() {
                 )}
 
                 <div className="flex justify-content-between align-items-center mb-3">
-                    {can('RAPPROCHEMENT_CREATE') && (
-                        <Button label="Ajouter une ligne" icon="pi pi-plus" onClick={openNewLigneDialog} />
-                    )}
+                    <div className="flex gap-2">
+                        {can('RAPPROCHEMENT_CREATE') && (
+                            <Button label="Ajouter une ligne" icon="pi pi-plus" onClick={openNewLigneDialog} />
+                        )}
+                        {can('RAPPROCHEMENT_CREATE') && resolveAccountForReleve(selectedReleve) && (
+                            <Button label="Générer depuis les mouvements" icon="pi pi-bolt" severity="help" onClick={handleGenerateLignes}
+                                tooltip="Crée les lignes du relevé à partir des dépôts, retraits et virements du compte interne pour la période" tooltipOptions={{ position: 'top' }} />
+                        )}
+                    </div>
                 </div>
 
                 <DataTable

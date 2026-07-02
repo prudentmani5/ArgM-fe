@@ -52,6 +52,7 @@ function VirementPage() {
     const { can } = useAuthorizedAction();
     const [virement, setVirement] = useState<Virement>(new VirementClass());
     const [virements, setVirements] = useState<Virement[]>([]);
+    const [allVirements, setAllVirements] = useState<Virement[]>([]);
     const [savingsAccounts, setSavingsAccounts] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [comptesComptables, setComptesComptables] = useState<any[]>([]);
@@ -67,6 +68,7 @@ function VirementPage() {
     // Batch state
     const [batch, setBatch] = useState<VirementBatch>(new VirementBatchClass());
     const [batches, setBatches] = useState<VirementBatch[]>([]);
+    const [allBatches, setAllBatches] = useState<VirementBatch[]>([]);
     const [selectedBatch, setSelectedBatch] = useState<VirementBatch | null>(null);
     const [batchViewDialog, setBatchViewDialog] = useState(false);
     const [batchRejectDialog, setBatchRejectDialog] = useState(false);
@@ -144,6 +146,8 @@ function VirementPage() {
             const data: Virement[] = Array.isArray(virementsApi.data) ? virementsApi.data : virementsApi.data.content || [];
             // Caissiers see only their own records; supervisors/validators see all.
             setVirements(filterOwnRecordsForCaissier(data, ['EPARGNE_VIREMENT_VALIDATE', 'EPARGNE_VIREMENT_REJECT', 'EPARGNE_VIREMENT_CANCEL']));
+            // Full, unfiltered list for the "Tous les Virements" tab (gated by EPARGNE_VIREMENT_VIEW_ALL).
+            setAllVirements(data);
             setLoading(false);
         }
         if (virementsApi.error) {
@@ -189,6 +193,8 @@ function VirementPage() {
             const data: VirementBatch[] = Array.isArray(batchListApi.data) ? batchListApi.data : batchListApi.data.content || [];
             // Caissiers see only their own records; supervisors/validators see all.
             setBatches(filterOwnRecordsForCaissier(data, ['EPARGNE_VIREMENT_BATCH_VALIDATE']));
+            // Full, unfiltered batch list for the "Tous les Virements" tab (gated by EPARGNE_VIREMENT_VIEW_ALL).
+            setAllBatches(data);
             setBatchLoading(false);
         }
         if (batchListApi.error) {
@@ -300,6 +306,10 @@ function VirementPage() {
             showToast('warn', 'Attention', 'Ajoutez au moins un bénéficiaire');
             return;
         }
+        if (batch.commissionAmount > 0 && !batch.commissionInternalAccountId) {
+            showToast('warn', 'Attention', 'Veuillez sélectionner le compte interne pour la commission');
+            return;
+        }
 
         const data = {
             sourceType: batch.sourceType || 'SAVINGS',
@@ -308,6 +318,7 @@ function VirementPage() {
             branchId: batch.branchId,
             commissionRate: 0,
             commissionAmount: batch.commissionAmount,
+            commissionInternalAccountId: batch.commissionInternalAccountId,
             motif: batch.motif,
             notes: batch.notes,
             dateVirement: batch.dateVirement,
@@ -979,6 +990,65 @@ function VirementPage() {
                         <Column header="Actions" body={actionsBodyTemplate} style={{ width: '220px' }} />
                     </DataTable>
                 </TabPanel>
+
+                {/* Tab: Tous les Virements (full unfiltered list — simples + multiples) */}
+                {can('EPARGNE_VIREMENT_VIEW_ALL') && <TabPanel header="Tous les Virements" leftIcon="pi pi-globe mr-2">
+                    <h5 className="mt-0 mb-2 text-primary"><i className="pi pi-list mr-2" />Virements Simples</h5>
+                    <DataTable
+                        value={allVirements}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={loading}
+                        globalFilter={globalFilter}
+                        header={header}
+                        emptyMessage="Aucun virement trouvé"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="dateVirement"
+                        sortOrder={-1}
+                    >
+                        <Column field="reference" header="N° Virement" sortable />
+                        <Column field="transferType" header="Type" body={transferTypeTemplate} sortable />
+                        <Column header="Source" body={sourceTemplate} />
+                        <Column header="Destination" body={destinationTemplate} />
+                        <Column field="montant" header="Montant" body={(row) => formatCurrency(row.montant, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="status" header="Statut" body={statusBodyTemplate} sortable />
+                        <Column field="dateVirement" header="Date" sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={actionsBodyTemplate} style={{ width: '220px' }} />
+                    </DataTable>
+
+                    <h5 className="mt-4 mb-2 text-primary"><i className="pi pi-users mr-2" />Virements Multiples (Batches)</h5>
+                    <DataTable
+                        value={allBatches}
+                        paginator
+                        rows={10}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        loading={batchLoading}
+                        globalFilter={batchGlobalFilter}
+                        emptyMessage="Aucun virement multiple trouvé"
+                        stripedRows
+                        showGridlines
+                        size="small"
+                        sortField="createdAt"
+                        sortOrder={-1}
+                    >
+                        <Column field="batchNumber" header="N° Batch" sortable />
+                        <Column field="dateVirement" header="Date" sortable />
+                        <Column header="Source" body={batchSourceTemplate} />
+                        <Column field="numberOfTransfers" header="Bénéficiaires" sortable style={{ textAlign: 'center' }} />
+                        <Column field="totalAmount" header="Total Virements" body={(row) => formatCurrency(row.totalAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="commissionAmount" header="Commission" body={(row) => formatCurrency(row.commissionAmount, row.sourceSavingsAccount?.currency?.code)} />
+                        <Column field="totalDebitAmount" header="Total Débité" body={(row) => formatCurrency(row.totalDebitAmount, row.sourceSavingsAccount?.currency?.code)} sortable />
+                        <Column field="status" header="Statut" body={batchStatusTemplate} sortable />
+                        <Column field="userAction" header="Utilisateur" sortable />
+                        <Column header="Actions" body={batchActionsTemplate} style={{ width: '220px' }} />
+                    </DataTable>
+                </TabPanel>}
 
                 {/* Tab: Virements du Jour */}
                 {can('EPARGNE_VIREMENT_VIEW_TODAY') && <TabPanel header="Virements du Jour" leftIcon="pi pi-calendar mr-2">
