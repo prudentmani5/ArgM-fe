@@ -86,6 +86,8 @@ function WithdrawalRequestPage() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const isSubmittingRef = useRef(false);
     const [viewDialog, setViewDialog] = useState(false);
     const [rejectDialog, setRejectDialog] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<WithdrawalRequest | null>(null);
@@ -254,6 +256,8 @@ function WithdrawalRequestPage() {
                 case 'create':
                     showToast('success', 'Succès', 'Demande de retrait créée avec succès');
                     markIfNeeded(actionsApi.data?.notes, actionsApi.data?.requestNumber || '');
+                    isSubmittingRef.current = false;
+                    setIsSubmitting(false);
                     resetForm();
                     loadRequests();
                     setActiveIndex(2);
@@ -282,6 +286,8 @@ function WithdrawalRequestPage() {
         }
         if (actionsApi.error) {
             showToast('error', 'Erreur', actionsApi.error.message || 'Une erreur est survenue');
+            isSubmittingRef.current = false;
+            setIsSubmitting(false);
         }
     }, [actionsApi.data, actionsApi.error, actionsApi.callType]);
 
@@ -698,7 +704,12 @@ function WithdrawalRequestPage() {
     };
 
     const handleSubmit = () => {
+        // Block duplicate submissions from rapid/double clicks (ref is synchronous,
+        // so it stops re-entry within the same tick before the button re-renders).
+        if (isSubmittingRef.current) return;
         if (!validateForm()) return;
+        isSubmittingRef.current = true;
+        setIsSubmitting(true);
         const requestData = {
             ...request,
             caisseId: selectedCaisseId,
@@ -1196,7 +1207,8 @@ function WithdrawalRequestPage() {
                             icon="pi pi-send"
                             onClick={handleSubmit}
                             className="p-button-success"
-                            disabled={request.requestedAmount <= 2000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole || isCaisseClosed}
+                            loading={isSubmitting}
+                            disabled={isSubmitting || request.requestedAmount <= 2000 || !can('EPARGNE_WITHDRAWAL_CREATE') || !agencyOpen || isCaissierWithoutCaisse || isNotCaissierRole || isCaisseClosed}
                         />
                         <Button
                             label="Réinitialiser"

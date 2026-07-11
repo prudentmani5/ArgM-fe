@@ -31,7 +31,10 @@ function RapprochementsPage() {
     const [rapprochements, setRapprochements] = useState<RapprochementBancaire[]>([]);
     const [rapprochement, setRapprochement] = useState<RapprochementBancaire>(new RapprochementBancaire());
     const [releves, setReleves] = useState<ReleveBancaire[]>([]);
-    const [comptes, setComptes] = useState<any[]>([]);
+    // Bank accounts come from comptes-internes on the BQ (bank) journal
+    const [internalAccounts, setInternalAccounts] = useState<any[]>([]);
+    const [journaux, setJournaux] = useState<any[]>([]);
+    const [soldePreview, setSoldePreview] = useState<any>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [globalFilter, setGlobalFilter] = useState('');
     const [isEdit, setIsEdit] = useState(false);
@@ -46,6 +49,8 @@ function RapprochementsPage() {
     const [selectedLigneBanque, setSelectedLigneBanque] = useState<LigneReleve | null>(null);
     const [selectedEcriture, setSelectedEcriture] = useState<CptEcriture | null>(null);
     const [autoReconcileResult, setAutoReconcileResult] = useState<any>(null);
+    const [wsSoldePreview, setWsSoldePreview] = useState<any>(null);
+    const [internalMovements, setInternalMovements] = useState<any[]>([]);
     const [loadingReconcile, setLoadingReconcile] = useState(false);
     const [loadingWorkspace, setLoadingWorkspace] = useState(false);
 
@@ -60,6 +65,8 @@ function RapprochementsPage() {
     const { data: rapprochementsData, error: rapprochementsError, fetchData: fetchRapprochements } = useConsumApi('');
     const { data: relevesData, error: relevesError, fetchData: fetchReleves } = useConsumApi('');
     const { data: comptesData, error: comptesError, fetchData: fetchComptes } = useConsumApi('');
+    const { data: journauxData, fetchData: fetchJournaux } = useConsumApi('');
+    const { data: soldeData, fetchData: fetchSolde } = useConsumApi('');
     const { data: actionData, error: actionError, fetchData: fetchAction, callType } = useConsumApi('');
 
     // Separate hooks for workspace data - each with its own hook to prevent race conditions
@@ -70,10 +77,13 @@ function RapprochementsPage() {
     const { data: wsReconcileData, error: wsReconcileError, fetchData: fetchWsReconcile } = useConsumApi('');
     const { data: wsManualData, error: wsManualError, fetchData: fetchWsManual, callType: wsManualCallType } = useConsumApi('');
     const { data: wsDetailData, error: wsDetailError, fetchData: fetchWsDetail } = useConsumApi('');
+    const { data: wsSoldeData, fetchData: fetchWsSolde } = useConsumApi('');
+    const { data: wsMvtData, fetchData: fetchWsMvt } = useConsumApi('');
 
     const BASE_URL = buildApiUrl('/api/rapprochement/rapprochements');
     const RELEVES_URL = buildApiUrl('/api/rapprochement/releves');
-    const COMPTES_URL = buildApiUrl('/api/comptability/comptes');
+    const INTERNAL_ACCOUNTS_URL = buildApiUrl('/api/comptability/internal-accounts');
+    const JOURNAUX_URL = buildApiUrl('/api/comptability/journaux');
 
     const showToast = (severity: 'success' | 'error' | 'info' | 'warn', summary: string, detail: string) => {
         toast.current?.show({ severity, summary, detail, life: 3000 });
@@ -83,7 +93,8 @@ function RapprochementsPage() {
     useEffect(() => {
         loadRapprochements();
         loadReleves();
-        loadComptes();
+        loadInternalAccounts();
+        loadJournaux();
     }, []);
 
     // Handle rapprochements list data
@@ -105,13 +116,36 @@ function RapprochementsPage() {
         }
     }, [relevesData, relevesError]);
 
-    // Handle comptes data
+    // Handle internal accounts data (comptes-internes)
     useEffect(() => {
         if (comptesData) {
             const arr = Array.isArray(comptesData) ? comptesData : comptesData.content || [];
-            setComptes(arr);
+            setInternalAccounts(arr);
         }
     }, [comptesData, comptesError]);
+
+    // Handle journaux data
+    useEffect(() => {
+        if (journauxData) {
+            setJournaux(Array.isArray(journauxData) ? journauxData : []);
+        }
+    }, [journauxData]);
+
+    // Handle solde comptable preview
+    useEffect(() => {
+        if (soldeData) setSoldePreview(soldeData);
+    }, [soldeData]);
+
+    // Load the book-balance preview whenever the bank account + period are set on the form
+    useEffect(() => {
+        if (rapprochement.compteComptableId && rapprochement.mois && rapprochement.annee) {
+            fetchSolde(null, 'GET',
+                `${BASE_URL}/solde-comptable?compteId=${rapprochement.compteComptableId}&mois=${rapprochement.mois}&annee=${rapprochement.annee}`,
+                'loadSolde');
+        } else {
+            setSoldePreview(null);
+        }
+    }, [rapprochement.compteComptableId, rapprochement.mois, rapprochement.annee]);
 
     // Handle CRUD action responses
     useEffect(() => {
@@ -205,6 +239,16 @@ function RapprochementsPage() {
         }
     }, [wsDetailData, wsDetailError]);
 
+    // Handle workspace book-balance preview (for the état de rapprochement)
+    useEffect(() => {
+        if (wsSoldeData) setWsSoldePreview(wsSoldeData);
+    }, [wsSoldeData]);
+
+    // Handle internal account movements (relevé du compte interne — read-only comparison)
+    useEffect(() => {
+        if (wsMvtData) setInternalMovements(Array.isArray(wsMvtData) ? wsMvtData : []);
+    }, [wsMvtData]);
+
     // Handle auto-reconcile response
     useEffect(() => {
         if (wsReconcileData) {
@@ -248,9 +292,21 @@ function RapprochementsPage() {
         fetchReleves(null, 'GET', `${RELEVES_URL}/findall`, 'loadReleves');
     };
 
-    const loadComptes = () => {
-        fetchComptes(null, 'GET', `${COMPTES_URL}/findall`, 'loadComptes');
+    const loadInternalAccounts = () => {
+        fetchComptes(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/findactive`, 'loadInternalAccounts');
     };
+
+    const loadJournaux = () => {
+        fetchJournaux(null, 'GET', `${JOURNAUX_URL}/findall`, 'loadJournaux');
+    };
+
+    // Internal accounts on the BQ (bank) journal — the only valid bank accounts for reconciliation
+    const bqJournalIds = journaux
+        .filter((j: any) => String(j.codeJournal).toUpperCase() === 'BQ')
+        .map((j: any) => String(j.journalId));
+    const bankAccounts = internalAccounts.filter(
+        (a: any) => a.compteComptableId != null && bqJournalIds.includes(String(a.journalId))
+    );
 
     const loadWorkspaceData = (rapprochementId: number) => {
         setLoadingWorkspace(true);
@@ -269,9 +325,19 @@ function RapprochementsPage() {
         // Load ecarts
         fetchWsEcarts(null, 'GET', `${BASE_URL}/ecarts/${rapprochementId}`, 'loadEcarts');
 
-        // Load unreconciled ecritures
+        // Load unreconciled ecritures + book-balance preview (for the état de rapprochement)
         if (rap?.compteComptableId) {
             fetchWsEcritures(null, 'GET', `${BASE_URL}/ecritures-non-rapprochees?compteId=${rap.compteComptableId}&mois=${rap.mois}&annee=${rap.annee}`, 'loadEcritures');
+            fetchWsSolde(null, 'GET', `${BASE_URL}/solde-comptable?compteId=${rap.compteComptableId}&mois=${rap.mois}&annee=${rap.annee}`, 'loadWsSolde');
+
+            // Relevé du compte interne (mouvements) — read-only comparison side
+            const acc = internalAccounts.find((a: any) => a.compteComptableId === rap.compteComptableId);
+            if (acc?.accountId && rap.mois && rap.annee) {
+                const dateFrom = `${rap.annee}-${String(rap.mois).padStart(2, '0')}-01`;
+                const lastDay = new Date(rap.annee, rap.mois, 0).getDate();
+                const dateTo = `${rap.annee}-${String(rap.mois).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                fetchWsMvt(null, 'GET', `${INTERNAL_ACCOUNTS_URL}/mouvements/${acc.accountId}?dateFrom=${dateFrom}&dateTo=${dateTo}`, 'loadMvt');
+            }
         }
     };
 
@@ -335,8 +401,21 @@ function RapprochementsPage() {
         setEcrituresComptables([]);
         setMatchedLines([]);
         setEcarts([]);
+        setWsSoldePreview(null);
+        setInternalMovements([]);
         if (rowData.id) loadWorkspaceData(rowData.id);
         setWorkspaceVisible(true);
+    };
+
+    const getEcartTypeLabel = (type: string): string => {
+        const labels: Record<string, string> = {
+            'CHEQUE_NON_DEBITE': 'Chèque non encaissé',
+            'VIREMENT_EN_COURS': 'Virement / dépôt en transit',
+            'FRAIS_BANCAIRES': 'Frais bancaires / agios',
+            'ERREUR_SAISIE': 'Erreur de saisie',
+            'AUTRE': 'Autre'
+        };
+        return labels[type] || type;
     };
 
     const handleAutoReconcile = () => {
@@ -460,7 +539,7 @@ function RapprochementsPage() {
     );
 
     const compteOptionTemplate = (option: any) => (
-        <span>{option.codeCompte} - {option.libelle}</span>
+        <span>{option.codeCompte} - {option.libelle} <span className="text-500">({formatCurrency(option.soldeActuel)})</span></span>
     );
 
     const lignesBanqueNonRapprochees = lignesBanque.filter(l => !l.rapprochee);
@@ -506,13 +585,13 @@ function RapprochementsPage() {
                                 />
                             </div>
                             <div className="field col-12 md:col-6">
-                                <label htmlFor="compteComptableId" className="font-semibold">Compte comptable (banque - classe 5) *</label>
+                                <label htmlFor="compteComptableId" className="font-semibold">Compte bancaire (compte interne - Journal BQ) *</label>
                                 <Dropdown
                                     id="compteComptableId"
                                     value={rapprochement.compteComptableId}
-                                    options={comptes.filter((c: any) => c.compteBanque || (c.codeCompte && c.codeCompte.startsWith('5')))}
+                                    options={bankAccounts}
                                     onChange={(e) => {
-                                        const selectedCompte = comptes.find((c: any) => c.compteId === e.value);
+                                        const selectedCompte = bankAccounts.find((c: any) => c.compteComptableId === e.value);
                                         setRapprochement({
                                             ...rapprochement,
                                             compteComptableId: e.value,
@@ -520,10 +599,12 @@ function RapprochementsPage() {
                                         });
                                     }}
                                     optionLabel="libelle"
-                                    optionValue="compteId"
+                                    optionValue="compteComptableId"
                                     itemTemplate={compteOptionTemplate}
-                                    placeholder="Sélectionner un compte bancaire"
+                                    placeholder="Sélectionner un compte bancaire (BQ)"
+                                    emptyMessage="Aucun compte interne sur le journal BQ"
                                     filter
+                                    filterBy="codeCompte,libelle"
                                     showClear
                                 />
                             </div>
@@ -541,6 +622,46 @@ function RapprochementsPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Book-balance preview from the BQ bank account's accounting entries */}
+                    {soldePreview && (
+                        <div className="surface-100 p-3 border-round mb-3">
+                            <h5 className="mb-3"><i className="pi pi-book mr-2"></i>Aperçu comptable (Journal BQ) — {getMoisLabel(rapprochement.mois)} {rapprochement.annee}</h5>
+                            <div className="grid">
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-card p-3 border-round shadow-1 text-center">
+                                        <div className="text-500 mb-1 text-sm">Solde comptable (livre)</div>
+                                        <div className="text-lg font-bold">{formatCurrency(soldePreview.soldeComptable)}</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-card p-3 border-round shadow-1 text-center">
+                                        <div className="text-500 mb-1 text-sm">Solde banque (relevé)</div>
+                                        <div className="text-lg font-bold">{formatCurrency(releves.find(r => r.id === rapprochement.releveBancaireId)?.soldeFin)}</div>
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-card p-3 border-round shadow-1 text-center">
+                                        <div className="text-500 mb-1 text-sm">Écart prévisionnel</div>
+                                        {(() => {
+                                            const soldeBanque = releves.find(r => r.id === rapprochement.releveBancaireId)?.soldeFin || 0;
+                                            const ecart = soldeBanque - (soldePreview.soldeComptable || 0);
+                                            return <div className={`text-lg font-bold ${Math.abs(ecart) > 0.01 ? 'text-red-500' : 'text-green-500'}`}>{formatCurrency(ecart)}</div>;
+                                        })()}
+                                    </div>
+                                </div>
+                                <div className="col-6 md:col-3">
+                                    <div className="surface-card p-3 border-round shadow-1 text-center">
+                                        <div className="text-500 mb-1 text-sm">Écritures non rapprochées</div>
+                                        <div className="text-lg font-bold">{soldePreview.nbNonRapprochees}</div>
+                                        <div className="text-xs text-500">Mouv: déb {formatCurrency(soldePreview.totalDebitPeriode)} / créd {formatCurrency(soldePreview.totalCreditPeriode)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <small className="text-500">Le solde comptable est le solde du compte interne (BQ) à la fin de la période, calculé à partir des écritures comptables. Aucune donnée n'est modifiée.</small>
+                        </div>
+                    )}
+
                     <div className="flex gap-2 mt-3">
                         <Button label={isEdit ? 'Modifier' : 'Créer'} icon={isEdit ? 'pi pi-check' : 'pi pi-plus'} onClick={handleSubmit} />
                         <Button label="Réinitialiser" icon="pi pi-refresh" severity="secondary" onClick={resetForm} />
@@ -678,6 +799,50 @@ function RapprochementsPage() {
                             </div>
                         )}
 
+                        {/* Read-only comparison: relevé bancaire vs relevé du compte interne (mouvements) */}
+                        {(() => {
+                            const totalEntrees = internalMovements.reduce((s: number, m: any) => s + (m.entree || 0), 0);
+                            const totalSorties = internalMovements.reduce((s: number, m: any) => s + (m.sortie || 0), 0);
+                            const soldeInterne = internalMovements.length > 0
+                                ? (internalMovements[internalMovements.length - 1].soldeApres ?? 0)
+                                : (wsSoldePreview?.soldeFin ?? 0);
+                            const soldeBanque = selectedRapprochement.soldeBanque || 0;
+                            const ecartComparatif = soldeBanque - soldeInterne;
+                            return (
+                                <div className="mb-3">
+                                    <div className="surface-100 p-2 border-round mb-2 flex align-items-center justify-content-between">
+                                        <h5 className="m-0"><i className="pi pi-sync mr-2 text-primary"></i>Relevé du compte interne (mouvements) — {getMoisLabel(selectedRapprochement.mois)} {selectedRapprochement.annee}</h5>
+                                        <div className="flex gap-3 align-items-center text-sm">
+                                            <span>Solde banque: <strong>{formatCurrency(soldeBanque)}</strong></span>
+                                            <span>Solde compte interne: <strong>{formatCurrency(soldeInterne)}</strong></span>
+                                            <Tag value={`Écart: ${formatCurrency(ecartComparatif)}`} severity={Math.abs(ecartComparatif) < 0.01 ? 'success' : 'danger'} />
+                                        </div>
+                                    </div>
+                                    <DataTable
+                                        value={internalMovements}
+                                        paginator
+                                        rows={5}
+                                        className="p-datatable-sm"
+                                        emptyMessage="Aucun mouvement du compte interne pour cette période"
+                                        scrollable
+                                        scrollHeight="260px"
+                                        stripedRows
+                                    >
+                                        <Column field="date" header="Date" body={(row) => formatDate(row.date)} style={{ width: '12%' }} />
+                                        <Column field="operationType" header="Type" style={{ width: '14%' }} />
+                                        <Column field="reference" header="Réf" style={{ width: '14%' }} />
+                                        <Column field="libelle" header="Libellé" />
+                                        <Column header="Entrée" body={(row) => (row.entree || 0) > 0 ? <span className="text-green-500">{formatCurrency(row.entree)}</span> : '-'} style={{ width: '12%' }} />
+                                        <Column header="Sortie" body={(row) => (row.sortie || 0) > 0 ? <span className="text-red-500">{formatCurrency(row.sortie)}</span> : '-'} style={{ width: '12%' }} />
+                                        <Column header="Solde" body={(row) => formatCurrency(row.soldeApres)} style={{ width: '12%' }} />
+                                    </DataTable>
+                                    <div className="text-500 text-sm mt-1">Total entrées: <strong className="text-green-600">{formatCurrency(totalEntrees)}</strong> · Total sorties: <strong className="text-red-500">{formatCurrency(totalSorties)}</strong> · Vue lecture seule (comparaison).</div>
+                                </div>
+                            );
+                        })()}
+
+                        <Divider />
+
                         {/* Split view: Bank lines vs Accounting entries */}
                         <div className="grid">
                             <div className="col-12 md:col-6">
@@ -799,6 +964,87 @@ function RapprochementsPage() {
                             <Column field="justification" header="Justification" body={(row) => row.justification || <span className="text-500 font-italic">Non justifié</span>} />
                             <Column field="resolu" header="Statut" body={(row) => <Tag value={row.resolu ? 'Résolu' : 'Non résolu'} severity={row.resolu ? 'success' : 'danger'} />} />
                         </DataTable>
+
+                        <Divider />
+
+                        {/* État de Rapprochement Bancaire — two-column statement */}
+                        {(() => {
+                            const soldeBanque = selectedRapprochement.soldeBanque || 0;
+                            const soldeComptable = (wsSoldePreview?.soldeComptable != null)
+                                ? wsSoldePreview.soldeComptable
+                                : (selectedRapprochement.soldeComptable || 0);
+                            // Accounting-only items (écart has an ecritureId) adjust the BANK column
+                            const bankAdj = ecarts.filter(e => e.ecritureId != null);
+                            // Bank-only items (écart has a ligneReleveId) adjust the IMF column
+                            const imfAdj = ecarts.filter(e => e.ligneReleveId != null);
+                            const sumBankAdj = bankAdj.reduce((s, e) => s + (e.montant || 0), 0);
+                            const sumImfAdj = imfAdj.reduce((s, e) => s + (e.montant || 0), 0);
+                            const soldeBanqueRapproche = soldeBanque + sumBankAdj;
+                            const soldeComptableRapproche = soldeComptable + sumImfAdj;
+                            const equilibre = Math.abs(soldeBanqueRapproche - soldeComptableRapproche) < 0.01;
+                            return (
+                                <div>
+                                    <div className="surface-100 p-2 border-round mb-2 flex align-items-center justify-content-between">
+                                        <h5 className="m-0"><i className="pi pi-file-edit mr-2 text-primary"></i>État de Rapprochement Bancaire — {getMoisLabel(selectedRapprochement.mois)} {selectedRapprochement.annee}</h5>
+                                        <Tag value={equilibre ? 'Équilibré' : 'Non équilibré'} severity={equilibre ? 'success' : 'danger'} icon={equilibre ? 'pi pi-check' : 'pi pi-times'} />
+                                    </div>
+                                    <div className="grid">
+                                        {/* Côté Banque */}
+                                        <div className="col-12 md:col-6">
+                                            <div className="surface-card p-3 border-round shadow-1 h-full">
+                                                <h6 className="mt-0 mb-3"><i className="pi pi-building mr-2"></i>Côté Banque (Relevé)</h6>
+                                                <div className="flex justify-content-between mb-2">
+                                                    <span className="font-semibold">Solde du relevé bancaire</span>
+                                                    <span className="font-bold">{formatCurrency(soldeBanque)}</span>
+                                                </div>
+                                                <div className="text-500 text-sm mb-1">Ajustements (opérations comptabilisées par l'IMF, pas encore à la banque)</div>
+                                                {bankAdj.length === 0 && <div className="text-500 font-italic text-sm mb-2">Aucun</div>}
+                                                {bankAdj.map((e, i) => (
+                                                    <div key={i} className="flex justify-content-between text-sm mb-1">
+                                                        <span>{getEcartTypeLabel(e.typeEcart)}{e.description ? ` — ${e.description}` : ''}</span>
+                                                        <span className={e.montant >= 0 ? 'text-green-600' : 'text-red-500'}>{e.montant >= 0 ? '+' : ''}{formatCurrency(e.montant)}</span>
+                                                    </div>
+                                                ))}
+                                                <Divider />
+                                                <div className="flex justify-content-between">
+                                                    <span className="font-bold">Solde rapproché</span>
+                                                    <span className="font-bold text-lg">{formatCurrency(soldeBanqueRapproche)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Côté IMF */}
+                                        <div className="col-12 md:col-6">
+                                            <div className="surface-card p-3 border-round shadow-1 h-full">
+                                                <h6 className="mt-0 mb-3"><i className="pi pi-book mr-2"></i>Côté IMF (Comptabilité - Journal BQ)</h6>
+                                                <div className="flex justify-content-between mb-2">
+                                                    <span className="font-semibold">Solde comptable (livre)</span>
+                                                    <span className="font-bold">{formatCurrency(soldeComptable)}</span>
+                                                </div>
+                                                <div className="text-500 text-sm mb-1">Ajustements (opérations à la banque, pas encore enregistrées par l'IMF)</div>
+                                                {imfAdj.length === 0 && <div className="text-500 font-italic text-sm mb-2">Aucun</div>}
+                                                {imfAdj.map((e, i) => (
+                                                    <div key={i} className="flex justify-content-between text-sm mb-1">
+                                                        <span>{getEcartTypeLabel(e.typeEcart)}{e.description ? ` — ${e.description}` : ''}</span>
+                                                        <span className={e.montant >= 0 ? 'text-green-600' : 'text-red-500'}>{e.montant >= 0 ? '+' : ''}{formatCurrency(e.montant)}</span>
+                                                    </div>
+                                                ))}
+                                                <Divider />
+                                                <div className="flex justify-content-between">
+                                                    <span className="font-bold">Solde rapproché</span>
+                                                    <span className="font-bold text-lg">{formatCurrency(soldeComptableRapproche)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {!equilibre && (
+                                        <div className="mt-2 p-2 border-round bg-orange-50" style={{ border: '1px solid #fb923c' }}>
+                                            <i className="pi pi-exclamation-triangle text-orange-500 mr-2"></i>
+                                            <span className="text-700">Les deux soldes rapprochés diffèrent de <strong>{formatCurrency(Math.abs(soldeBanqueRapproche - soldeComptableRapproche))}</strong>. Il reste des écarts à identifier ou à justifier (frais bancaires/intérêts non saisis, dépôts en transit, chèques non encaissés, erreurs de saisie).</span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
             </Dialog>

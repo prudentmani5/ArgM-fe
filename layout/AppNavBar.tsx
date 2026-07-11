@@ -469,8 +469,8 @@ const AppNavBar = () => {
                         label: 'Rapprochement',
                         items: [
                             { label: 'Tableau de Bord', icon: 'pi pi-th-large', to: '/rapprochement', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
-                            { label: 'Rapprochement Bancaire', icon: 'pi pi-building', to: '/rapprochement/rapprochements', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE']) : false },
                             { label: 'Relevés Bancaires', icon: 'pi pi-file-import', to: '/rapprochement/releves', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_CREATE']) : false },
+                            { label: 'Rapprochement Bancaire', icon: 'pi pi-building', to: '/rapprochement/rapprochements', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_RECONCILE', 'RAPPROCHEMENT_AUTO_RECONCILE', 'RAPPROCHEMENT_MANUAL_MATCH', 'RAPPROCHEMENT_VALIDATE', 'RAPPROCHEMENT_APPROVE']) : false },
                             { label: 'Rapprochement Caisse', icon: 'pi pi-wallet', to: '/rapprochement/rapprochement-caisse', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
                             { label: 'Portefeuille Crédits', icon: 'pi pi-briefcase', to: '/rapprochement/rapprochement-credits', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },
                             { label: 'Dépôts Épargne', icon: 'pi pi-money-bill', to: '/rapprochement/rapprochement-depots', visible: appUser ? hasAnyAuthority(appUser, ['RAPPROCHEMENT_VIEW']) : false },

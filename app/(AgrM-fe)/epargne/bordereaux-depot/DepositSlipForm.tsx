@@ -29,6 +29,7 @@ interface DepositSlipFormProps {
     branchLocked?: boolean;
     selectedAccountGroup?: any;
     internalAccounts?: any[];
+    onViewClientDetails?: (clientId: number) => void;
 }
 
 const DEPOSIT_TYPES = [
@@ -54,7 +55,8 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
     isViewMode = false,
     branchLocked = false,
     selectedAccountGroup,
-    internalAccounts = []
+    internalAccounts = [],
+    onViewClientDetails
 }) => {
     const [denominations, setDenominations] = useState<{ [key: number]: number }>({});
 
@@ -369,13 +371,24 @@ const DepositSlipForm: React.FC<DepositSlipFormProps> = ({
                 </div>
                 {depositSlip.savingsAccountId && (
                     <div className="mt-2 p-2 surface-50 border-round">
-                        <div className="flex align-items-center gap-2">
-                            <i className="pi pi-info-circle text-blue-500"></i>
-                            <span className="text-500">
-                                {selectedAccountGroup
-                                    ? 'Le groupe est automatiquement récupéré depuis le compte sélectionné'
-                                    : 'Le client est automatiquement récupéré depuis le compte sélectionné'}
-                            </span>
+                        <div className="flex align-items-center justify-content-between gap-2">
+                            <div className="flex align-items-center gap-2">
+                                <i className="pi pi-info-circle text-blue-500"></i>
+                                <span className="text-500">
+                                    {selectedAccountGroup
+                                        ? 'Le groupe est automatiquement récupéré depuis le compte sélectionné'
+                                        : 'Le client est automatiquement récupéré depuis le compte sélectionné'}
+                                </span>
+                            </div>
+                            {!selectedAccountGroup && depositSlip.clientId && onViewClientDetails && (
+                                <Button
+                                    label="Voir les détails du Client"
+                                    icon="pi pi-eye"
+                                    className="p-button-outlined p-button-info p-button-sm"
+                                    onClick={() => onViewClientDetails(depositSlip.clientId!)}
+                                    type="button"
+                                />
+                            )}
                         </div>
                     </div>
                 )}
