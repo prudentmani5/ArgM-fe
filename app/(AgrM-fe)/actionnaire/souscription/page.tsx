@@ -36,7 +36,7 @@ const MODES_LIBERATION = [
 const MODES_PAIEMENT = [
     { label: 'Versement en caisse (571)', value: 'CAISSE' },
     { label: 'Virement bancaire (521)', value: 'BANQUE' },
-    { label: 'Débit compte épargne (291)', value: 'EPARGNE' },
+    { label: 'Débit compte épargne (2211)', value: 'EPARGNE' },
 ];
 
 export default function SouscriptionPage() {
@@ -188,7 +188,7 @@ export default function SouscriptionPage() {
     };
 
     const modePaiementLabel = (val: string) => {
-        const m: Record<string, string> = { CAISSE: 'Caisse (571)', BANQUE: 'Banque (521)', EPARGNE: 'Épargne (291)' };
+        const m: Record<string, string> = { CAISSE: 'Caisse (571)', BANQUE: 'Banque (521)', EPARGNE: 'Épargne (2211)' };
         return m[val] || val;
     };
 
@@ -216,7 +216,7 @@ export default function SouscriptionPage() {
 
     const ecritureInfo = () => {
         if (!souscription.modePaiement || !souscription.montantTotal) return null;
-        const debit = souscription.modePaiement === 'CAISSE' ? '571 Caisse' : souscription.modePaiement === 'BANQUE' ? '521 Banque' : '291 Épargne';
+        const debit = souscription.modePaiement === 'CAISSE' ? '571 Caisse' : souscription.modePaiement === 'BANQUE' ? '521 Banque' : '2211 Épargne';
         return (
             <div className="surface-50 border-1 border-round p-3 mt-3">
                 <strong className="text-primary"><i className="pi pi-info-circle mr-2" />Écriture comptable générée automatiquement :</strong>

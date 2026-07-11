@@ -51,7 +51,7 @@ const SCHEMAS = [
         titre: 'Schéma 4 — Paiement des dividendes nets',
         contexte: 'Paiement effectif après retenue IRCM',
         lignes: [
-            { debit: '4600 Actionnaires — dividendes à payer', credit: '521 Banque / 571 Caisse / 291 Épargne', montant: 'Dividende brut − IRCM retenu', remarque: 'Selon mode de paiement choisi' },
+            { debit: '4600 Actionnaires — dividendes à payer', credit: '521 Banque / 571 Caisse / 2211 Épargne', montant: 'Dividende brut − IRCM retenu', remarque: 'Selon mode de paiement choisi' },
         ],
     },
 ];

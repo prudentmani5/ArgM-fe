@@ -2036,9 +2036,9 @@ function GestionCaissePage() {
                                                     header="Type"
                                                     body={(r: any) => (
                                                         <Tag
-                                                            value={r.type === 'DEPOT' ? 'Depot' : 'Retrait'}
-                                                            severity={r.type === 'DEPOT' ? 'success' : 'warning'}
-                                                            icon={r.type === 'DEPOT' ? 'pi pi-arrow-down' : 'pi pi-arrow-up'}
+                                                            value={r.type === 'DEPOT' ? 'Depot' : r.type === 'DECOUVERT' ? 'Découvert' : 'Retrait'}
+                                                            severity={r.type === 'DEPOT' ? 'success' : r.type === 'DECOUVERT' ? 'info' : 'warning'}
+                                                            icon={r.type === 'DEPOT' ? 'pi pi-arrow-down' : r.type === 'DECOUVERT' ? 'pi pi-arrow-circle-down' : 'pi pi-arrow-up'}
                                                         />
                                                     )}
                                                     style={{ width: '15%' }}

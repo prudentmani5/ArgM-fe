@@ -449,6 +449,15 @@ const AppNavBar = () => {
                             { label: 'Flux de trésorerie', icon: 'pi pi-credit-card', to: '/comptability/fluxTresorerie' },
                             { label: 'Variation des capitaux', icon: 'pi pi-chart-line', to: '/comptability/variationCapitaux' }
                         ]
+                    },
+                    {
+                        label: 'Rapport BRB',
+                        visible: appUser ? hasAnyAuthority(appUser, ['ACCOUNTING_REPORT_VIEW', 'ACCOUNTING_REPORT_EXPORT']) : false,
+                        items: [
+                            { label: 'Bilan', icon: 'pi pi-file', to: '/comptability/rapports-brb/bilan' },
+                            { label: 'Compte de résultat', icon: 'pi pi-calculator', to: '/comptability/rapports-brb/compteResultat' },
+                            { label: 'Flux de trésorerie', icon: 'pi pi-credit-card', to: '/comptability/rapports-brb/flux' }
+                        ]
                     }
                 ]
             },
@@ -698,7 +707,7 @@ const AppNavBar = () => {
             {
                 label: 'Administration',
                 icon: 'pi pi-cog',
-                routePrefix: ['/usermanagement', '/tracking', '/operationsJournalieres'],
+                routePrefix: ['/usermanagement', '/tracking', '/operationsJournalieres', '/notifications-sms'],
                 visible: appUser ? hasAnyAuthority(appUser, [
                     'ADMIN', 'USER_VIEW', 'USER_CREATE', 'TRACKING_VIEW',
                     'OJ_PARAMETRES_VIEW', 'OJ_PARAMETRES_MANAGE',
@@ -709,6 +718,7 @@ const AppNavBar = () => {
                     { label: 'Créer un Utilisateur', icon: 'pi pi-user-plus', to: '/usermanagement/create-user', visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_CREATE']) : false },
                     { label: 'Gestion des utilisateurs', icon: 'pi pi-users', to: '/usermanagement', visible: appUser ? hasAnyAuthority(appUser, ['ADMIN', 'USER_VIEW']) : false },
                     { label: 'Journal d\'Audit', icon: 'pi pi-history', to: '/tracking', visible: appUser ? hasAnyAuthority(appUser, ['TRACKING_VIEW']) : false },
+                    { label: 'Notifications SMS', icon: 'pi pi-comment', to: '/notifications-sms', visible: appUser ? hasAnyAuthority(appUser, ['ADMIN']) : false },
                     { label: 'Paramètres Système OJ', icon: 'pi pi-sliders-h', to: '/operationsJournalieres/parametres', visible: appUser ? hasAnyAuthority(appUser, ['OJ_PARAMETRES_VIEW', 'OJ_PARAMETRES_MANAGE', 'ADMIN']) : false },
                     { label: 'Ouverture du Système', icon: 'pi pi-sun', to: '/operationsJournalieres/ouverture', visible: appUser ? hasAnyAuthority(appUser, ['OJ_OUVERTURE_VIEW', 'OJ_OUVERTURE_EXECUTE', 'ADMIN']) : false },
                     { label: 'Fermeture du Système', icon: 'pi pi-moon', to: '/operationsJournalieres/fermeture', visible: appUser ? hasAnyAuthority(appUser, ['OJ_FERMETURE_VIEW', 'OJ_FERMETURE_EXECUTE', 'ADMIN']) : false }

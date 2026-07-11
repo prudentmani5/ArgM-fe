@@ -102,7 +102,13 @@ export const filterOwnRecordsForCaissier = <T extends Record<string, any>>(
     userActionKey: string = 'userAction'
 ): T[] => {
     if (!Array.isArray(records)) return [];
-    if (hasAnyAuthorityCode(supervisorAuthorities)) return records;
+    // Super admins / cross-branch viewers always see everything (mirrors the
+    // backend's `hasAnyAuthority('SUPER_ADMIN', ...)` wildcard). Their cookie
+    // authorities often hold only 'SUPER_ADMIN' and not the granular codes.
+    if (hasAnyAuthorityCode([
+        'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'VIEW_ALL_BRANCHES', 'ROLE_VIEW_ALL_BRANCHES',
+        ...supervisorAuthorities,
+    ])) return records;
     const me = getConnectedUserFullName();
     const myEmail = getUserAction();
     if (!me && !myEmail) return records; // not hydrated yet — don't hide everything

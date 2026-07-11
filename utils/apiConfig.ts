@@ -5,10 +5,10 @@
 
 /**
  * Get the API base URL from environment variables
- * Falls back to http://10.50.60.20:8080 if not set
+ * Falls back to http://localhost:8080 if not set
  */
 export const getApiBaseUrl = (): string => {
-  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://10.50.60.20:8080';
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 };
 
 /**

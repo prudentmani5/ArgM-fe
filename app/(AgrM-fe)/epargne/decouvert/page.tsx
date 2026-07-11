@@ -82,6 +82,8 @@ function DecouvertPage() {
 
     // Caisse state
     const [selectedCaisseId, setSelectedCaisseId] = useState<number | null>(null);
+    // Only the caissier role may disburse (cash is handed out from their own caisse)
+    const [isCaissier, setIsCaissier] = useState(false);
 
     // Disburse billetage state
     const [disburseBilletageVisible, setDisburseBilletageVisible] = useState(false);
@@ -112,6 +114,13 @@ function DecouvertPage() {
     useEffect(() => {
         loadReferenceData();
         loadDecouvertList();
+        try {
+            const appUserCookie = Cookies.get('appUser');
+            if (appUserCookie) {
+                const roleName = (JSON.parse(appUserCookie).roleName || '').toLowerCase();
+                setIsCaissier(roleName.includes('caiss'));
+            }
+        } catch { /* ignore */ }
     }, []);
 
     // ── Response handlers ─────────────────────────────────────────────────────
@@ -305,6 +314,14 @@ function DecouvertPage() {
     };
 
     const handleDisburse = (row: DecouvertRequest) => {
+        if (!isCaissier) {
+            showToast('error', 'Non autorisé', 'Seul un caissier peut décaisser un découvert.');
+            return;
+        }
+        if (!selectedCaisseId) {
+            showToast('error', 'Aucune caisse', 'Aucune caisse ouverte n\'est associée à votre compte caissier.');
+            return;
+        }
         setDisburseRequestId(row.id ?? null);
         setDisburseAmount(row.requestedAmount || 0);
         setDisburseBilletage({});
@@ -330,7 +347,7 @@ function DecouvertPage() {
             return;
         }
         actionsApi.fetchData(
-            { userAction: getUserAction(), billetage: disburseBilletage },
+            { userAction: getUserAction(), caisseId: selectedCaisseId, billetage: disburseBilletage },
             'POST',
             `${BASE_URL}/disburse/${disburseRequestId}`,
             'disburse'
@@ -567,7 +584,7 @@ function DecouvertPage() {
             {row.status === 'VERIFIED' && can('EPARGNE_DECOUVERT_APPROVE') && (
                 <Button icon="pi pi-check-circle" rounded text severity="success" tooltip="Approuver" onClick={() => openComment(row, 'approve')} />
             )}
-            {row.status === 'APPROVED' && can('EPARGNE_DECOUVERT_DISBURSE') && (
+            {row.status === 'APPROVED' && can('EPARGNE_DECOUVERT_DISBURSE') && isCaissier && (
                 <Button icon="pi pi-dollar" rounded text severity="success" tooltip="Décaisser" onClick={() => handleDisburse(row)} />
             )}
             {['PENDING', 'VERIFIED', 'APPROVED'].includes(row.status ?? '') && can('EPARGNE_DECOUVERT_REJECT') && (

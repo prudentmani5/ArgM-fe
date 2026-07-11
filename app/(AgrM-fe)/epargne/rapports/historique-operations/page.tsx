@@ -73,6 +73,7 @@ const RapportHistoriqueOperationsPage = () => {
         { label: 'Tous', value: null },
         { label: 'Dépôt', value: 'DEPOSIT' },
         { label: 'Retrait', value: 'WITHDRAWAL' },
+        { label: 'Découvert', value: 'DECOUVERT' },
         { label: 'Frais', value: 'FEE' },
         { label: 'Intérêt', value: 'INTEREST' },
         { label: 'Transfert Entrant', value: 'TRANSFER_IN' },
@@ -190,6 +191,7 @@ const RapportHistoriqueOperationsPage = () => {
         const operationTypeLabels: { [key: string]: string } = {
             'DEPOSIT': 'Dépôt',
             'WITHDRAWAL': 'Retrait',
+            'DECOUVERT': 'Découvert',
             'FEE': 'Frais',
             'INTEREST': 'Intérêt',
             'TRANSFER_IN': 'Transfert +',
@@ -754,13 +756,14 @@ const RapportHistoriqueOperationsPage = () => {
             switch (type?.toUpperCase()) {
                 case 'DEPOSIT': case 'TRANSFER_IN': case 'INTEREST': return 'success';
                 case 'WITHDRAWAL': case 'TRANSFER_OUT': case 'FEE': return 'danger';
-                case 'ADJUSTMENT': return 'warning';
+                case 'DECOUVERT': case 'ADJUSTMENT': return 'warning';
                 default: return 'info';
             }
         };
         const labels: { [key: string]: string } = {
             'DEPOSIT': 'Dépôt',
             'WITHDRAWAL': 'Retrait',
+            'DECOUVERT': 'Découvert',
             'FEE': 'Frais',
             'INTEREST': 'Intérêt',
             'TRANSFER_IN': 'Transfert +',

@@ -204,6 +204,8 @@ function ClientComponent() {
                     })),
                 });
                 setViewClientDialog(true);
+            } else if (callType === 'editClientById') {
+                populateEditForm(data as Client);
             }
             handleAfterApiCall();
         }
@@ -1011,8 +1013,8 @@ function ClientComponent() {
     };
 
     const loadAllData = () => {
-        console.log('🔄 Loading clients from:', `${BASE_URL}/findall`);
-        fetchData(null, 'GET', `${BASE_URL}/findall`, 'loadClients');
+        // Liste légère (projection sans relations) pour un chargement rapide du tableau.
+        fetchData(null, 'GET', `${BASE_URL}/findall/summary`, 'loadClients');
     };
 
     const performSearch = (query: string) => {
@@ -1350,7 +1352,17 @@ function ClientComponent() {
         setActiveIndex(e.index);
     };
 
+    // The list now returns a lightweight summary (no relations), so fetch the full
+    // client by id before opening the edit dialog.
     const loadClientToEdit = (data: Client) => {
+        if (data.id) {
+            fetchData(null, 'GET', `${BASE_URL}/findbyid/${data.id}`, 'editClientById');
+        } else {
+            populateEditForm(data);
+        }
+    };
+
+    const populateEditForm = (data: Client) => {
         // Extract IDs from nested objects returned by backend
         const clientData = data as any;
         const editData: Client = {
