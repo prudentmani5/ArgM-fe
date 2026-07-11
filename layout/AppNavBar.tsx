@@ -526,6 +526,8 @@ const AppNavBar = () => {
                         items: [
                             { label: 'Tableau de Bord', icon: 'pi pi-th-large', to: '/actionnaire/tableau-de-bord' },
                             { label: 'Registre des Actionnaires', icon: 'pi pi-users', to: '/actionnaire/registre' },
+                            
+                             { label: 'Gestion des Actionnaires', icon: 'pi pi-users', to: '/actionnaire/cardsnew' },
                             { label: 'Souscription de Parts', icon: 'pi pi-plus-circle', to: '/actionnaire/souscription', visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN']) : false },
                             { label: 'Transfert et Rachat', icon: 'pi pi-arrow-right-arrow-left', to: '/actionnaire/transfert-rachat', visible: appUser ? hasAnyAuthority(appUser, ['SHAREHOLDER_ADMIN']) : false }
                         ]
