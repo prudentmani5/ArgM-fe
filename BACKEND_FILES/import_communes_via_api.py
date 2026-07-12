@@ -207,7 +207,7 @@ def main():
     parser.add_argument(
         "--url",
         required=True,
-        help="Base URL of the API (e.g., http://10.50.60.20:8080)"
+        help="Base URL of the API (e.g., http://localhost:8080)"
     )
     parser.add_argument(
         "--delay",
