@@ -1472,6 +1472,114 @@ const handleIncreaseActions = async () => {
 
     // ========== SAUVEGARDE ==========
 
+
+/*
+    const handleSaveOLD = async () => {
+    if (!validateForm()) {
+        showToast('warn', 'Attention', 'Veuillez corriger les erreurs du formulaire');
+        return;
+    }
+
+    setSaving(true);
+    try {
+        const token = getToken();
+        if (!token) {
+            throw new Error('Token d\'authentification manquant');
+        }
+
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-Performed-By': getUserAction()
+        };
+
+        const url = isEditing
+            ? `${BASE_URL}/actionnaires/${editingId}`
+            : `${BASE_URL}/actionnaires`;
+
+        const method = isEditing ? 'PUT' : 'POST';
+
+        const payload: any = { ...formData };
+
+        if (formPhotoFile) {
+            const photoBase64 = await convertFileToBase64(formPhotoFile);
+            payload.photoPassport = photoBase64;
+        }
+
+        Object.keys(payload).forEach(key => {
+            if (payload[key] === undefined || payload[key] === null) {
+                delete payload[key];
+            }
+        });
+
+        const response = await fetch(url, {
+            method,
+            headers,
+            body: JSON.stringify(payload)
+        });
+
+        // ✅ Lire la réponse même en cas d'erreur
+        let errorData = null;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            // Si la réponse n'est pas du JSON
+        }
+
+        if (!response.ok) {
+            // ✅ Gestion spécifique selon le code HTTP
+            switch (response.status) {
+                case 409: // Conflict - Doublon
+                    const message = errorData?.message || 'Un actionnaire avec ces informations existe déjà';
+                    showToast('error', '❌ Erreur de duplication', message);
+                    // ✅ Mettre en évidence les champs en conflit
+                    if (message.includes('CNI')) {
+                        setFormErrors({ ...formErrors, numeroCNI: 'Ce numéro CNI existe déjà' });
+                    }
+                    if (message.includes('téléphone')) {
+                        setFormErrors({ ...formErrors, telephone: 'Ce numéro de téléphone existe déjà' });
+                    }
+                    return;
+                    
+                case 400: // Bad Request - Validation
+                    const validationMsg = errorData?.message || 'Données invalides';
+                    showToast('error', '❌ Erreur de validation', validationMsg);
+                    // ✅ Afficher les erreurs de validation
+                    if (errorData?.errors) {
+                        Object.entries(errorData.errors).forEach(([field, msg]) => {
+                            setFormErrors(prev => ({ ...prev, [field]: msg as string }));
+                        });
+                    }
+                    return;
+                    
+                case 401: // Unauthorized
+                    showToast('error', '❌ Non authentifié', 'Veuillez vous reconnecter');
+                    // Rediriger vers login
+                    window.location.href = '/login';
+                    return;
+                    
+                case 403: // Forbidden
+                    showToast('error', '❌ Accès refusé', 'Vous n\'avez pas les droits nécessaires');
+                    return;
+                    
+                default:
+                    throw new Error(errorData?.message || `Erreur ${response.status}`);
+            }
+        }
+
+        showToast('success', '✅ Succès', isEditing ? 'Actionnaire modifié avec succès' : 'Actionnaire créé avec succès');
+        setFormDialog(false);
+        resetForm();
+        await loadActionnaires();
+
+    } catch (error) {
+        console.error('❌ Erreur sauvegarde:', error);
+        showToast('error', '❌ Erreur', error instanceof Error ? error.message : 'Erreur inconnue');
+    } finally {
+        setSaving(false);
+    }
+};
+*/
     const handleSave = async () => {
         if (!validateForm()) {
             showToast('warn', 'Attention', 'Veuillez corriger les erreurs du formulaire');
@@ -1537,6 +1645,27 @@ const handleIncreaseActions = async () => {
             setSaving(false);
         }
     };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // ========== GESTION DES CARTES ==========
 
@@ -2402,13 +2531,18 @@ useEffect(() => {
         style={{ minWidth: '120px' }}
     />
     <Column 
-        field="compteBancaire" 
-        header="Compte" 
+        field="numeroCNI" 
+        header="CNI" 
         style={{ minWidth: '120px' }}
     />
     <Column 
         field="telephone" 
         header="Téléphone" 
+        style={{ minWidth: '120px' }}
+    />
+    <Column 
+        field="compteBancaire" 
+        header="Compte" 
         style={{ minWidth: '120px' }}
     />
     <Column 
@@ -2680,6 +2814,20 @@ useEffect(() => {
                         <div className="col-12">
                             <h5>Naissance & État Civil</h5>
                         </div>
+
+                        <div className="col-12 md:col-6">
+                            <div className="field">
+                                <label htmlFor="lieuNaissance">Lieu de naissance</label>
+                                <InputText
+                                    id="lieuNaissance"
+                                    value={formData.lieuNaissance || ''}
+                                    onChange={(e) => setFormData({ ...formData, lieuNaissance: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+
+
                         <div className="col-12 md:col-6">
                             <div className="field">
                                 <label htmlFor="dateNaissance">Date de naissance <span className="text-danger">*</span></label>
@@ -2710,16 +2858,7 @@ useEffect(() => {
                                 {formErrors.dateNaissance && <small className="text-danger">{formErrors.dateNaissance}</small>}
                             </div>
                         </div>
-                        <div className="col-12 md:col-6">
-                            <div className="field">
-                                <label htmlFor="lieuNaissance">Lieu de naissance</label>
-                                <InputText
-                                    id="lieuNaissance"
-                                    value={formData.lieuNaissance || ''}
-                                    onChange={(e) => setFormData({ ...formData, lieuNaissance: e.target.value })}
-                                />
-                            </div>
-                        </div>
+                        
                         <div className="col-12 md:col-6">
                             <div className="field">
                                 <label htmlFor="etatCivil">État civil <span className="text-danger">*</span></label>
@@ -2753,7 +2892,7 @@ useEffect(() => {
 
                         {/* Documents et contact */}
                         <div className="col-12">
-                            <h5>Documents & Contact</h5>
+                            <h5>Documents, Contact & Adresse </h5>
                         </div>
                         <div className="col-12 md:col-6">
                             <div className="field">
@@ -2779,21 +2918,9 @@ useEffect(() => {
                                 {formErrors.telephone && <small className="text-danger">{formErrors.telephone}</small>}
                             </div>
                         </div>
-                        <div className="col-12">
-                            <div className="field">
-                                <label htmlFor="adresseResidence">Adresse de résidence</label>
-                                <InputText
-                                    id="adresseResidence"
-                                    value={formData.adresseResidence || ''}
-                                    onChange={(e) => setFormData({ ...formData, adresseResidence: e.target.value })}
-                                />
-                            </div>
-                        </div>
+                       
 
                         {/* Délivrance identité */}
-                        <div className="col-12">
-                            <h5>Délivrance de l'identité</h5>
-                        </div>
                         <div className="col-12 md:col-6">
                             <div className="field">
                                 <label htmlFor="lieuDelivrance">Lieu de délivrance</label>
@@ -2829,6 +2956,18 @@ useEffect(() => {
                             </div>
                         </div>
 
+
+                         <div className="col-12">
+                            <div className="field">
+                                <label htmlFor="adresseResidence">Adresse de résidence</label>
+                                <InputText
+                                    id="adresseResidence"
+                                    value={formData.adresseResidence || ''}
+                                    onChange={(e) => setFormData({ ...formData, adresseResidence: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
                         {/* Actions et compte */}
                         <div className="col-12">
                             <h5>Actions & Compte</h5>
@@ -2857,16 +2996,6 @@ useEffect(() => {
                                     id="compteBancaire"
                                     value={formData.compteBancaire || ''}
                                     onChange={(e) => setFormData({ ...formData, compteBancaire: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                        <div className="col-12 md:col-6">
-                            <div className="field">
-                                <label htmlFor="matricule2">Matricule 2</label>
-                                <InputText
-                                    id="matricule2"
-                                    value={formData.matricule2 || ''}
-                                    onChange={(e) => setFormData({ ...formData, matricule2: e.target.value })}
                                 />
                             </div>
                         </div>
