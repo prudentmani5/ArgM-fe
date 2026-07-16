@@ -1580,6 +1580,154 @@ const handleIncreaseActions = async () => {
     }
 };
 */
+
+
+
+
+
+
+// ========== FONCTIONS DE TÉLÉCHARGEMENT D'IMAGE ==========
+
+const handleDownloadImage = async (card: ActionnaireCard, format: 'png' | 'jpg') => {
+    try {
+        const token = getToken();
+        if (!token) {
+            showToast('error', 'Erreur', 'Token d\'authentification manquant');
+            return;
+        }
+
+        toast.current?.show({
+            severity: 'info',
+            summary: 'Génération en cours',
+            detail: `Génération de la carte en ${format.toUpperCase()}...`,
+            life: 3000
+        });
+
+        // ✅ Utiliser le bon endpoint avec le numéro de carte
+        const response = await fetch(
+            `${BASE_URL}/cards/${card.numeroCarte}/image?format=${format}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': format === 'png' ? 'image/png' : 'image/jpeg'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                showToast('error', 'Erreur', 'Carte non trouvée');
+                return;
+            }
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Erreur ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `carte_${card.numeroCarte}.${format}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+
+        showToast('success', '✅ Succès', `Carte téléchargée en ${format.toUpperCase()}`);
+
+    } catch (error) {
+        console.error(`Erreur téléchargement ${format}:`, error);
+        showToast('error', '❌ Erreur', error instanceof Error ? error.message : 'Erreur inconnue');
+    }
+};
+
+const handleDownloadPNG = (card: ActionnaireCard) => {
+    handleDownloadImage(card, 'png');
+};
+
+const handleDownloadJPG = (card: ActionnaireCard) => {
+    handleDownloadImage(card, 'jpg');
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const handleSave = async () => {
         if (!validateForm()) {
             showToast('warn', 'Attention', 'Veuillez corriger les erreurs du formulaire');
@@ -2065,10 +2213,131 @@ const getStatusTag = (card: ActionnaireCard) => {
     const cardsStatusTemplate = (row: ActionnaireCard) => getStatusTag(row);
 
    
+
+const cardsActionsTemplate = (row: ActionnaireCard) => {
+    const { label, severity } = getFormattedStatus(row);
+    const isOperational = row.isActive && !row.expired;
+    const status = row.cardStatus || 'GENERATED';
+    
+    return (
+        <div className="flex gap-1 flex-wrap">
+            {/* 🔍 Détails - Toujours visible */}
+            <Button
+                icon="pi pi-eye"
+                rounded
+                text
+                severity="info"
+                onClick={() => viewCardDetails(row)}
+                tooltip="Détails"
+                size="small"
+            />
+            
+            {/* 📄 Télécharger PDF - Visible si active et non délivrée */}
+            {isOperational && status !== 'DELIVERED' && status !== 'INVALIDATED' && (
+                <Button
+                    icon="pi pi-file-pdf"
+                    rounded
+                    text
+                    severity="secondary"
+                    onClick={() => handleDownloadPDF(row)}
+                    tooltip="Télécharger PDF"
+                    size="small"
+                />
+            )}
+            
+            {/* 🖼️ Télécharger PNG - Visible si active */}
+            {isOperational && (
+                <Button
+                    icon="pi pi-image"
+                    rounded
+                    text
+                    severity="info"
+                    onClick={() => handleDownloadPNG(row)}
+                    tooltip="Télécharger en PNG"
+                    size="small"
+                />
+            )}
+            
+            {/* 🖼️ Télécharger JPG - Visible si active */}
+            {isOperational && (
+                <Button
+                    icon="pi pi-image"
+                    rounded
+                    text
+                    severity="success"
+                    onClick={() => handleDownloadJPG(row)}
+                    tooltip="Télécharger en JPG"
+                    size="small"
+                />
+            )}
+            
+            {/* 💰 Vérifier paiement - UNIQUEMENT si GENERATED */}
+            {isOperational && status === 'GENERATED' && (
+                <Button
+                    icon="pi pi-money-bill"
+                    rounded
+                    text
+                    severity="warning"
+                    onClick={() => openPaymentDialog(row)}
+                    tooltip="Vérifier paiement"
+                    size="small"
+                />
+            )}
+            
+            {/* ✅ Délivrer - UNIQUEMENT si PAYMENT_VERIFIED */}
+            {isOperational && status === 'PAYMENT_VERIFIED' && (
+                <Button
+                    icon="pi pi-check-circle"
+                    rounded
+                    text
+                    severity="success"
+                    onClick={() => openDeliveryDialog(row)}
+                    tooltip="Délivrer la carte"
+                    size="small"
+                />
+            )}
+            
+            {/* ❌ Invalider - Visible si ACTIVE et non délivrée */}
+            {isOperational && status !== 'INVALIDATED' && (
+                <Button
+                    icon="pi pi-times"
+                    rounded
+                    text
+                    severity="danger"
+                    onClick={() => {
+                        setCardToInvalidate(row);
+                        setInvalidationReason('');
+                        setInvalidateDialog(true);
+                    }}
+                    tooltip="Invalider"
+                    size="small"
+                />
+            )}
+            
+            {/* ✅ Afficher le statut en tag si la carte est délivrée ou invalidée */}
+            {(status === 'DELIVERED' || status === 'INVALIDATED') && (
+                <Tag value={label} severity={severity} />
+            )}
+        </div>
+    );
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
     
 
 
-const cardsActionsTemplate = (row: ActionnaireCard) => {
+const cardsActionsTemplateOLD2 = (row: ActionnaireCard) => {
     const { label, severity } = getFormattedStatus(row);
     const isOperational = row.isActive && !row.expired;
     const status = row.cardStatus || row.cardStatus || 'GENERATED';
@@ -3843,6 +4112,22 @@ useEffect(() => {
                             onClick={() => handleDownloadPDF(selectedCard)}
                             className="p-button-sm p-button-success"
                         />
+
+                        <Button
+                                icon="pi pi-image"
+                                label="🖼️ Télécharger en PNG"
+                                onClick={() => handleDownloadPNG(selectedCard)}
+                                className="p-button-sm p-button-info"
+                            />
+                            <Button
+                                icon="pi pi-image"
+                                label="🖼️ Télécharger en JPG"
+                                onClick={() => handleDownloadJPG(selectedCard)}
+                                className="p-button-sm p-button-warning"
+                            />
+
+
+
                         {selectedCard.isActive && selectedCard.cardStatus !== 'DELIVERED' && (
                             <Button
                                 icon="pi pi-print"
@@ -3851,6 +4136,10 @@ useEffect(() => {
                                 className="p-button-sm p-button-secondary"
                             />
                         )}
+
+                        
+
+
                         {selectedCard.isActive && selectedCard.cardStatus !== 'DELIVERED' && (
                             <Button
                                 icon="pi pi-envelope"
