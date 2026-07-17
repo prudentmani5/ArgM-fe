@@ -20,7 +20,7 @@ const LoanWriteOffPage = () => {
     const [isEdit, setIsEdit] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const toast = useRef<Toast>(null);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://10.50.60.20:8080';
 
     useEffect(() => {
         fetchEntities();

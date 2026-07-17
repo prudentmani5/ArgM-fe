@@ -59,22 +59,38 @@ export default function DemandeCreditForm({
         return new Intl.NumberFormat('fr-BI', { style: 'decimal' }).format(value) + ' FBU';
     };
 
+    // A client only carries firstName/lastName when it is a physical person.
+    // BUSINESS and SOLIDARITY_GROUP clients hold their name in businessName.
+    const getClientName = (client: any) => {
+        if (!client) return '';
+        const isPerson = client.clientType === 'INDIVIDUAL' || client.clientType === 'JOINT_ACCOUNT';
+        const personName = `${client.firstName || ''} ${client.lastName || ''}`.trim();
+        return (isPerson ? personName : client.businessName) || personName || client.businessName || '';
+    };
+
+    // A savings account belongs either to a client or to a solidarity group.
+    const getAccountHolderName = (account: any) => {
+        if (!account) return '';
+        return account.solidarityGroup?.groupName || getClientName(account.client) || '';
+    };
+
     const accountOptionTemplate = (option: any) => {
         if (!option) return null;
-        const clientName = option.client ? `${option.client.firstName} ${option.client.lastName}` : '';
+        const holderName = getAccountHolderName(option);
         return (
             <div className="flex align-items-center gap-2">
                 <span className="font-semibold">{option.accountNumber}</span>
-                <span className="text-500">-</span>
-                <span>{clientName}</span>
+                {holderName && <span className="text-500">-</span>}
+                <span>{holderName}</span>
+                {option.solidarityGroup && <small className="text-500">(Groupe)</small>}
             </div>
         );
     };
 
     const selectedAccountTemplate = (option: any, props: any) => {
         if (option) {
-            const clientName = option.client ? `${option.client.firstName} ${option.client.lastName}` : '';
-            return <span>{option.accountNumber} - {clientName}</span>;
+            const holderName = getAccountHolderName(option);
+            return <span>{option.accountNumber}{holderName ? ` - ${holderName}` : ''}</span>;
         }
         return <span>{props.placeholder}</span>;
     };
@@ -83,7 +99,7 @@ export default function DemandeCreditForm({
         if (!option) return null;
         return (
             <div className="flex align-items-center gap-2">
-                <span>{option.firstName} {option.lastName}</span>
+                <span>{getClientName(option)}</span>
                 <small className="text-500">({option.clientNumber || option.phone})</small>
             </div>
         );
@@ -91,13 +107,22 @@ export default function DemandeCreditForm({
 
     const selectedClientTemplate = (option: any, props: any) => {
         if (option) {
-            return <span>{option.firstName} {option.lastName}</span>;
+            return <span>{getClientName(option)}</span>;
         }
         return <span>{props.placeholder}</span>;
     };
 
     // Get the selected client object
     const selectedClient = clients.find(c => c.id === demande.clientId);
+
+    // Group accounts have no client, so fall back to the account's solidarity group.
+    const selectedAccount = savingsAccounts.find((a: any) => a.id === demande.savingsAccountId);
+    const selectedHolderLabel = (() => {
+        const group = selectedAccount?.solidarityGroup;
+        if (group) return `${group.groupName || ''} - ${group.groupCode || ''}`.trim();
+        if (selectedClient) return `${getClientName(selectedClient)} - ${selectedClient.clientNumber || ''}`.trim();
+        return '';
+    })();
 
     // Get the selected loan product for validation
     const selectedProduct = loanProducts.find((p: any) => p.id === demande.loanProductId);
@@ -244,11 +269,11 @@ export default function DemandeCreditForm({
 
                     <div className="field col-12 md:col-6">
                         <label htmlFor="clientId" className="font-semibold">
-                            Client (auto-rempli)
+                            {selectedAccount?.solidarityGroup ? 'Groupe (auto-rempli)' : 'Client (auto-rempli)'}
                         </label>
                         <InputText
                             id="clientDisplay"
-                            value={selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName} - ${selectedClient.clientNumber || ''}` : ''}
+                            value={selectedHolderLabel}
                             className="w-full"
                             disabled={true}
                             placeholder="Sélectionnez d'abord un compte..."
@@ -256,7 +281,9 @@ export default function DemandeCreditForm({
                         {demande.savingsAccountId && (
                             <small className="text-500">
                                 <i className="pi pi-info-circle mr-1"></i>
-                                Client récupéré automatiquement du compte
+                                {selectedAccount?.solidarityGroup
+                                    ? 'Groupe récupéré automatiquement du compte'
+                                    : 'Client récupéré automatiquement du compte'}
                             </small>
                         )}
                     </div>

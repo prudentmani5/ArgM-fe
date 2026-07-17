@@ -238,18 +238,22 @@ export default function DemandesCreditPage() {
     const loadReferenceData = async () => {
         setLoadingRef(true);
         try {
+            // Credit officers are not rendered by the form, so load them in the
+            // background instead of making them gate the first paint.
+            fetchWithAuth(`${USERS_URL}`)
+                .then((usersData) => setCreditOfficers(Array.isArray(usersData) ? usersData : usersData?.content || []))
+                .catch(() => setCreditOfficers([]));
+
             const [
                 clientsData,
                 branchesData,
-                usersData,
                 productsData,
                 statutsData,
                 purposesData,
                 accountsData
             ] = await Promise.all([
-                fetchWithAuth(`${CLIENTS_URL}/findall`).catch(() => []),
+                fetchWithAuth(`${CLIENTS_URL}/findall/summary`).catch(() => []),
                 fetchWithAuth(`${BRANCHES_URL}/findall`).catch(() => []),
-                fetchWithAuth(`${USERS_URL}`).catch(() => []),
                 fetchWithAuth(`${PRODUCTS_URL}/findall`).catch(() => []),
                 fetchWithAuth(`${STATUTS_URL}/findall/active`).catch(() => []),
                 fetchWithAuth(`${PURPOSES_URL}/findall/active`).catch(() => []),
@@ -258,7 +262,6 @@ export default function DemandesCreditPage() {
 
             setClients(Array.isArray(clientsData) ? clientsData : clientsData?.content || []);
             setBranches(Array.isArray(branchesData) ? branchesData : branchesData?.content || []);
-            setCreditOfficers(Array.isArray(usersData) ? usersData : usersData?.content || []);
             // Filter to only show ACTIVE loan products
             const allProducts = Array.isArray(productsData) ? productsData : productsData?.content || [];
             setLoanProducts(allProducts.filter((p: any) => p.status === 'ACTIVE'));
@@ -768,8 +771,16 @@ export default function DemandesCreditPage() {
     };
 
     const clientBodyTemplate = (rowData: DemandeCredit) => {
-        const client = rowData.client;
-        return client ? `${client.firstName} ${client.lastName}` : 'N/A';
+        // Group accounts have no client; BUSINESS/SOLIDARITY_GROUP clients
+        // hold their name in businessName rather than firstName/lastName.
+        const account: any = savingsAccounts.find((a: any) => a.id === (rowData as any).savingsAccountId);
+        const groupName = account?.solidarityGroup?.groupName;
+        if (groupName) return groupName;
+
+        const client: any = rowData.client;
+        if (!client) return 'N/A';
+        const personName = `${client.firstName || ''} ${client.lastName || ''}`.trim();
+        return personName || client.businessName || 'N/A';
     };
 
     const dateBodyTemplate = (rowData: DemandeCredit) => {
