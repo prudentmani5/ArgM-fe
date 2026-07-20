@@ -39,6 +39,7 @@ interface ReportFilter {
     collineId?: number;
     status?: string;
     category?: string;
+    gender?: string;
 }
 
 function ReportsPage() {
@@ -87,6 +88,12 @@ function ReportsPage() {
         { label: 'Actif', value: 'ACTIVE' },
         { label: 'Inactif', value: 'INACTIVE' },
         { label: 'Blacklisté', value: 'BLACKLISTED' }
+    ];
+
+    const genderOptions = [
+        { label: 'Tous', value: '' },
+        { label: 'Masculin', value: 'M' },
+        { label: 'Féminin', value: 'F' }
     ];
 
     const groupStatusOptions = [
@@ -170,6 +177,7 @@ function ReportsPage() {
                 <th>N° Client</th>
                 <th>Prénom</th>
                 <th>Nom</th>
+                <th>Sexe</th>
                 <th>Téléphone</th>
                 <th>Province</th>
                 <th>Commune</th>
@@ -182,6 +190,7 @@ function ReportsPage() {
                     <td>${row.clientNumber || '-'}</td>
                     <td>${row.firstName || '-'}</td>
                     <td>${row.lastName || '-'}</td>
+                    <td>${genderLabel(row.gender)}</td>
                     <td>${row.phonePrimary || '-'}</td>
                     <td>${row.provinceName || '-'}</td>
                     <td>${row.communeName || '-'}</td>
@@ -295,11 +304,12 @@ function ReportsPage() {
         let rows: string[][] = [];
 
         if (isClientReport) {
-            headers = ['N° Client', 'Prénom', 'Nom', 'Téléphone', 'Province', 'Commune', 'Zone', 'Quartier/Colline', 'Statut'];
+            headers = ['N° Client', 'Prénom', 'Nom', 'Sexe', 'Téléphone', 'Province', 'Commune', 'Zone', 'Quartier/Colline', 'Statut'];
             rows = reportData.map(row => [
                 row.clientNumber || '',
                 row.firstName || '',
                 row.lastName || '',
+                genderLabel(row.gender),
                 row.phonePrimary || '',
                 row.provinceName || '',
                 row.communeName || '',
@@ -346,6 +356,10 @@ function ReportsPage() {
 
         showToast('success', 'Export Excel', 'Le fichier CSV a été téléchargé avec succès');
     };
+
+    const genderLabel = (g: any) => (g === 'M' ? 'Masculin' : g === 'F' ? 'Féminin' : '-');
+
+    const genderBodyTemplate = (rowData: any) => <span>{genderLabel(rowData.gender)}</span>;
 
     const statusBodyTemplate = (rowData: any) => {
         const statusMap: Record<string, { label: string; severity: any }> = {
@@ -471,6 +485,18 @@ function ReportsPage() {
                     options={clientStatusOptions}
                     onChange={(e) => setFilter({ ...filter, status: e.value })}
                     placeholder="Tous les statuts"
+                    showClear
+                    className="w-full"
+                />
+            </div>
+            <div className="field col-12 md:col-3">
+                <label htmlFor="gender">Sexe</label>
+                <Dropdown
+                    id="gender"
+                    value={filter.gender}
+                    options={genderOptions}
+                    onChange={(e) => setFilter({ ...filter, gender: e.value })}
+                    placeholder="Tous les sexes"
                     showClear
                     className="w-full"
                 />
@@ -646,6 +672,7 @@ function ReportsPage() {
                             <Column field="clientNumber" header="N° Client" sortable />
                             <Column field="firstName" header="Prénom" sortable />
                             <Column field="lastName" header="Nom" sortable />
+                            <Column header="Sexe" body={genderBodyTemplate} sortable field="gender" />
                             <Column field="phonePrimary" header="Téléphone" />
                             <Column field="provinceName" header="Province" sortable body={(rowData) => rowData.provinceName || '-'} />
                             <Column field="communeName" header="Commune" sortable body={(rowData) => rowData.communeName || '-'} />

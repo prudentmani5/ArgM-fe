@@ -8,6 +8,7 @@ import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
+import { Calendar } from 'primereact/calendar';
 import { Card } from 'primereact/card';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Divider } from 'primereact/divider';
@@ -42,6 +43,19 @@ const ACCOUNT_TYPE_SEVERITY: Record<string, any> = {
     TERM_DEPOSIT: 'warning',
     COMPULSORY: 'success',
 };
+
+// ─── Period helpers (filters by opening date) ─────────────────────────────────
+
+const parseOpeningDate = (s: string): Date | null => {
+    if (!s) return null;
+    const [y, mo, d] = s.split('T')[0].split('-').map(Number);
+    if (!y) return null;
+    return new Date(y, (mo || 1) - 1, d || 1);
+};
+
+// Normalize a picked date to the start of its day so comparisons are inclusive.
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
 // ─── Default amount ranges ────────────────────────────────────────────────────
 
@@ -83,9 +97,11 @@ export default function SituationComptesPage() {
         branchId: number | null;
         accountType: string | null;
         statusCode: string | null;
+        periodFrom: Date | null;
+        periodTo: Date | null;
         minBalance: number | null;
         maxBalance: number | null;
-    }>({ branchId: null, accountType: null, statusCode: null, minBalance: null, maxBalance: null });
+    }>({ branchId: null, accountType: null, statusCode: null, periodFrom: null, periodTo: null, minBalance: null, maxBalance: null });
     const [ranges, setRanges] = useState(DEFAULT_RANGES);
 
     const toast = useRef<Toast>(null);
@@ -117,12 +133,20 @@ export default function SituationComptesPage() {
 
     // ── filtered dataset ──────────────────────────────────────────────────────
     const filtered = useMemo(() => {
+        const from = filters.periodFrom ? startOfDay(filters.periodFrom) : null;
+        const to = filters.periodTo ? endOfDay(filters.periodTo) : null;
         return accounts.filter((a: any) => {
             if (filters.branchId && a.branch?.id !== filters.branchId) return false;
             if (filters.accountType && a.accountType !== filters.accountType) return false;
             if (filters.statusCode) {
                 const sc = a.status?.code || a.status?.name || '';
                 if (sc !== filters.statusCode) return false;
+            }
+            if (from || to) {
+                const opened = parseOpeningDate(a.openingDate);
+                if (!opened) return false;
+                if (from && opened < from) return false;
+                if (to && opened > to) return false;
             }
             const bal = a.currentBalance || 0;
             if (filters.minBalance !== null && bal < filters.minBalance) return false;
@@ -183,6 +207,11 @@ export default function SituationComptesPage() {
     // ── export helpers ────────────────────────────────────────────────────────
     const buildDesc = () => {
         const parts: string[] = [];
+        if (filters.periodFrom || filters.periodTo) {
+            const from = filters.periodFrom ? filters.periodFrom.toLocaleDateString('fr-FR') : '…';
+            const to = filters.periodTo ? filters.periodTo.toLocaleDateString('fr-FR') : '…';
+            parts.push(`Ouverture: ${from} – ${to}`);
+        }
         if (filters.accountType) parts.push(ACCOUNT_TYPE_LABELS[filters.accountType] || filters.accountType);
         if (filters.statusCode) parts.push(filters.statusCode);
         if (filters.minBalance !== null || filters.maxBalance !== null)
@@ -363,12 +392,32 @@ export default function SituationComptesPage() {
                             placeholder="Tous les statuts" showClear className="w-full"
                         />
                     </div>
+                    <div className="field col-12 md:col-3">
+                        <label className="font-semibold block mb-1">Période - Du (Date d'ouverture)</label>
+                        <Calendar
+                            value={filters.periodFrom}
+                            onChange={(e) => setFilters(f => ({ ...f, periodFrom: (e.value as Date) ?? null }))}
+                            dateFormat="dd/mm/yy" showIcon showButtonBar
+                            placeholder="jj/mm/aaaa" className="w-full"
+                            maxDate={filters.periodTo ?? undefined}
+                        />
+                    </div>
+                    <div className="field col-12 md:col-3">
+                        <label className="font-semibold block mb-1">Période - Au</label>
+                        <Calendar
+                            value={filters.periodTo}
+                            onChange={(e) => setFilters(f => ({ ...f, periodTo: (e.value as Date) ?? null }))}
+                            dateFormat="dd/mm/yy" showIcon showButtonBar
+                            placeholder="jj/mm/aaaa" className="w-full"
+                            minDate={filters.periodFrom ?? undefined}
+                        />
+                    </div>
                     <div className="field col-12 md:col-3 flex gap-2 align-items-end">
                         <Button
                             label="Réinitialiser"
                             icon="pi pi-filter-slash"
                             severity="secondary" outlined
-                            onClick={() => setFilters({ branchId: null, accountType: null, statusCode: null, minBalance: null, maxBalance: null })}
+                            onClick={() => setFilters({ branchId: null, accountType: null, statusCode: null, periodFrom: null, periodTo: null, minBalance: null, maxBalance: null })}
                         />
                     </div>
 
